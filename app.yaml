@@ -1,0 +1,17 @@
+runtime: nodejs20
+env: standard # Good practice to explicitly define the environment
+
+env_variables:
+  # Reference Secret Manager for production and sensitive variables
+  # These values will be resolved at runtime by the App Engine environment
+  # Make sure your App Engine service account has permissions to access these secrets.
+  MONGODB_URI: projects/YOUR_PROJECT_ID/secrets/MONGODB_URI/versions/latest
+  JWT_SECRET: projects/YOUR_PROJECT_ID/secrets/JWT_SECRET/versions/latest
+  SESSION_SECRET: projects/YOUR_PROJECT_ID/secrets/SESSION_SECRET/versions/latest
+  GEMINI_API_KEY: projects/YOUR_PROJECT_ID/secrets/GEMINI_API_KEY/versions/latest
+
+handlers:
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto
