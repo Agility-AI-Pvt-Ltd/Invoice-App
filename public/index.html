@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice App - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-light">    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <div class="d-flex align-items-center">
+                <img src="/ico.jpg" alt="Logo" height="30" class="me-2">
+                <span class="navbar-brand">Invoice App</span>
+                <sub><a href="https://agilityai.co.in" class="text-light text-decoration-none ms-2" target="_blank">Powered by AgilityAI</a></sub>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="authTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button">Login</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button">Register</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3" id="authTabContent">
+                            <div class="tab-pane fade show active" id="login">
+                                <form id="loginForm">
+                                    <div class="mb-3">
+                                        <label for="loginEmail" class="form-label">Email address</label>
+                                        <input type="email" class="form-control" id="loginEmail" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="loginPassword" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="loginPassword" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                                </form>
+                            </div>
+                            <div class="tab-pane fade" id="register">                                <form id="registerForm">
+                                    <div class="mb-3">
+                                        <label for="registerName" class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="registerName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="registerEmail" class="form-label">Email address</label>
+                                        <input type="email" class="form-control" id="registerEmail" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="registerPassword" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="registerPassword" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="registerCompany" class="form-label">Company/Business Name</label>
+                                        <input type="text" class="form-control" id="registerCompany" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="registerAddress" class="form-label">Business Address</label>
+                                        <textarea class="form-control" id="registerAddress" rows="2" required></textarea>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="registerPhone" class="form-label">Mobile Number</label>
+                                            <input type="tel" class="form-control" id="registerPhone" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="registerWebsite" class="form-label">Website (Optional)</label>
+                                            <input type="url" class="form-control" id="registerWebsite">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="registerPAN" class="form-label">PAN Number</label>
+                                        <input type="text" class="form-control" id="registerPAN" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="isGstRegistered">
+                                            <label class="form-check-label" for="isGstRegistered">
+                                                Registered under GST
+                                            </label>
+                                        </div>
+                                    </div>                                    <div class="mb-3 gst-details" id="gstDetails" style="display: none;">
+                                        <label for="registerGST" class="form-label">GST Number</label>
+                                        <input type="text" class="form-control" id="registerGST" 
+                                            placeholder="29ABCDE1234F1Z5" 
+                                            maxlength="15">
+                                        <div class="form-text">Format: 2 digits, 5 letters, 4 digits, 1 letter, 1 digit/letter, Z, 1 digit/letter</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="registerLogo" class="form-label">Business Logo (Optional)</label>
+                                        <input type="file" class="form-control" id="registerLogo" accept="image/*">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>
