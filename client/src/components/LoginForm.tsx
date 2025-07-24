@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Facebook, Apple, Chrome } from 'lucide-react';
 import FloatingInput from './ui/Input';
 import Checkbox from './ui/Checkbox';
 import SocialButton from './ui/SocialButtons';
+import { BsGoogle } from "react-icons/bs";
+import { AiFillApple, AiFillFacebook } from "react-icons/ai";
 
-export default function LoginForm() {
+export default function LoginForm({ setForgotPassword }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -37,7 +38,7 @@ export default function LoginForm() {
 
       <div className="flex justify-between items-center text-sm">
         <Checkbox id="remember" label="Remember me" />
-        <button className="text-red-500 hover:underline">Forgot Password</button>
+        <button className="text-red-500 hover:underline" onClick={() => setForgotPassword(true)}>Forgot Password</button>
       </div>
 
       <button className="w-full bg-black text-white py-2 rounded-md hover:opacity-90">
@@ -48,7 +49,6 @@ export default function LoginForm() {
         Don’t have an account?{' '}
         <a href="#" className="text-red-500 hover:underline">Sign up</a>
       </p>
-
       <div className="flex items-center space-x-2">
         <div className="flex-grow h-px bg-gray-300"></div>
         <span className="text-sm text-gray-400">Or login with</span>
@@ -56,9 +56,9 @@ export default function LoginForm() {
       </div>
 
       <div className="flex space-x-3">
-        <SocialButton icon={<Facebook size={18} />} label="Facebook" />
-        <SocialButton icon={<Chrome size={18} />} label="Google" />
-        <SocialButton icon={<Apple size={18} />} label="Apple" />
+        <SocialButton icon={<AiFillFacebook size={18} />} label="Facebook" />
+        <SocialButton icon={<BsGoogle size={18} />} label="Google" />
+        <SocialButton icon={<AiFillApple size={18} />} label="Apple" />
       </div>
     </div>
   );

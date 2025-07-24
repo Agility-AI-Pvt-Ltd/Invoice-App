@@ -1,6 +1,10 @@
+import ForgotPasswordForm from "@/components/ForgotPasswordForm";
 import LoginForm from "@/components/LoginForm";
+import { useState } from "react";
+
 
 export default function LoginPage() {
+    const [forgotPassword, setForgotPassword] = useState<boolean>(false);
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
             <div className="bg-white rounded-3xl shadow-md grid grid-cols-1 md:grid-cols-2 overflow-hidden w-full max-w-5xl">
@@ -13,8 +17,9 @@ export default function LoginPage() {
                             <p className="text-xs text-gray-500">Powered by AgilityAI</p>
                         </div>
                     </div>
+                    {/* insteda of state we should create a new page? nope this is better  */}
+                    {!forgotPassword ? <LoginForm setForgotPassword={setForgotPassword} /> : <ForgotPasswordForm setForgotPassword={setForgotPassword} />}
 
-                    <LoginForm />
                 </div>
 
                 <div className="bg-gray-100 hidden md:flex items-center justify-center">
@@ -26,6 +31,8 @@ export default function LoginPage() {
                         className="object-contain"
                     />
                 </div>
+
+
             </div>
         </div>
     );
