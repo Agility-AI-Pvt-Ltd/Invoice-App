@@ -1,72 +1,21 @@
-'use client';
+import * as React from "react"
 
-import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import clsx from 'clsx';
+import { cn } from "@/lib/utils"
 
-type FloatingInputProps = {
-  id: string;
-  label: string;
-  type?: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  required?: boolean;
-};
-
-const FloatingInput: React.FC<FloatingInputProps> = ({
-  id,
-  label,
-  type = 'text',
-  value,
-  onChange,
-  required = false,
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const isPassword = type === 'password';
-  const shouldFloat = isFocused || value !== '';
-
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
-    <div className="relative w-full">
-      <input
-        id={id}
-        type={isPassword && showPassword ? 'text' : type}
-        value={value}
-        onChange={onChange}
-        required={required}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        className={clsx(
-          'peer w-full border border-gray-400 rounded-md px-3 pt-5 pb-2 text-sm pr-10',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-          'transition-all duration-200'
-        )}
-      />
-
-      <label
-        htmlFor={id}
-        className={clsx(
-          'absolute left-3 text-gray-500 pointer-events-none transition-all duration-200',
-          shouldFloat
-            ? 'text-xs -top-1.5 bg-white px-1'
-            : 'text-sm top-3'
-        )}
-      >
-        {label}
-      </label>
-
-      {isPassword && (
-        <button
-          type="button"
-          onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute right-3 top-3.5 text-gray-500 hover:text-black"
-        >
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        className
       )}
-    </div>
-  );
-};
+      {...props}
+    />
+  )
+}
 
-export default FloatingInput;
+export { Input }

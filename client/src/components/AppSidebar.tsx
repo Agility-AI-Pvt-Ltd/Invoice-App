@@ -1,0 +1,98 @@
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarHeader,
+} from "@/components/ui/sidebar"
+import {
+    Home,
+    Users,
+    FileText,
+    Package,
+    Boxes,
+    BarChart2,
+    ShoppingCart,
+    Receipt,
+    CreditCard,
+    UserCog,
+    Bell,
+    Settings,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+
+function slugify(label: string) {
+    return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+}
+
+function toTitleCase(input: string = ""): string {
+    return input
+        .replace(/-/g, " ") // Replace hyphens with spaces
+        .split(" ")         // Split into words
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitalize each word
+        .join(" ");         // Join with spaces
+}
+
+const menuItems = [
+    { label: "Dashboard", icon: Home },
+    { label: "My Customers", icon: Users },
+    { label: "Invoices", icon: FileText },
+    { label: "Products/Services", icon: Package },
+    { label: "Inventory", icon: Boxes },
+    { label: "Sales & Revenue", icon: BarChart2 },
+    { label: "Expenses/ Purchases", icon: ShoppingCart },
+    { label: "Tax Summary", icon: Receipt },
+    { label: "Accounts", icon: CreditCard },
+    { label: "Team/Employees", icon: UserCog },
+    { label: "Reminders", icon: Bell },
+    { label: "Settings", icon: Settings },
+]
+
+export function AppSidebar() {
+    const param = useParams();
+    console.log(toTitleCase(param.menuItems))
+    const [selected, setSelected] = useState(toTitleCase(param.menuItems));
+    const navigate = useNavigate();
+
+    return (
+        <Sidebar className="bg-gradient-to-b from-black to-neutral-900 text-white">
+            <SidebarHeader>
+                <div className="flex">
+                    <img src="/agility.jpg" alt="Logo" className="h-18 m-2" />
+                    <div className="flex flex-col items-center py-4">
+                        <div className="text-xl font-bold">Invoice App</div>
+                        <div className="text-xs text-gray-400">Powered by AgilityAI</div>
+                    </div>
+                </div>
+            </SidebarHeader>
+            <SidebarContent>
+                <SidebarGroup>
+                    {menuItems.map(({ label, icon: Icon }) => {
+                        const isSelected = selected === label
+                        return (
+                            <button
+                                key={label}
+                                className={cn(
+                                    "flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm",
+                                    isSelected
+                                        ? "bg-white text-black font-semibold"
+                                        : "hover:bg-gray-800 text-white"
+                                )}
+                                onClick={() => {
+                                    setSelected(label);
+                                    navigate(`/app/${slugify(label)}`)
+                                }}
+                            >
+                                <Icon className={cn("w-5 h-5", isSelected && "text-black")} />
+                                <span>{label}</span>
+                            </button>
+                        )
+                    })}
+                </SidebarGroup>
+            </SidebarContent>
+            <SidebarFooter />
+        </Sidebar>
+    )
+}
