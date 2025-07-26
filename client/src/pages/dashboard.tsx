@@ -2,6 +2,8 @@ import ActionToolbar from '@/components/ActionToolBar';
 import RecentActivityTable from '@/components/RecentActivity';
 import SalesReportCard from '@/components/SalesReport';
 import StatCard from '@/components/StatCard';
+import { TopCustomersCard } from '@/components/TopCustomerCard';
+import TopProductsCard from '@/components/TopProductCard';
 import Layout from '@/layouts/dashboard-layout';
 
 const stats = [
@@ -62,6 +64,17 @@ const Dashboard = () => {
             <RecentActivityTable />
           </div>
         </div>
+
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 lg:col-span-4 h-full">
+            <TopProductsCard />
+          </div>
+          <div className="col-span-12 lg:col-span-8 h-full">
+            <TopCustomersCard />
+          </div>
+        </div>
+
+
 
 
       </main>

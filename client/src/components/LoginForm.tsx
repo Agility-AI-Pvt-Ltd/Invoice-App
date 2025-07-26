@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import FloatingInput from './ui/FloatingInput';
 import Checkbox from './ui/Checkbox';

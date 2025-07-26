@@ -1,5 +1,3 @@
-"use client";
-
 import { Card, CardContent } from "@/components/ui/card";
 import {
     Select,
@@ -68,9 +66,9 @@ const TopProductsCard = () => {
                 </div>
 
                 {/* Chart and Legend */}
-                <div className="flex flex-col lg:flex-row items-center justify-between gap-4 flex-1">
+                <div className="flex flex-col lg:flex-row items-center justify-evenly gap-2 flex-1">
                     {/* Donut Chart */}
-                    <div className="w-[150px] h-[150px]">
+                    <div className="w-[250px] h-[250px]">
                         <Doughnut data={data} options={options} />
                     </div>
 
