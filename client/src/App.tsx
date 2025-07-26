@@ -7,13 +7,14 @@ import {
 } from "react-router-dom"
 import LoginPage from './pages/login.tsx'
 import Dashboard from './pages/dashboard.tsx'
+import Index from './pages/index.tsx'
 // import LoginPage from './pages/login.tsx'
 function App() {
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<LoginPage/>}/>
+        <Route path='/' element={<Index/>}/>
         <Route path='/login' element={<LoginPage/>}/>
         <Route path='/signup' element={<LoginPage/>}/>
         <Route path='/app/:menuItems' element={<Dashboard/>}/>
