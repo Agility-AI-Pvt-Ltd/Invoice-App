@@ -44,7 +44,7 @@ const Dashboard = () => {
         {/* Header */}
         <section className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-lg sm:text-xl font-semibold">
-            Hello! <span className="text-blue-600">Username</span>
+            Hello! <span className="text-red-500">Username</span>
           </h1>
           <ActionToolbar />
         </section>
@@ -52,7 +52,7 @@ const Dashboard = () => {
         {/* Stats Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
-            //@ts-ignore
+            //@ts-expect-error - StatCard props type mismatch
             <StatCard key={index} {...stat} />
           ))}
         </section>
