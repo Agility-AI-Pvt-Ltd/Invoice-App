@@ -73,10 +73,6 @@ const Dashboard = () => {
             <TopCustomersCard />
           </div>
         </div>
-
-
-
-
       </main>
     </Layout>
   );
