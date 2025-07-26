@@ -1,9 +1,7 @@
-'use client';
-
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 // import { useNavigate } from 'react-router-dom';
-import FloatingInput from './ui/Input';
+import FloatingInput from './ui/FloatingInput';
 
 export default function ForgotPasswordForm({setForgotPassword}:any) {
   const [email, setEmail] = useState('');

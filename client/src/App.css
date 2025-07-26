@@ -118,3 +118,27 @@
     @apply bg-background text-foreground;
   }
 }
+@layer base {
+  :root {
+    /* Light mode (optional) */
+    --sidebar: linear-gradient(to bottom, #000000, #1a1a1a);
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #1f1f1f;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #2b2b2b;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #2e2e2e;
+    --sidebar-ring: #3a3a3a;
+  }
+
+  .dark {
+    --sidebar: linear-gradient(to bottom, #000000, #1a1a1a); /* <- Gradient black */
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #2b2b2b;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #3a3a3a;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-ring: #444444;
+  }
+}

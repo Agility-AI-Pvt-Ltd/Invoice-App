@@ -1,7 +1,5 @@
-'use client';
-
 import { useState } from 'react';
-import FloatingInput from './ui/Input';
+import FloatingInput from './ui/FloatingInput';
 import Checkbox from './ui/Checkbox';
 import SocialButton from './ui/SocialButtons';
 import { BsGoogle } from "react-icons/bs";
