@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import FloatingInput from './ui/FloatingInput';
-import Checkbox from './ui/Checkbox';
-import SocialButton from './ui/SocialButtons';
+import Checkbox from '@/components/ui/Checkbox';
+import SocialButton from '@/components/ui/SocialButtons';
 import { BsGoogle } from "react-icons/bs";
 import { AiFillApple, AiFillFacebook } from "react-icons/ai";
 
-export default function LoginForm({ setForgotPassword }: any) {
+interface LoginFormProps {
+  setForgotPassword: (value: boolean) => void;
+}
+
+export default function LoginForm({ setForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
