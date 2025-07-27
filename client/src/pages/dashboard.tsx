@@ -44,7 +44,7 @@ const Dashboard = () => {
         {/* Header */}
         <section className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-lg sm:text-xl font-semibold">
-            Hello! <span className="text-red-500">Username</span>
+            Hello! <span className="text-blue-600">Username</span>
           </h1>
           <ActionToolbar />
         </section>

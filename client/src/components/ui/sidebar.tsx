@@ -199,7 +199,7 @@ function Sidebar({
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
           {/* Css changed here */}
-          <div className="flex h-full w-full flex-col bg-gradient-to-b from-black to-neutral-900 text-white">{children}</div>
+          <div className="flex h-full w-full flex-col bg-gradient-to-b from-black to-neutral-900 text-red-100">{children}</div>
         </SheetContent>
       </Sheet>
     )
