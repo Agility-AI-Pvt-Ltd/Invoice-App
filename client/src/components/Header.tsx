@@ -1,10 +1,33 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import SearchBar from "./ui/SearchBar";
 import ProfileAvatar from "./ui/ProfileAvatar";
 import Notification from "./ui/Notification";
 import { DateRangePicker } from "./ui/DateRangePicker";
+import { getProfile } from "@/services/api/auth";
 
 const Header: React.FC = () => {
+    const [avatarUrl, setAvatarUrl] = useState<string>("/default-avatar.png"); // fallback
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string>("");
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const profile = await getProfile();
+                if (profile.businessLogo) {
+                    setAvatarUrl(profile.businessLogo);
+                }
+            } catch (err: any) {
+                console.error("Failed to fetch profile:", err.message);
+                setError("Failed to load profile");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
     return (
         <div className="bg-white px-4 py-3 shadow-sm rounded-md m-2 sm:m-4">
             <div className="flex items-center sm:flex-row sm:items-center sm:justify-between gap-10">
@@ -15,15 +38,15 @@ const Header: React.FC = () => {
                     <DateRangePicker />
                     <SearchBar />
                     <Notification />
-                    <ProfileAvatar imgUrl="/agility.jpg" />
+                    <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>
 
                 {/* Mobile */}
                 <div className="flex sm:hidden items-center gap-3">
                     <DateRangePicker iconOnly />
                     <SearchBar iconOnly />
-                    <Notification/>
-                    <ProfileAvatar imgUrl="/agility.jpg" />
+                    <Notification />
+                    <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>
             </div>
         </div>

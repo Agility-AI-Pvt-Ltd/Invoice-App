@@ -1,10 +1,22 @@
 import ForgotPasswordForm from "@/components/ForgotPasswordForm";
 import LoginForm from "@/components/LoginForm";
-import { useState } from "react";
-
+import ForgotPassSVG from "@/components/SVGs/ForgotPassSVG";
+import LoginSVG from "@/components/SVGs/LoginSVG";
+import { useEffect, useState } from "react";
+import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
     const [forgotPassword, setForgotPassword] = useState<boolean>(false);
+    const router = useNavigate();
+
+    useEffect(() => {
+        const token = Cookies.get("authToken");
+        if (token) {
+            router("/app/dashboard"); // Change path if your dashboard path is different
+        }
+    }, []);
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
             <div className="bg-white rounded-3xl shadow-md grid grid-cols-1 md:grid-cols-2 overflow-hidden w-full max-w-5xl">
@@ -17,22 +29,16 @@ export default function LoginPage() {
                             <p className="text-xs text-gray-500">Powered by AgilityAI</p>
                         </div>
                     </div>
-                    {/* insteda of state we should create a new page? nope this is better  */}
-                    {!forgotPassword ? <LoginForm setForgotPassword={setForgotPassword} /> : <ForgotPasswordForm setForgotPassword={setForgotPassword} />}
-
+                    {!forgotPassword ? (
+                        <LoginForm setForgotPassword={setForgotPassword} />
+                    ) : (
+                        <ForgotPasswordForm setForgotPassword={setForgotPassword} />
+                    )}
                 </div>
 
                 <div className="bg-gray-100 hidden md:flex items-center justify-center">
-                    <img
-                        src="https://images.unsplash.com/photo-1753133829431-ef2cdb0d2e57?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwzfHx8ZW58MHx8fHx8"  // Make sure this file exists in `public/secure.png`
-                        alt="Security Illustration"
-                        width={400}
-                        height={400}
-                        className="object-contain"
-                    />
+                    {!forgotPassword ? <LoginSVG /> : <ForgotPassSVG />}
                 </div>
-
-
             </div>
         </div>
     );
