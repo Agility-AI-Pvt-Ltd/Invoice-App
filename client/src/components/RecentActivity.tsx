@@ -6,7 +6,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -130,7 +130,7 @@ const RecentActivityTable = () => {
 
     return (
         <div className="w-full">
-            <Card className="h-full">
+            <Card className="h-full  bg-white">
                 <CardHeader className="pb-2">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <CardTitle className="text-xl font-semibold text-gray-800">

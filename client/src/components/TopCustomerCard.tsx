@@ -75,7 +75,7 @@ export function TopCustomersCard({ className }: React.HTMLAttributes<HTMLDivElem
     ]
 
     return (
-        <Card className={cn(className)}>
+        <Card className={cn("bg-white",className)}  >
             <CardHeader>
                 <CardTitle className="text-base font-semibold">Top Customers</CardTitle>
             </CardHeader>
