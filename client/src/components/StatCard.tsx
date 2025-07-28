@@ -13,7 +13,7 @@ const StatCard = ({ title, value, change, changeLabel, trend }: StatCardProps) =
     const isPositive = trend === "up";
 
     return (
-        <Card className="w-full rounded-2xl  border border-gray-200">
+        <Card className="w-full rounded-2xl  border border-gray-200 bg-white">
             <CardContent className="px-5 flex flex-col justify-between h-full">
                 {/* Top Row: Title + Graph */}
                 <div className="flex justify-between items-start">

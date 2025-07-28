@@ -39,11 +39,10 @@ const TailorMadeFeatures = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Tailor-made features
+            Core Features That Count
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Lorem ipsum is common placeholder text used to demonstrate the graphic elements of a 
-            document or visual presentation.
+            Every feature is made to make your invoicing process smooth, efficient, and stress-free - whether you're a freelancer, startup, or growing company
           </p>
         </div>
 
@@ -70,3 +69,4 @@ const TailorMadeFeatures = () => {
 };
 
 export default TailorMadeFeatures;
+

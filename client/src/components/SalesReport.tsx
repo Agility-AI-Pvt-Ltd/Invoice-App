@@ -102,7 +102,7 @@ const chartOptions = {
 
 const SalesReportCard = () => {
     return (
-        <Card className="w-full h-full flex flex-col">
+        <Card className="w-full h-full flex flex-col bg-white">
             <CardContent className="flex flex-col flex-1 px-4 py-4">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-4">

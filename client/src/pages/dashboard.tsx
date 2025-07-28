@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import ActionToolbar from '@/components/ActionToolBar';
 import RecentActivityTable from '@/components/RecentActivity';
 import SalesReportCard from '@/components/SalesReport';
@@ -38,9 +39,13 @@ const stats = [
 ];
 
 const Dashboard = () => {
+  useEffect(() => {
+    document.body.classList.add('dashboard');
+    return () => document.body.classList.remove('dashboard');
+  }, []);
   return (
     <Layout>
-      <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 ">
         {/* Header */}
         <section className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-lg sm:text-xl font-semibold">
@@ -50,14 +55,14 @@ const Dashboard = () => {
         </section>
 
         {/* Stats Grid */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
           {stats.map((stat, index) => (
             //@ts-expect-error - StatCard props type mismatch
             <StatCard key={index} {...stat} />
           ))}
         </section>
         <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-5 h-full">
+          <div className="col-span-12 lg:col-span-5 h-full ">
             <SalesReportCard />
           </div>
           <div className="col-span-12 lg:col-span-7 h-full">

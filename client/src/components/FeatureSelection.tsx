@@ -24,11 +24,10 @@ const FeaturesSection = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Easy, Simple, Affordable
+            Smarter Invoicing Starts Here
           </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Our platform helps your business in managing expenses. These are some of the 
-            reasons why you should use our platform in managing business finances.
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            From creation to collection, manage your entire invoicing journey in a clean, intuitive dashboard.
           </p>
         </div>
 
@@ -53,25 +52,25 @@ const FeaturesSection = () => {
           </div>
 
           {/* Invoice Preview Mockup */}
-          <div className="relative">
+            <div className="relative transition-transform duration-300 hover:scale-105">
             <div className="bg-card rounded-2xl p-6 shadow-card border border-border">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 rounded-lg overflow-hidden">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden">
                     <img
-                        src="/agility.jpg"
-                        alt="Agility Logo"
-                        className="w-full h-full object-cover"
+                      src="/agility.jpg"
+                      alt="Agility Logo"
+                      className="w-full h-full object-cover"
                     />
-                </div>
-                <span className="font-semibold text-foreground">SpendIn</span>
+                  </div>
+                  <span className="font-semibold text-foreground">AgilityAI</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm">
                   <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                   <span className="text-foreground font-medium">Verified</span>
                 </div>
               </div>
-              
+
               <div className="space-y-4 mb-6">
                 <div className="bg-accent/20 rounded-lg p-4">
                   <div className="text-sm text-muted-foreground mb-1">Invoice Date</div>
@@ -91,6 +90,7 @@ const FeaturesSection = () => {
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </section>

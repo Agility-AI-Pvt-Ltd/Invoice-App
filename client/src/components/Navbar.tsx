@@ -11,12 +11,49 @@ import {
 const Navbar = () => {
   const navigate = useNavigate();
 
+  const scrollToPricing = () => {
+    const pricingSection = document.getElementById('pricing-section');
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+  const scrollToFAQ = () => {
+    const FAQsection = document.getElementById('FAQsection');
+    if (FAQsection) {
+      FAQsection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+  const scrollTotestimonials = () => {
+    const testimonialsection = document.getElementById('tesimonialsection');
+    if (testimonialsection) {
+      testimonialsection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+  const scrollToHero = () => {
+    const herosection = document.getElementById('herosection');
+    if (herosection) {
+      herosection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-6 lg:px-2">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2 ml-[-150px]">
+          <div className="flex items-center space-x-2 ml-[-150px] cursor-pointer" onClick={scrollToHero}>
             <div className="w-8 h-8 rounded-lg overflow-hidden">
               <img
                 src="/agility.jpg"
@@ -33,13 +70,13 @@ const Navbar = () => {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center space-x-10">
-            <div className="w-full flex justify-center px-60">
+            <div className="w-full flex justify-center px-50">
 
               <div className="flex items-center space-x-10">
                 {/* Products Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center space-x-1 text-foreground hover:text-primary transition-smooth focus:outline-none">
-                    <span>Products</span>
+                    <span>Features</span>
                     <ChevronDown className="w-4 h-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 bg-card border border-border shadow-card">
@@ -58,15 +95,17 @@ const Navbar = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <button className="text-foreground hover:text-primary transition-smooth">
-                  Benefit
-                </button>
-                <button className="text-foreground hover:text-primary transition-smooth">
-                  How it Works
-                </button>
-                <button className="text-foreground hover:text-primary transition-smooth">
+
+                <button className="text-foreground hover:text-primary transition-smooth" onClick={scrollToPricing}>
                   Pricing
                 </button>
+                <button className="text-foreground hover:text-primary transition-smooth" onClick={scrollToFAQ}>
+                  FAQs
+                </button>
+                <button className="text-foreground hover:text-primary transition-smooth" onClick={scrollTotestimonials}>
+                  Testimonials
+                </button>
+                
 
                 {/* Company Dropdown */}
                 <DropdownMenu>
@@ -95,11 +134,19 @@ const Navbar = () => {
               </div>
             </div>
 
+            <div className="flex px-2 py-4">
+              <div className="ml-auto flex gap-6">
+                <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
+                  Login
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/signup')}>
+                  Signup
+                </Button>
+              </div>
+            </div>
             
-            <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
-              Login
-            </Button>
           </div> 
+
 
           {/* Mobile menu button */}
           <div className="md:hidden">
