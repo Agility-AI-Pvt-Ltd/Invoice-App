@@ -11,6 +11,7 @@ import { UploadCloud } from 'lucide-react';
 import { AiFillApple, AiFillFacebook } from 'react-icons/ai';
 import { BsGoogle } from 'react-icons/bs';
 import { signup } from '@/services/api/auth';
+import Cookies from 'js-cookie';
 
 interface SignUpFormData {
     fullName: string;
@@ -104,9 +105,17 @@ const SignupForm: React.FC = () => {
                 businessLogo: logoBase64,
             };
 
-            await signup(payload);
+            const res = await signup(payload);
+            
+            // Set auth token in cookies
+            Cookies.set('authToken', res.token, {
+                expires: 1, // 1 day
+                secure: true,
+                sameSite: 'Strict',
+            });
+            
             toast.success('Account created successfully!');
-            navigate('/login');
+            navigate('/app/dashboard');
         } catch (error: any) {
             const message =
                 error?.response?.data?.error ||
