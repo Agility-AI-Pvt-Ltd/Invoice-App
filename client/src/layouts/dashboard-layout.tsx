@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const { menuItems } = useParams<{ menuItems?: string }>();
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-    const { profile } = useProfile();
+    // const { profile } = useProfile();
     // if (!profile) {
     //     navigate("/login");
     // }

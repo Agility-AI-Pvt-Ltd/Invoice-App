@@ -82,7 +82,7 @@ const Dashboard = () => {
   }
 
   return (
-    <Layout>
+    <>
       <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 ">
         {/* Header */}
         <section className="flex flex-wrap justify-between items-center gap-4">
@@ -117,7 +117,7 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
-    </Layout>
+    </>
   );
 };
 
