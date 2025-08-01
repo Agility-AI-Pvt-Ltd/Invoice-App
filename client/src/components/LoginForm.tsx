@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import FloatingInput from './ui/FloatingInput';
-import Checkbox from '@/components/ui/Checkbox';
+import Checkbox from '@/components/ui/custom-checkbox';
 import SocialButton from '@/components/ui/SocialButtons';
 import { BsGoogle } from "react-icons/bs";
 import { AiFillApple, AiFillFacebook } from "react-icons/ai";

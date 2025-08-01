@@ -4,7 +4,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import type { ChangeEvent, FormEvent } from 'react';
 import FloatingInput from '@/components/ui/FloatingInput';
 import FloatingSelect from './ui/FloatingSelect';
-import Checkbox from './ui/Checkbox';
+import Checkbox from './ui/custom-checkbox';
 import SocialButton from './ui/SocialButtons';
 import { Button } from '@/components/ui/button';
 import { UploadCloud } from 'lucide-react';
