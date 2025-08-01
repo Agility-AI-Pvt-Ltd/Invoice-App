@@ -13,7 +13,7 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-slate-900 text-white">
+    <footer className="bg-black text-white">
       {/* Newsletter Subscription Section */}
       <div className="border-b border-slate-700">
         <div className="max-w-6xl mx-auto px-6 py-16">
@@ -75,7 +75,7 @@ const Footer = () => {
                 alt="Agility Logo"
                 className="w-full h-full object-cover"
               />
-            </div>
+             </div>
                 <div>
                   <h3 className="text-xl font-bold">Invoice App</h3>
                   <p className="text-sm text-slate-400">Powered by AgilityAI</p>
