@@ -18,10 +18,12 @@ import {
     UserCog,
     Bell,
     Settings,
+    LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { useProfile } from "@/contexts/ProfileContext"
 
 function slugify(label: string) {
     return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
@@ -55,6 +57,12 @@ export function AppSidebar() {
     console.log(toTitleCase(param.menuItems))
     const [selected, setSelected] = useState(toTitleCase(param.menuItems));
     const navigate = useNavigate();
+    const { logout } = useProfile();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     return (
         <Sidebar className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
@@ -92,7 +100,18 @@ export function AppSidebar() {
                     })}
                 </SidebarGroup>
             </SidebarContent>
-            <SidebarFooter />
+            <SidebarFooter>
+                <div className="p-4 border-t border-sidebar-border"> 
+                    {/* Logout Button */}
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm hover:bg-red-600 text-white"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </SidebarFooter>
         </Sidebar>
     )
 }

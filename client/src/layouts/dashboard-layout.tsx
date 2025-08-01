@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Cookies from "js-cookie";
-
 import { AppSidebar } from "@/components/AppSidebar";
 import Header from "@/components/Header";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { ProfileProvider, useProfile } from "@/contexts/ProfileContext";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = loading
+    const { menuItems } = useParams<{ menuItems?: string }>();
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+    // const { profile } = useProfile();
+    // if (!profile) {
+    //     navigate("/login");
+    // }
 
     useEffect(() => {
         const token = Cookies.get("authToken");
@@ -28,15 +33,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         );
     }
 
-
     return (
         <SidebarProvider>
-            <AppSidebar />
-            <main className="w-full bg-[#F4F4F4]">
-                <SidebarTrigger />
-                <Header/>
-                {children}
-            </main>
+            <ProfileProvider> {/* wrap children with profile provider */}
+                <AppSidebar />
+                <main className="w-full bg-[#F4F4F4]">
+                    <SidebarTrigger />
+                    <Header label={menuItems} />
+                    {children}
+                </main>
+            </ProfileProvider>
         </SidebarProvider>
-    )
+    );
 }

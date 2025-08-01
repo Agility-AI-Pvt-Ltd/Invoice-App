@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
 import ActionToolbar from '@/components/ActionToolBar';
 import RecentActivityTable from '@/components/RecentActivity';
 import SalesReportCard from '@/components/SalesReport';
 import StatCard from '@/components/StatCard';
 import { TopCustomersCard } from '@/components/TopCustomerCard';
 import TopProductsCard from '@/components/TopProductCard';
+import { useProfile } from '@/contexts/ProfileContext';
 import Layout from '@/layouts/dashboard-layout';
+import { Navigate } from 'react-router-dom';
 
 const stats = [
   {
@@ -39,17 +40,54 @@ const stats = [
 ];
 
 const Dashboard = () => {
-  useEffect(() => {
-    document.body.classList.add('dashboard');
-    return () => document.body.classList.remove('dashboard');
-  }, []);
+  const { profile, loading, error, isAuthenticated } = useProfile();
+
+  // Redirect to login if not authenticated and not loading
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Layout>
+        <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Layout>
+        <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Error: {error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
   return (
-    <Layout>
+    <>
       <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 ">
         {/* Header */}
         <section className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-lg sm:text-xl font-semibold">
-            Hello! <span className="text-blue-600">Username</span>
+            Hello! <span className="text-blue-600">{profile?.name || 'User'}</span>
           </h1>
           <ActionToolbar />
         </section>
@@ -79,7 +117,7 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
-    </Layout>
+    </>
   );
 };
 
