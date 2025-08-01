@@ -1,5 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/Input";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

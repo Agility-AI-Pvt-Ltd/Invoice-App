@@ -87,12 +87,12 @@ const TestimonialsSection: React.FC = () => {
         </div>
 
         {/* Stacked Testimonial Cards */}
-        <div className="relative h-[600px] md:h-[500px]">
+        <div className="relative h-[600px] md:h-[500px] ">
           {testimonials.map((testimonial) => (
             <div
-              key={testimonial.id}
-              className={`absolute ${testimonial.position} ${testimonial.opacity} ${testimonial.zIndex} ${testimonial.shadow} ${testimonial.rotate} transition-all duration-200 hover:scale-115`}
-            >
+            key={testimonial.id}
+            className={`absolute ${testimonial.position} ${testimonial.opacity} ${testimonial.zIndex ?? ''} ${testimonial.shadow} ${testimonial.rotate} transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-1 hover:z-50 `}
+          >
               <TestimonialCard
                 name={testimonial.name}
                 role={testimonial.role}
@@ -109,3 +109,73 @@ const TestimonialsSection: React.FC = () => {
 };
 
 export default TestimonialsSection;
+
+
+// TestimonialSection.tsx
+// import React from "react";
+// import TestimonialCard from "./TestimonialCards"
+// import type { TestimonialCardProps } from "./TestimonialCards"
+// import { Stack } from "@appletosolutions/reactbits"
+
+// type CardData = {
+//   id: string
+//   render: () => React.ReactNode
+// }
+// const testimonials: TestimonialCardProps[] = [
+//   {
+//     name: "Shreya Bansal",
+//     role: "Freelance Designer",
+//     content: "This app makes client management easy…",
+//     avatar: "/agility.jpg",
+//   },
+//   {
+//     name: "Sneha Kapoor",
+//     role: "Startup Co-founder",
+//     content: "Our growing team needed a smarter way…",
+//     avatar:
+//       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
+//   },
+//   {
+//     name: "Rahul Mehta",
+//     role: "Owner, Verma Traders",
+//     content: "Tracking business expenses…get paid faster too!",
+//     avatar:
+//       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
+//   },
+// ];
+
+// const TestimonialsSection: React.FC = () => {
+//   const cardsData: CardData[] = testimonials.map((t, idx) => ({
+//     id: `${t.name}-${idx}`,
+//     render: () => <TestimonialCard {...t} />,
+//   }));
+
+//   return (
+//     <section
+//       id="tesimonialsection"
+//       className="min-h-screen bg-testimonial-gradient py-20 px-4"
+//     >
+//       <div className="max-w-7xl mx-auto text-center mb-12">
+//         <h2 className="text-4xl md:text-5xl font-bold text-white">
+//           Users Testimonials
+//         </h2>
+//         <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+//           Our users speak for us. Here's how we've made invoicing easier for
+//           them.
+//         </p>
+//       </div>
+
+//       <div className="relative flex justify-center">
+//         <Stack
+//           cardsData={cardsData}
+//           randomRotation={true}
+//           sensitivity={120}
+//           cardDimensions={{ width: 300, height: 220 }}
+//           sendToBackOnClick={false}
+//         />
+//       </div>
+//     </section>
+//   );
+// };
+
+// export default TestimonialsSection;

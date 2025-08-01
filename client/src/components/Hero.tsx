@@ -56,28 +56,28 @@ const Hero = () => {
   }, [loopIndex, isDeleting, wordIndex, initialDone]);
 
   return (
-    <section id="herosection" className="pt-32 pb-20 px-6 lg:px-8">
+    <section id="herosection" className="pt-30 pb-00 px-6 lg:px-8">
       <div className="max-w-7xl mx-auto text-center">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-6">
+          <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold text-[#052B45] leading-tight mb-6">
             One app for all your billing needs,{" "}
-            <span className="block text-purple-600 min-h-[48px]">
+            <span className="block text-black-600 min-h-[48px]">
               {initialDone ? (
                 <>
                   made for every{" "}
-                  <span className="underline decoration-purple-400">{dynamicText}</span>
-                  <span className="animate-pulse inline-block w-[2px] bg-purple-600 ml-1 h-6 align-bottom" />
+                  <span >{dynamicText}</span>
+                  <span className="animate-pulse inline-block w-[2px] bg-black ml-1 h-6 align-bottom" />
                 </>
               ) : (
                 <>
                   {displayedText}
-                  <span className="animate-pulse inline-block w-[2px] bg-purple-600 ml-1 h-6 align-bottom" />
+                  <span className="animate-pulse inline-block w-[2px] bg-black ml-1 h-6 align-bottom" />
                 </>
               )}
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
+          <p className="text-lg md:text-xl text-black/64 max-w-2xl mx-auto mb-8 leading-relaxed">
             Create, manage, and track invoices effortlessly—
             <span className="block">whether you're a freelancer, startup, or enterprise.</span>
           </p>
