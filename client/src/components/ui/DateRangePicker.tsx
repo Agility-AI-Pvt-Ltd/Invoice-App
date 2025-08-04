@@ -24,7 +24,7 @@ export function DateRangePicker({ iconOnly = false }: { iconOnly?: boolean }) {
 
     return (
         <Popover>
-            <PopoverTrigger asChild>
+            <PopoverTrigger >
                 <Button
                     variant="outline"
                     data-empty={!date?.from && !date?.to}
