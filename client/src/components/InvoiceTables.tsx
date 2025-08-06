@@ -771,8 +771,9 @@ export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
           <div className="flex items-center flex-wrap gap-2">
             {filterButtons.map(btn => (
               <Button
+                className="hover:bg-black hover:text-white"
                 key={btn.value}
-                variant={activeStatusFilter === btn.value ? "default" : "outline"}
+                variant={activeStatusFilter === btn.value ? "default" : "ghost"}
                 size="sm"
                 onClick={() => {
                   setActiveStatusFilter(btn.value);
@@ -783,15 +784,15 @@ export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
               </Button>
             ))}
 
-            <Button size="sm" variant="outline">
-              <PlusCircle className="h-4 w-4 mr-2" /> New Invoice
+            <Button size="sm" className="hover:bg-black hover:text-white" variant="ghost"  >
+              <PlusCircle className="h-4 w-4 mr-2 " /> New Invoice
             </Button>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="ghost">
               <ScanLine className="h-4 w-4 mr-2" /> Scan Invoice
             </Button>
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 const filename = `invoices-${activeStatusFilter}-${format(selectedDate, "MMM-yyyy")}.csv`;
                 downloadCSV(filteredInvoices, filename);
@@ -799,7 +800,7 @@ export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
             >
               <DownloadCloud className="h-4 w-4 mr-2" /> Export CSV
             </Button>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="ghost">
               <Filter className="h-4 w-4 mr-2" /> Filter
             </Button>
           </div>
@@ -847,9 +848,9 @@ export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent className="bg-gray-900 text-white" align="end" >
                         <DropdownMenuItem>
-                          <Download className="mr-2 h-4 w-4" /> Download
+                          <Download className="mr-2 h-4 w-4"/> Download
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-500">
                           <Trash className="mr-2 h-4 w-4" /> Delete

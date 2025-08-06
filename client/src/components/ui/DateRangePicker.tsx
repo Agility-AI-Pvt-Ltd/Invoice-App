@@ -62,11 +62,13 @@ import {
 } from "@/components/ui/popover";
 
 interface DateRangePickerProps {
-  date: Date;
-  onDateChange: (date: Date) => void;
+  date?: Date;
+  selectedDate?: Date;
+  onDateChange?: (date: Date) => void;
 }
 
-export function DateRangePicker({ date, onDateChange }: DateRangePickerProps) {
+export function DateRangePicker({ date, selectedDate, onDateChange = () => {} }: DateRangePickerProps) {
+  const currentDate = date || selectedDate || new Date();
 
   return (
     <Popover>
@@ -75,18 +77,19 @@ export function DateRangePicker({ date, onDateChange }: DateRangePickerProps) {
           variant="outline"
           className={cn(
             "w-[240px] justify-start text-left font-normal bg-white",
-            !date && "text-muted-foreground"
+            !currentDate && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>Pick a date</span>}
+          {currentDate ? format(currentDate, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-white z-50" align="start">
         <Calendar
           mode="single"
-          selected={date}
+          selected={currentDate}
           onSelect={(newDate) => newDate && onDateChange(newDate)}
+          disabled={(date) => date > new Date()}
           initialFocus
           className="p-3 pointer-events-auto"
         />
