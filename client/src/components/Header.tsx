@@ -35,7 +35,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
 
         fetchProfile();
     }, []);
-
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     return (
         <div className="bg-white px-4 py-3 shadow-sm rounded-md m-2 sm:m-4">
             <div className="flex items-center sm:flex-row sm:items-center sm:justify-between gap-10 justify-between">
@@ -43,7 +43,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
 
                 {/* Desktop */}
                 <div className="hidden sm:flex flex-row items-center gap-4">
-                    <DateRangePicker />
+                    <DateRangePicker date={selectedDate} onDateChange={setSelectedDate} />
                     <SearchBar />
                     <Notification />
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
@@ -51,7 +51,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
 
                 {/* Mobile */}
                 <div className="flex sm:hidden items-center gap-3">
-                    <DateRangePicker iconOnly />
+                    {/* <DateRangePicker iconOnly /> */}
                     <SearchBar iconOnly />
                     <Notification />
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />

@@ -65,7 +65,7 @@ const StickyScroll: React.FC<StickyScrollProps> = ({
       animate={{
         backgroundColor: backgroundColors[activeCard % backgroundColors.length],
       }}
-      className="relative flex h-[30rem] justify-center space-x-10 overflow-y-auto"
+      className="relative flex h-[30rem] justify-center space-x-10 overflow-y-auto no-scrollbar"
       ref={ref}
     >
       <div className="div relative flex items-start px-4">
@@ -102,7 +102,7 @@ const StickyScroll: React.FC<StickyScrollProps> = ({
       <div
         style={{ background: backgroundGradient }}
         className={cn(
-          "sticky top-10 hidden h-60 w-80 overflow-hidden rounded-md bg-card lg:block",
+          "sticky top-10 hidden h-60 w-80 overflow-hidden rounded-md lg:block",
           contentClassName,
         )}
       >
