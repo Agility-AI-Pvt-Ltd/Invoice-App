@@ -12,7 +12,7 @@ const Sales = () => {
       <div className="max-w-8xl mx-auto space-y-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Sales</h1>
+          <h1 className="text-2xl font-bold text-foreground">Hello A</h1>
         </div>
         
         {/* Stats Cards */}
