@@ -4,10 +4,18 @@ import Step1Form from "@/components/customer-form/Step1Form";
 import Step2Form from "@/components/customer-form/Step2Form";
 import Step3Form from "@/components/customer-form/Step3Form";
 import Step4Form from "@/components/customer-form/Step4Form";
+import { InfoIcon, MapPin, Receipt } from "lucide-react";
 
 type Props = {
     onCancel: () => void;
 };
+
+const steps = [
+    { label: "Basic Information", icon: MapPin },
+    { label: "Address Details", icon: MapPin },
+    { label: "Tax and Other Details", icon: Receipt },
+    { label: "Other Additional Info", icon: InfoIcon },
+];
 
 export default function MultiStepForm({ onCancel }: Props) {
     const [step, setStep] = useState(1);
@@ -17,7 +25,7 @@ export default function MultiStepForm({ onCancel }: Props) {
 
     return (
         <div className="mx-auto p-8">
-            <StepIndicator currentStep={step} />
+            <StepIndicator currentStep={step} steps={steps}/>
 
             <div className="mt-6">
                 {step === 1 && <Step1Form />}

@@ -16,7 +16,7 @@ import {
     Receipt,
     CreditCard,
     UserCog,
-    Bell,
+    WalletMinimal,
     Settings,
     LogOut,
 } from "lucide-react"
@@ -43,12 +43,12 @@ const menuItems = [
     { label: "Invoices", icon: FileText },
     { label: "Products/Services", icon: Package },
     { label: "Inventory", icon: Boxes },
-    { label: "Sales & Revenue", icon: BarChart2 },
-    { label: "Expenses/ Purchases", icon: ShoppingCart },
+    { label: "Sales", icon: BarChart2 }, //Sales & Revenue phle tha
+    { label: "Expenses", icon: WalletMinimal }, //Expenses/ Purchases --> Expenses & Purchases 2 pages
+    { label: "Purchases", icon: ShoppingCart }, //Expenses/ Purchases --> Expenses & Purchases 2 pages
     { label: "Tax Summary", icon: Receipt },
     { label: "Accounts", icon: CreditCard },
     { label: "Team/Employees", icon: UserCog },
-    { label: "Reminders", icon: Bell },
     { label: "Settings", icon: Settings },
 ]
 
@@ -76,17 +76,17 @@ export function AppSidebar() {
                 </div>
             </SidebarHeader>
             <SidebarContent>
-                <SidebarGroup>
+                <SidebarGroup className="overflow-auto scrollbar-hide">
                     {menuItems.map(({ label, icon: Icon }) => {
                         const isSelected = selected === label
                         return (
                             <button
                                 key={label}
                                 className={cn(
-                                    "flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm",
+                                    "flex items-center gap-3 w-full text-left px-4 py-3 rounded-md transition-all text-sm ",
                                     isSelected
-                                        ? "bg-white text-black font-semibold"
-                                        : "hover:bg-#2b2b2b text-white"
+                                        ? "rounded-md relative bg-white text-black font-semibold px-4 py-3 ml-3 mr-4  w-[92%] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-full before:bg-purple-600"
+                                        : "hover:bg-[#2b2b2b] text-white pl-4"
                                 )}
                                 onClick={() => {
                                     setSelected(label);
@@ -101,7 +101,7 @@ export function AppSidebar() {
                 </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-                <div className="p-4 border-t border-sidebar-border"> 
+                <div className="p-4 border-t border-sidebar-border">
                     {/* Logout Button */}
                     <button
                         onClick={handleLogout}
