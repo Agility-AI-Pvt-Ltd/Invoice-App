@@ -4,37 +4,37 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Search, 
+// import { 
+//   Dialog,
+//   DialogContent,
+//   DialogDescription,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogTrigger,
+// } from "@/components/ui/dialog";
+// import { 
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
+import {
+  Search,
   CalendarIcon,
   Download,
   MoreHorizontal,
@@ -49,16 +49,18 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { salesData } from "@/lib/mock/salesData";
 import type { SalesRecord } from "@/lib/mock/salesData.ts";
-import { AddSalesDialog } from "./AddSalesDialog";
+// import { AddSalesDialog } from "./AddSalesDialog";
 import { ImportDialog } from "./ImportDialog";
 import { FilterDialog } from "./FilterDialog";
+import { AddSalesButton } from "./AddSalesDialog";
 
-export const SalesTable = () => {
+export const SalesTable = ({ setIsSalesFormOpen }: { setIsSalesFormOpen: (v: boolean) => void }) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredData, setFilteredData] = useState<SalesRecord[]>(salesData);
   const [allData, setAllData] = useState<SalesRecord[]>(salesData);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  // const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  // const [isSalesFormOpen, setIsSalesFormOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -68,7 +70,7 @@ export const SalesTable = () => {
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
     let filtered = [...allData];
-    
+
     if (value) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(value.toLowerCase()) ||
@@ -76,19 +78,19 @@ export const SalesTable = () => {
         item.product.toLowerCase().includes(value.toLowerCase())
       );
     }
-    
+
     if (selectedDate) {
       const filterDate = format(selectedDate, 'dd MMMM yyyy');
       filtered = filtered.filter(item => item.dateOfSale === filterDate);
     }
-    
+
     setFilteredData(filtered);
   }, [allData, selectedDate]);
 
   const handleDateFilter = (date: Date | undefined) => {
     setSelectedDate(date);
     let filtered = [...allData];
-    
+
     if (searchTerm) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,12 +98,12 @@ export const SalesTable = () => {
         item.product.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (date) {
       const filterDate = format(date, 'dd MMMM yyyy');
       filtered = filtered.filter(item => item.dateOfSale === filterDate);
     }
-    
+
     setFilteredData(filtered);
   };
 
@@ -109,24 +111,24 @@ export const SalesTable = () => {
     const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortField(field);
     setSortDirection(newDirection);
-    
+
     const sorted = [...filteredData].sort((a, b) => {
       const aValue = a[field];
       const bValue = b[field];
-      
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return newDirection === 'asc' 
+        return newDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return newDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
-      
+
       return 0;
     });
-    
+
     setFilteredData(sorted);
   };
 
@@ -168,7 +170,7 @@ export const SalesTable = () => {
           ["Invoice Number", "Customer Name", "Product", "Quantity", "Unit Price", "Total Amount", "Date of Sale", "Payment Status"],
           [record.invoiceNumber, record.customerName, record.product, record.quantity, record.unitPrice, record.totalAmount, record.dateOfSale, record.paymentStatus]
         ].map(row => row.join(",")).join("\n");
-        
+
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -229,7 +231,6 @@ export const SalesTable = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-card-foreground">Total Sales</h2>
         <div className="flex items-center gap-3">
@@ -242,13 +243,13 @@ export const SalesTable = () => {
               className="pl-10 w-72"
             />
           </div>
-          
-          <FilterDialog 
+
+          <FilterDialog
             isOpen={isFilterDialogOpen}
             onOpenChange={setIsFilterDialogOpen}
             onFilter={(data) => setFilteredData(data)}
           />
-          
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className={cn(!selectedDate && "text-black")}>
@@ -266,13 +267,13 @@ export const SalesTable = () => {
               />
             </PopoverContent>
           </Popover>
-          
-          <ImportDialog 
+
+          <ImportDialog
             isOpen={isImportDialogOpen}
             onOpenChange={setIsImportDialogOpen}
             onImportData={handleImportData}
           />
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -289,12 +290,14 @@ export const SalesTable = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
-          <AddSalesDialog 
+
+          {/* <AddSalesDialog 
             isOpen={isAddDialogOpen}
             onOpenChange={setIsAddDialogOpen}
             onAddSales={handleAddSales}
-          />
+          /> */}
+
+          <AddSalesButton setIsSalesFormOpen={setIsSalesFormOpen} />
         </div>
       </div>
 
@@ -306,9 +309,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Invoices Number
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('invoiceNumber')}
                   >
@@ -319,9 +322,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Customer Name
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('customerName')}
                   >
@@ -332,9 +335,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Product
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('product')}
                   >
@@ -346,9 +349,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Unit Price
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('unitPrice')}
                   >
@@ -359,9 +362,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Total Amount
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('totalAmount')}
                   >
@@ -372,9 +375,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Date of Sale
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('dateOfSale')}
                   >
@@ -385,9 +388,9 @@ export const SalesTable = () => {
               <TableHead className="text-card-foreground font-medium">
                 <div className="flex items-center gap-2">
                   Payment Status
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-auto p-1"
                     onClick={() => handleSort('paymentStatus')}
                   >
@@ -418,10 +421,10 @@ export const SalesTable = () => {
                 <TableCell className="text-card-foreground">₹{row.totalAmount.toLocaleString()}</TableCell>
                 <TableCell className="text-card-foreground">{row.dateOfSale}</TableCell>
                 <TableCell>
-                  <Badge 
+                  <Badge
                     variant={row.paymentStatus === 'Paid' ? 'default' : 'destructive'}
-                    className={row.paymentStatus === 'Paid' 
-                      ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                    className={row.paymentStatus === 'Paid'
+                      ? 'bg-green-100 text-green-800 hover:bg-green-100'
                       : 'bg-red-100 text-red-800 hover:bg-red-100'
                     }
                   >
@@ -430,8 +433,8 @@ export const SalesTable = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleActionClick('edit', row)}
                     >
@@ -497,19 +500,19 @@ export const SalesTable = () => {
 
 
                       <DropdownMenuContent className="bg-white">
-                        <DropdownMenuItem onClick={() => handleActionClick('download', row)}className=" text-black cursor-pointer hover:bg-muted hover:text-white">
+                        <DropdownMenuItem onClick={() => handleActionClick('download', row)} className=" text-black cursor-pointer hover:bg-muted hover:text-white">
                           <Download className="w-4 h-4 mr-2" />
                           Download
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleActionClick('print', row)}className=" text-black cursor-pointer hover:bg-muted hover:text-white">
+                        <DropdownMenuItem onClick={() => handleActionClick('print', row)} className=" text-black cursor-pointer hover:bg-muted hover:text-white">
                           <Printer className="w-4 h-4 mr-2" />
                           Print
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleActionClick('send', row)}className=" text-black cursor-pointer hover:bg-muted hover:text-white">
+                        <DropdownMenuItem onClick={() => handleActionClick('send', row)} className=" text-black cursor-pointer hover:bg-muted hover:text-white">
                           <Send className="w-4 h-4 mr-2" />
                           Send
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => handleActionClick('delete', row)}
                           className="text-destructive cursor-pointer focus:text-destructive"
                         >
@@ -524,7 +527,7 @@ export const SalesTable = () => {
             ))}
           </TableBody>
         </Table>
-        
+
         {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <Button variant="outline" size="sm" disabled>

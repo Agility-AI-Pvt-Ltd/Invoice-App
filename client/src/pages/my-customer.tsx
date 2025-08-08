@@ -41,7 +41,6 @@ export default function CustomerDashboard() {
     const totalPages = allCustomers.pagination.totalPages;
     
     if (showAddCustomerForm) {
-        // 🚀 Replace full card when form is shown
         return (
             <Card className="max-w-full p-4 sm:p-6 bg-white mx-2 sm:mx-4">
                     <p className="font-semibold text-2xl ">Add New Customer</p>
