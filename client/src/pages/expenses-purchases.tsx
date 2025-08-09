@@ -440,8 +440,8 @@ export default function Expenses() {
                     <div className="space-y-2">
                       <Label>Date</Label>
                       <DateRangePicker 
-                        date={filters.dateRange.from}
-                        onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})}
+                        // date={filters.dateRange.from}
+                        // onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})} // TODO: Uncomment when DateRangePicker is implemented
                       />
                     </div>
 

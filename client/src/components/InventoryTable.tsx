@@ -18,7 +18,7 @@ import {
     PaginationPrevious,
 } from "@/components/ui/pagination"
 import type { InventoryItem, PaginatedResponse, InventoryFilters } from "@/types/inventory"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "../components/ui/Checkbox"
 import { getInventoryItems } from "@/lib/mock/inventory-data"
 import { InventoryActionsBar } from "./InventoryActionBar"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
@@ -80,10 +80,10 @@ export default function InventoryTable() {
     useEffect(() => {
         fetchData()
     }, [currentPage, itemsPerPage, filters])
-    const handleSearch = (search: string) => {
-        setFilters((prev) => ({ ...prev, search }))
-        setCurrentPage(1);
-    }
+    // const handleSearch = (search: string) => {
+    //     setFilters((prev) => ({ ...prev, search }))
+    //     setCurrentPage(1);
+    // }
     const handleSort = (column: string) => {
         setFilters((prev) => ({
             ...prev,

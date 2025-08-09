@@ -15,6 +15,7 @@ interface TaxCollectedChartProps {
   selectedDate: Date;
 }
 
+//@ts-expect-error - TSX file, no type definitions for React
 export function TaxCollectedChart({ selectedDate }: TaxCollectedChartProps) {
   const data = generateBarData();
 

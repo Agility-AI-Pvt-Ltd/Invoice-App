@@ -20,7 +20,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { PurchaseItem, PaginatedResponse, PurchaseTableFilters } from "@/types/purchase"
 import { getPurchaseItems } from "@/lib/mock/purchase-data"
 import { NavbarButton } from "./ui/resizable-navbar"
-import PurchaseForm from "./purchase-form/PurchaseForm"
 
 const PaymentStatusBadge = ({ status }: { status: PurchaseItem["paymentStatus"] }) => {
     const variants = {

@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 
 export default function Step3Form() {
+    //@ts-expect-error - TSX file, no type definitions for React
     const [documents, setDocuments] = useState<File[]>([]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

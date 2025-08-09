@@ -132,19 +132,19 @@ export const SalesTable = ({ setIsSalesFormOpen }: { setIsSalesFormOpen: (v: boo
     setFilteredData(sorted);
   };
 
-  const handleAddSales = (newSales: Omit<SalesRecord, 'id'>) => {
-    const newRecord: SalesRecord = {
-      ...newSales,
-      id: Date.now().toString(),
-    };
-    const updatedData = [...allData, newRecord];
-    setAllData(updatedData);
-    setFilteredData(updatedData);
-    toast({
-      title: "Sales Record Added",
-      description: "New sales record has been successfully added.",
-    });
-  };
+  // const handleAddSales = (newSales: Omit<SalesRecord, 'id'>) => {
+  //   const newRecord: SalesRecord = {
+  //     ...newSales,
+  //     id: Date.now().toString(),
+  //   };
+  //   const updatedData = [...allData, newRecord];
+  //   setAllData(updatedData);
+  //   setFilteredData(updatedData);
+  //   toast({
+  //     title: "Sales Record Added",
+  //     description: "New sales record has been successfully added.",
+  //   });
+  // };
 
   const handleImportData = (importedData: SalesRecord[]) => {
     const updatedData = [...allData, ...importedData];
