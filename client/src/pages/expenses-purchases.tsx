@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/Input";
 import { Search, Download, Upload, Plus, Filter } from "lucide-react";
 import { ExpenseMetricCard } from "@/components/ExpenseMetricCard";
 import { ExpenseTable } from "@/components/ExpenseTable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { SingleDatePicker } from "@/components/ui/DateRangePicker";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Expense {
   id: string;
@@ -120,11 +120,9 @@ const initialExpenses: Expense[] = [
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
+
   const [filters, setFilters] = useState({
-    dateRange: { from: undefined, to: undefined },
+    dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
     status: "all",
     month: "all",
     minAmount: ""
@@ -203,7 +201,7 @@ export default function Expenses() {
       title: "Export Successful",
       description: `Expenses exported as CSV ${includeFilters ? 'with filters applied' : 'without filters'}`
     });
-    setShowExportDialog(false);
+
   };
 
   const parseCSV = (csvText: string): Expense[] => {
@@ -250,7 +248,7 @@ export default function Expenses() {
         }
       };
       reader.readAsText(file);
-      setShowImportDialog(false);
+
     }
   };
 
@@ -281,7 +279,7 @@ export default function Expenses() {
       title: "Expense Added",
       description: "New expense has been added successfully"
     });
-    setShowAddExpense(false);
+
     setNewExpense({
       title: "",
       vendorName: "",
@@ -301,33 +299,15 @@ export default function Expenses() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-8xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
+      <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Hello A</h1>
-          {/* <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search Client, Invoice ID & more..."
-                className="pl-10 w-80 bg-background border-border"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-            </Dialog>
-          </div> */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-foreground">Hello A</h1>
         </div>
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <ExpenseMetricCard
             title="Total Expenses"
             amount={`₹${filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
@@ -359,239 +339,458 @@ export default function Expenses() {
         </div>
 
         {/* Expenses Table */}
-        <div className="bg-white rounded-lg border border-border p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Total Expenses</h2>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+        <div className="bg-white rounded-lg border border-border p-3 sm:p-4 lg:p-6 w-full overflow-hidden">
+          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground truncate">Total Expenses</h2>
+            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:gap-3 sm:space-y-0">
+              {/* Search Bar */}
+              <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Search"
-                  className="pl-10 w-64 bg-background border-border"
+                  className="pl-10 w-full sm:w-48 lg:w-56 bg-background border-border"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              
-              <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Import Expenses</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="file-upload">Select CSV File</Label>
-                      <Input
-                        id="file-upload"
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleImport}
-                        className="mt-2"
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Missing columns will be filled with "-". Supported formats: CSV, Excel
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Export Expenses</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-3">
-                      <Button onClick={() => handleExport(false)} variant="outline">
-                        Export All Records
-                      </Button>
-                      <Button onClick={() => handleExport(true)} variant="outline">
-                        Export Filtered Records
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Filter Expenses</h4>
-                    
-                    <div className="space-y-2">
-                      <Label>Date</Label>
-                      <DateRangePicker 
-                        date={filters.dateRange.from}
-                        onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Unpaid">Unpaid</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Month</Label>
-                      <Select value={filters.month} onValueChange={(value) => setFilters({...filters, month: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All months" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Months</SelectItem>
-                          <SelectItem value="January">January</SelectItem>
-                          <SelectItem value="February">February</SelectItem>
-                          <SelectItem value="March">March</SelectItem>
-                          <SelectItem value="April">April</SelectItem>
-                          <SelectItem value="May">May</SelectItem>
-                          <SelectItem value="June">June</SelectItem>
-                          <SelectItem value="July">July</SelectItem>
-                          <SelectItem value="August">August</SelectItem>
-                          <SelectItem value="September">September</SelectItem>
-                          <SelectItem value="October">October</SelectItem>
-                          <SelectItem value="November">November</SelectItem>
-                          <SelectItem value="December">December</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Minimum Amount</Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter minimum amount"
-                        value={filters.minAmount}
-                        onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
-                      />
-                    </div>
-
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setFilters({
-                        dateRange: { from: undefined, to: undefined },
-                        status: "all",
-                        month: "all",
-                        minAmount: ""
-                      })}
-                      className="w-full"
-                    >
-                      Clear Filters
+          
+              {/* Desktop Actions */}
+              <div className="hidden sm:flex gap-2">
+                {/* Import Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Import
                     </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Import Expenses</h4>
+                      <div>
+                        <Label htmlFor="file-upload">Select CSV File</Label>
+                        <Input
+                          id="file-upload"
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleImport}
+                          className="mt-2"
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Missing columns will be filled with "-". Supported formats: CSV, Excel
+                      </p>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
-                <DialogTrigger asChild>
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add New Expenses
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Add New Expense</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="expense-title">Expense Title</Label>
-                      <Input
-                        id="expense-title"
-                        value={newExpense.title}
-                        onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
-                        placeholder="Enter expense title"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="vendor-name">Vendor Name</Label>
-                      <Input
-                        id="vendor-name"
-                        value={newExpense.vendorName}
-                        onChange={(e) => setNewExpense({...newExpense, vendorName: e.target.value})}
-                        placeholder="Enter vendor name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="payment-method">Payment Method</Label>
-                      <Select value={newExpense.paymentMethod} onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Cash">Cash</SelectItem>
-                          <SelectItem value="UPI">UPI</SelectItem>
-                          <SelectItem value="NET Banking">NET Banking</SelectItem>
-                          <SelectItem value="Credit Card">Credit Card</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="amount">Amount</Label>
-                      <Input
-                        id="amount"
-                        type="number"
-                        value={newExpense.amount}
-                        onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                        placeholder="Enter amount"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={newExpense.status} onValueChange={(value) => setNewExpense({...newExpense, status: value as "Paid" | "Unpaid" | "Overdue"})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Unpaid">Unpaid</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="expense-date">Date</Label>
-                      <Input
-                        id="expense-date"
-                        type="date"
-                        value={newExpense.date}
-                        onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                      />
-                    </div>
-                    <Button onClick={handleAddExpense} className="w-full">
-                      Add Expense
+                {/* Export Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Export
                     </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-white text-black">
+                    <DropdownMenuItem onClick={() => handleExport(false)}>
+                      Export All Records
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport(true)}>
+                      Export Filtered Records
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Filter Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      Filter
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Filter Expenses</h4>
+                      
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <SingleDatePicker 
+                          date={filters.dateRange.from}
+                          onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})}
+                          iconOnly={false}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All statuses" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Unpaid">Unpaid</SelectItem>
+                            <SelectItem value="Overdue">Overdue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Month</Label>
+                        <Select value={filters.month} onValueChange={(value) => setFilters({...filters, month: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All months" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Months</SelectItem>
+                            <SelectItem value="January">January</SelectItem>
+                            <SelectItem value="February">February</SelectItem>
+                            <SelectItem value="March">March</SelectItem>
+                            <SelectItem value="April">April</SelectItem>
+                            <SelectItem value="May">May</SelectItem>
+                            <SelectItem value="June">June</SelectItem>
+                            <SelectItem value="July">July</SelectItem>
+                            <SelectItem value="August">August</SelectItem>
+                            <SelectItem value="September">September</SelectItem>
+                            <SelectItem value="October">October</SelectItem>
+                            <SelectItem value="November">November</SelectItem>
+                            <SelectItem value="December">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Minimum Amount</Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter minimum amount"
+                          value={filters.minAmount}
+                          onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
+                        />
+                      </div>
+
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setFilters({
+                          dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
+                          status: "all",
+                          month: "all",
+                          minAmount: ""
+                        })}
+                        className="w-full"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Add New Expenses Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Plus className="h-4 w-4" />
+                      <span className="ml-2">Add New Expenses</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Add New Expense</h4>
+                      <div>
+                        <Label htmlFor="expense-title">Expense Title</Label>
+                        <Input
+                          id="expense-title"
+                          value={newExpense.title}
+                          onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
+                          placeholder="Enter expense title"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vendor-name">Vendor Name</Label>
+                        <Input
+                          id="vendor-name"
+                          value={newExpense.vendorName}
+                          onChange={(e) => setNewExpense({...newExpense, vendorName: e.target.value})}
+                          placeholder="Enter vendor name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="payment-method">Payment Method</Label>
+                        <Select value={newExpense.paymentMethod} onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Cash">Cash</SelectItem>
+                            <SelectItem value="UPI">UPI</SelectItem>
+                            <SelectItem value="NET Banking">NET Banking</SelectItem>
+                            <SelectItem value="Credit Card">Credit Card</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="amount">Amount</Label>
+                        <Input
+                          id="amount"
+                          type="number"
+                          value={newExpense.amount}
+                          onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                          placeholder="Enter amount"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="status">Status</Label>
+                        <Select value={newExpense.status} onValueChange={(value) => setNewExpense({...newExpense, status: value as "Paid" | "Unpaid" | "Overdue"})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Unpaid">Unpaid</SelectItem>
+                            <SelectItem value="Overdue">Overdue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="expense-date">Date</Label>
+                        <Input
+                          id="expense-date"
+                          type="date"
+                          value={newExpense.date}
+                          onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
+                        />
+                      </div>
+                      <Button onClick={handleAddExpense} className="w-full">
+                        Add Expense
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Mobile Actions - Icon Only */}
+              <div className="sm:hidden flex items-center gap-2">
+                {/* Filter Icon Button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="outline">
+                      <Filter className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Filter Expenses</h4>
+                      
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <SingleDatePicker 
+                          date={filters.dateRange.from}
+                          onDateChange={(date) => {
+                            setFilters({...filters, dateRange: { from: date, to: date }});
+                          }}
+                          iconOnly={true}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select value={filters.status} onValueChange={(value) => {
+                          setFilters({...filters, status: value});
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All statuses" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Unpaid">Unpaid</SelectItem>
+                            <SelectItem value="Overdue">Overdue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Month</Label>
+                        <Select value={filters.month} onValueChange={(value) => {
+                          setFilters({...filters, month: value});
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All months" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Months</SelectItem>
+                            <SelectItem value="January">January</SelectItem>
+                            <SelectItem value="February">February</SelectItem>
+                            <SelectItem value="March">March</SelectItem>
+                            <SelectItem value="April">April</SelectItem>
+                            <SelectItem value="May">May</SelectItem>
+                            <SelectItem value="June">June</SelectItem>
+                            <SelectItem value="July">July</SelectItem>
+                            <SelectItem value="August">August</SelectItem>
+                            <SelectItem value="September">September</SelectItem>
+                            <SelectItem value="October">October</SelectItem>
+                            <SelectItem value="November">November</SelectItem>
+                            <SelectItem value="December">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Minimum Amount</Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter minimum amount"
+                          value={filters.minAmount}
+                          onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
+                        />
+                      </div>
+
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setFilters({
+                            dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
+                            status: "all",
+                            month: "all",
+                            minAmount: ""
+                          });
+                        }}
+                        className="w-full"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Export Icon Button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="outline">
+                      <Download className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-white text-black">
+                    <DropdownMenuItem onClick={() => handleExport(false)}>
+                      Export All Records
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport(true)}>
+                      Export Filtered Records
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Import Icon Button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="outline">
+                      <Upload className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Import Expenses</h4>
+                      <div>
+                        <Label htmlFor="file-upload">Select CSV File</Label>
+                        <Input
+                          id="file-upload"
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleImport}
+                          className="mt-2"
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Missing columns will be filled with "-". Supported formats: CSV, Excel
+                      </p>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Add Expense Icon Button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Add New Expense</h4>
+                      <div>
+                        <Label htmlFor="expense-title">Expense Title</Label>
+                        <Input
+                          id="expense-title"
+                          value={newExpense.title}
+                          onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
+                          placeholder="Enter expense title"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vendor-name">Vendor Name</Label>
+                        <Input
+                          id="vendor-name"
+                          value={newExpense.vendorName}
+                          onChange={(e) => setNewExpense({...newExpense, vendorName: e.target.value})}
+                          placeholder="Enter vendor name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="payment-method">Payment Method</Label>
+                        <Select value={newExpense.paymentMethod} onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Cash">Cash</SelectItem>
+                            <SelectItem value="UPI">UPI</SelectItem>
+                            <SelectItem value="NET Banking">NET Banking</SelectItem>
+                            <SelectItem value="Credit Card">Credit Card</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="amount">Amount</Label>
+                        <Input
+                          id="amount"
+                          type="number"
+                          value={newExpense.amount}
+                          onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                          placeholder="Enter amount"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="status">Status</Label>
+                        <Select value={newExpense.status} onValueChange={(value) => setNewExpense({...newExpense, status: value as "Paid" | "Unpaid" | "Overdue"})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Unpaid">Unpaid</SelectItem>
+                            <SelectItem value="Overdue">Overdue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="expense-date">Date</Label>
+                        <Input
+                          id="expense-date"
+                          type="date"
+                          value={newExpense.date}
+                          onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
+                        />
+                      </div>
+                      <Button onClick={handleAddExpense} className="w-full">
+                        Add Expense
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
           

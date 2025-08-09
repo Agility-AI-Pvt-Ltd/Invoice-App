@@ -72,7 +72,7 @@ export const FilterDialog = ({ isOpen, onOpenChange, onFilter }: FilterDialogPro
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="hidden sm:flex">
           <Filter className="w-4 h-4 mr-2" />
           Filter
         </Button>

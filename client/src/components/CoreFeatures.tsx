@@ -30,15 +30,15 @@ const CoreFeatures = () => {
   ];
 
   return (
-    <section className="py-20 px-6 lg:px-8">
+    <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16">
+        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center mb-12 sm:mb-16">
           <div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6">
               Core Features That Count
             </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
               Every feature is made to make your invoicing process smooth, efficient, and stress-free whether you're a freelancer, startup, or growing company.
             </p>
           </div>
@@ -47,27 +47,27 @@ const CoreFeatures = () => {
             <img
               src={"dashboard.jpeg"}
               alt="Dashboard interface showing analytics and reports"
-              className="w-full h-auto rounded-2xl shadow-elegant"
+              className="w-full h-auto rounded-xl sm:rounded-2xl shadow-elegant"
             />
             </CometCard>
           </div>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {features.map((feature, index) => (
-            <Card key={index} className="p-6 lg:p-8 group hover-scale">
-              <CardContent className="p-0 space-y-6">
+            <Card key={index} className="p-4 sm:p-6 lg:p-8 group hover-scale">
+              <CardContent className="p-0 space-y-4 sm:space-y-6">
                 <div>
-                  <h3 className="text-xl lg:text-2xl font-semibold text-foreground mb-4">
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground mb-3 sm:mb-4">
                     {feature.title}
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
                 </div>
                 <div className="flex justify-center">
-                  <div className="w-32 h-32 lg:w-60 lg:h-40 rounded-2xl overflow-hidden">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 lg:w-60 lg:h-40 rounded-xl sm:rounded-2xl overflow-hidden">
                     <img
                       src={feature.image}
                       alt={feature.alt}

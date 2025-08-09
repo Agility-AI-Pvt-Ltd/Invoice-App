@@ -11,7 +11,6 @@ const testimonials = [
     avatar: "public/agility.jpg",
     position: "top-0 left-1/2 -translate-x-1/2",
     opacity: "opacity-100",
-    // zIndex: "z-50",
     shadow: "shadow-lg",
     rotate: ""
   },
@@ -37,7 +36,6 @@ const testimonials = [
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
     position: "top-26 right-[11%]",
     opacity: "opacity-90",
-    // zIndex: "z-40",
     shadow: "shadow-lg",
     rotate: "rotate-5"
   },
@@ -71,27 +69,24 @@ const testimonials = [
 
 const TestimonialsSection: React.FC = () => {
   return (
-    <section id="tesimonialsection" className="min-h-screen bg-testimonial-gradient py-20 px-4 overflow-hidden">
+    <section id="tesimonialsection" className="min-h-screen bg-testimonial-gradient py-12 sm:py-16 md:py-20 px-4 sm:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-20">
-          {/* <div className="text-6xl md:text-8xl text-testimonial-quote font-bold mb-4">
-            "
-          </div> */}
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+        <div className="text-center mb-12 sm:mb-16 md:mb-20">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
             Users Testimonials
           </h2>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto px-4 sm:px-0">
             Our users speak for us. Here's how we've made invoicing easier for them.
           </p>
         </div>
 
         {/* Stacked Testimonial Cards */}
-        <div className="relative h-[600px] md:h-[500px] ">
+        <div className="relative h-[400px] sm:h-[500px] md:h-[600px]">
           {testimonials.map((testimonial) => (
             <div
             key={testimonial.id}
-            className={`absolute ${testimonial.position} ${testimonial.opacity} ${testimonial.zIndex ?? ''} ${testimonial.shadow} ${testimonial.rotate} transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-1 hover:z-50 `}
+            className={`absolute ${testimonial.position} ${testimonial.opacity} ${testimonial.zIndex ?? ''} ${testimonial.shadow} ${testimonial.rotate} transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-1 hover:z-50`}
           >
               <TestimonialCard
                 name={testimonial.name}

@@ -98,7 +98,7 @@ export const AddSalesDialog = ({ isOpen, onOpenChange, onAddSales }: AddSalesDia
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90 hidden sm:flex">
           <Plus className="w-4 h-4 mr-2" />
           Add New Sales
         </Button>

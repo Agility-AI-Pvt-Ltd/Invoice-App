@@ -26,7 +26,7 @@ const faqs = [
   {
     id: "Q5",
     question: "Will I get notified when a client pays?",
-    answer: "Yes, you will receive instant notifications when a client views or pays an invoice, so you’re always up to date."
+    answer: "Yes, you will receive instant notifications when a client views or pays an invoice, so you're always up to date."
   },
   {
     id: "Q6",
@@ -48,12 +48,12 @@ const FAQSection = () => {
   };
 
   return (
-    <section id="FAQsection"className="py-20 px-4 bg-gradient-to-b from-slate-900 to-slate-800">
+    <section id="FAQsection" className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 bg-gradient-to-b from-slate-900 to-slate-800">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold text-white mb-4">FAQs</h2>
-          <p className="text-lg text-slate-300">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">FAQs</h2>
+          <p className="text-base sm:text-lg text-slate-300 px-4 sm:px-0">
             Be the first to know about updates, new tools, and exclusive deals.
           </p>
         </div>
@@ -65,7 +65,7 @@ const FAQSection = () => {
               <button
                 onClick={() => toggleItem(faq.id)}
                 className={cn(
-                  "w-full flex items-center gap-4 py-6 text-left transition-all duration-200",
+                  "w-full flex items-center gap-3 sm:gap-4 py-4 sm:py-6 text-left transition-all duration-200",
                   openItem === faq.id
                     ? "border-l-4 border-purple-500 bg-slate-800/40"
                     : "hover:bg-slate-800/30"
@@ -76,13 +76,13 @@ const FAQSection = () => {
                 type="button"
               >
                 {/* Question Number Circle */}
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">{faq.id}</span>
+                <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-xs sm:text-sm">{faq.id}</span>
                 </div>
 
                 {/* Question Text */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-medium text-white">
+                  <h3 className="text-sm sm:text-base md:text-lg font-medium text-white">
                     {faq.question}
                   </h3>
                 </div>
@@ -90,7 +90,7 @@ const FAQSection = () => {
                 {/* Chevron Icon */}
                 <ChevronDown 
                   className={cn(
-                    "w-5 h-5 transition-transform duration-200",
+                    "w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200",
                     openItem === faq.id ? "rotate-180 text-purple-400" : "text-slate-400"
                   )}
                 />
@@ -103,11 +103,11 @@ const FAQSection = () => {
                 aria-labelledby={`faq-question-${faq.id}`}
                 className={cn(
                   "overflow-hidden transition-all duration-300",
-                  openItem === faq.id ? "max-h-96 pb-6" : "max-h-0"
+                  openItem === faq.id ? "max-h-96 pb-4 sm:pb-6" : "max-h-0"
                 )}
               >
-                <div className="pl-16 pr-12">
-                  <p className="text-slate-300 leading-relaxed">
+                <div className="pl-12 sm:pl-16 pr-4 sm:pr-12">
+                  <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
                     {faq.answer}
                   </p>
                 </div>

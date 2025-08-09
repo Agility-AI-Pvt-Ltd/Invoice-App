@@ -153,7 +153,7 @@ export const ImportDialog = ({ isOpen, onOpenChange, onImportData }: ImportDialo
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="hidden sm:flex">
           <Upload className="w-4 h-4 mr-2" />
           Import
         </Button>

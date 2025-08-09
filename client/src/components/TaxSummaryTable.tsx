@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { SingleDatePicker } from "@/components/ui/DateRangePicker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,9 +21,25 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { ChevronDown, ChevronRight, Download, Calendar } from "lucide-react";
+import { ChevronDown, ChevronRight, Download } from "lucide-react";
 
-const taxData = [
+interface TaxItem {
+  id: string;
+  taxType: string;
+  taxRate: string;
+  taxableAmount: string;
+  taxCollected: string;
+  taxPaid: string;
+  netTaxLiability: string;
+  period: string;
+  noOfInvoices: number;
+  expanded?: boolean;
+  children?: TaxItem[];
+  isParent?: boolean;
+  isChild?: boolean;
+}
+
+const taxData: TaxItem[] = [
   {
     id: '1',
     taxType: 'CGST',
@@ -98,23 +114,81 @@ const taxData = [
         period: '29 July 2024',
         noOfInvoices: 2,
         isChild: true
-      },
-      {
-        id: '2-5',
-        taxType: 'IGST',
-        taxRate: '18%',
-        taxableAmount: '₹2000',
-        taxCollected: '₹2000',
-        taxPaid: '₹2000',
-        netTaxLiability: '₹5000',
-        period: '29 July 2024',
-        noOfInvoices: 2,
-        isChild: true
       }
     ]
   },
   {
     id: '3',
+    taxType: 'IGST',
+    taxRate: '12%',
+    taxableAmount: '₹2000',
+    taxCollected: '₹2000',
+    taxPaid: '₹2000',
+    netTaxLiability: '₹5000',
+    period: '29 July 2024',
+    noOfInvoices: 5,
+    expanded: false,
+    children: [],
+    isParent: false
+  },
+  {
+    id: '4',
+    taxType: 'CGST',
+    taxRate: '18%',
+    taxableAmount: '₹2000',
+    taxCollected: '₹2000',
+    taxPaid: '₹2000',
+    netTaxLiability: '₹5000',
+    period: '29 July 2024',
+    noOfInvoices: 2,
+    expanded: false,
+    children: [],
+    isParent: false
+  },
+  {
+    id: '5',
+    taxType: 'IGST',
+    taxRate: '18%',
+    taxableAmount: '₹2000',
+    taxCollected: '₹2000',
+    taxPaid: '₹2000',
+    netTaxLiability: '₹5000',
+    period: '29 July 2024',
+    noOfInvoices: 2,
+    expanded: false,
+    children: [],
+    isParent: false
+  },
+  {
+    id: '6',
+    taxType: 'CGST',
+    taxRate: '18%',
+    taxableAmount: '₹2000',
+    taxCollected: '₹2000',
+    taxPaid: '₹2000',
+    netTaxLiability: '₹5000',
+    period: '29 July 2024',
+    noOfInvoices: 2,
+    expanded: false,
+    children: [],
+    isParent: false
+  },
+  {
+    id: '7',
+    taxType: 'IGST',
+    taxRate: '18%',
+    taxableAmount: '₹2000',
+    taxCollected: '₹2000',
+    taxPaid: '₹2000',
+    netTaxLiability: '₹5000',
+    period: '29 July 2024',
+    noOfInvoices: 2,
+    expanded: false,
+    children: [],
+    isParent: false
+  },
+  {
+    id: '8',
     taxType: 'CGST',
     taxRate: '18%',
     taxableAmount: '₹2000',
@@ -128,7 +202,7 @@ const taxData = [
     isParent: false
   },
   {
-    id: '4',
+    id: '9',
     taxType: 'IGST',
     taxRate: '18%',
     taxableAmount: '₹2000',
@@ -140,11 +214,11 @@ const taxData = [
     expanded: false,
     children: [],
     isParent: false
-  },
+  }
 ];
 
 export function TaxSummaryTable() {
-  const [data, setData] = useState(taxData);
+  const [data, setData] = useState<TaxItem[]>(taxData);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -196,7 +270,7 @@ export function TaxSummaryTable() {
   };
 
   // Flatten data to include expanded children
-  const flattenedData = data.reduce((acc, item) => {
+  const flattenedData: TaxItem[] = data.reduce((acc: TaxItem[], item) => {
     acc.push(item);
     if (item.expanded && item.children) {
       acc.push(...item.children);
@@ -209,27 +283,27 @@ export function TaxSummaryTable() {
   const currentData = flattenedData.slice(startIndex, startIndex + itemsPerPage);
 
   return (
-    <Card className="p-6 bg-white">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold">Tax Summary</h3>
-        <div className="flex items-center gap-3">
-          <DateRangePicker
+    <Card className="p-3 sm:p-4 lg:p-6 bg-white">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+        <h3 className="text-lg sm:text-xl font-semibold">Tax Summary</h3>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <SingleDatePicker
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
           />
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
             onClick={handleExport}
           >
             <Download className="h-4 w-4" />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </div>
 
-      <div className="">
+      <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="">
@@ -239,52 +313,52 @@ export function TaxSummaryTable() {
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Tax Type
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Tax Rate%
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Taxable Amount
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Tax Collected
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Tax Paid
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Net Tax Liability
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   Period
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   No. of Invoices
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </TableHead>
             </TableRow>
@@ -301,30 +375,30 @@ export function TaxSummaryTable() {
                     onCheckedChange={() => toggleRowSelection(item.id)}
                   />
                 </TableCell>
-                <TableCell className="font-medium">
-                  <div className={`flex items-center gap-2 ${item.isChild ? "pl-6" : ""}`}>
+                <TableCell className="font-medium text-xs sm:text-sm">
+                  <div className={`flex items-center gap-2 ${item.isChild ? "pl-3 sm:pl-6" : ""}`}>
                     {item.isParent && (
                       <button
                         onClick={() => toggleRowExpansion(item.id)}
                         className="p-1 hover:bg-muted rounded"
                       >
                         {item.expanded ? (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                         ) : (
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                         )}
                       </button>
                     )}
                     <span>{item.taxType}</span>
                   </div>
                 </TableCell>
-                <TableCell>{item.taxRate}</TableCell>
-                <TableCell>{item.taxableAmount}</TableCell>
-                <TableCell>{item.taxCollected}</TableCell>
-                <TableCell>{item.taxPaid}</TableCell>
-                <TableCell>{item.netTaxLiability}</TableCell>
-                <TableCell>{item.period}</TableCell>
-                <TableCell>{item.noOfInvoices}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.taxRate}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.taxableAmount}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.taxCollected}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.taxPaid}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.netTaxLiability}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.period}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{item.noOfInvoices}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -332,13 +406,13 @@ export function TaxSummaryTable() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-6">
-        <div className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4 sm:mt-6">
+        <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, data.length)} of {data.length} entries
         </div>
         
         <Pagination>
-          <PaginationContent>
+          <PaginationContent className="flex-wrap">
             <PaginationItem>
               <PaginationPrevious 
                 href="#"
@@ -346,7 +420,7 @@ export function TaxSummaryTable() {
                   e.preventDefault();
                   if (currentPage > 1) setCurrentPage(currentPage - 1);
                 }}
-                className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                className={`text-xs sm:text-sm ${currentPage === 1 ? "pointer-events-none opacity-50" : ""}`}
               />
             </PaginationItem>
             
@@ -355,36 +429,36 @@ export function TaxSummaryTable() {
                 href="#"
                 onClick={(e) => e.preventDefault()}
                 isActive={true}
-                className="bg-primary text-primary-foreground"
+                className="bg-primary text-primary-foreground text-xs sm:text-sm"
               >
                 1
               </PaginationLink>
             </PaginationItem>
             
             <PaginationItem>
-              <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 2
               </PaginationLink>
             </PaginationItem>
             
             <PaginationItem>
-              <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 3
               </PaginationLink>
             </PaginationItem>
             
             <PaginationItem>
-              <span className="px-3 py-2">...</span>
+              <span className="px-2 sm:px-3 py-2 text-xs sm:text-sm">...</span>
             </PaginationItem>
             
             <PaginationItem>
-              <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 67
               </PaginationLink>
             </PaginationItem>
             
             <PaginationItem>
-              <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 68
               </PaginationLink>
             </PaginationItem>
@@ -396,6 +470,7 @@ export function TaxSummaryTable() {
                   e.preventDefault();
                   if (currentPage < totalPages) setCurrentPage(currentPage + 1);
                 }}
+                className="text-xs sm:text-sm"
               />
             </PaginationItem>
           </PaginationContent>

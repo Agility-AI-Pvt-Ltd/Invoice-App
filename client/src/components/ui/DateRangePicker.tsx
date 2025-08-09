@@ -108,12 +108,14 @@ interface SingleDatePickerProps {
   date?: Date;
   selectedDate?: Date;
   onDateChange?: (date: Date) => void;
+  iconOnly?: boolean;
 }
 
 export function SingleDatePicker({
   date,
   selectedDate,
   onDateChange = () => {},
+  iconOnly = false,
 }: SingleDatePickerProps) {
   const currentDate = date || selectedDate || new Date();
 
@@ -123,12 +125,12 @@ export function SingleDatePicker({
         <Button
           variant="outline"
           className={cn(
-            "w-[240px] justify-start text-left font-normal bg-white",
+            iconOnly ? "p-2 w-9 h-9" : "w-[240px] justify-start text-left font-normal bg-white",
             !currentDate && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {currentDate ? format(currentDate, "PPP") : <span>Pick a date</span>}
+          {!iconOnly && (currentDate ? format(currentDate, "PPP") : <span>Pick a date</span>)}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-white z-50" align="start">
