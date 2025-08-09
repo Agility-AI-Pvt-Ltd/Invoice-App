@@ -6,7 +6,6 @@ import {
   useParams
 } from "react-router-dom"
 import LoginPage from './pages/login.tsx'
-import Dashboard from './pages/dashboard.tsx'
 import Index from './pages/index.tsx'
 import SignUpPage from './pages/signup.tsx'
 import { ProfileProvider } from './contexts/ProfileContext'

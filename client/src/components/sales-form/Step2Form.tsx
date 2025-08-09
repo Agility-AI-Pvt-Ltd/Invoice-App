@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "../ui/Checkbox";
+import { Checkbox } from "../ui/Checkbox.tsx";
 
 export default function Step2Form() {
   const [billingAddress, setBillingAddress] = useState("");

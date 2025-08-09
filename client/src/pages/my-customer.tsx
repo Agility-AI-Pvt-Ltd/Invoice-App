@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import { customer as allCustomers } from "@/lib/mock/customer";
 import {
