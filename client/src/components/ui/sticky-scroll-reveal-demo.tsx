@@ -1,5 +1,3 @@
-"use client";
-import React from "react";
 import StickyScroll  from "@/components/ui/sticky-scroll-reveal";
 import { FileText, Send, DollarSign, Users } from "lucide-react";
 

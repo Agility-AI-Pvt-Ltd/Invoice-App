@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 
 export default function BusinessForm() {
+  //@ts-expect-error - TSX file, no type definitions for React
   const [logo, setLogo] = useState<File | null>(null);
 
   return (

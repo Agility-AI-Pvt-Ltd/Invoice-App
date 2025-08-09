@@ -11,6 +11,7 @@ import { Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const TaxSummary = () => {
+
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   const handleExport = (type: 'all' | 'filtered') => {

@@ -14,7 +14,7 @@ export const SalesStatsCard = ({
   title, 
   value, 
   changePercentage,
-  currency = true,
+  // currency = true,
 }: SalesStatsCardProps) => {
   const isPositive = changePercentage >= 0;
 

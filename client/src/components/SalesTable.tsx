@@ -4,22 +4,38 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Search, 
+
+// import { 
+//   Dialog,
+//   DialogContent,
+//   DialogDescription,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogTrigger,
+// } from "@/components/ui/dialog";
+// import { 
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
+import {
+  Search,
   CalendarIcon,
   Download,
   MoreHorizontal,
@@ -41,7 +57,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRef } from "react";
 
-export const SalesTable = () => {
+export const SalesTable = ({ setIsSalesFormOpen }: { setIsSalesFormOpen: (v: boolean) => void }) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredData, setFilteredData] = useState<SalesRecord[]>(salesData);
@@ -75,7 +91,7 @@ export const SalesTable = () => {
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
     let filtered = [...allData];
-    
+
     if (value) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(value.toLowerCase()) ||
@@ -83,19 +99,19 @@ export const SalesTable = () => {
         item.product.toLowerCase().includes(value.toLowerCase())
       );
     }
-    
+
     if (selectedDate) {
       const filterDate = format(selectedDate, 'dd MMMM yyyy');
       filtered = filtered.filter(item => item.dateOfSale === filterDate);
     }
-    
+
     setFilteredData(filtered);
   }, [allData, selectedDate]);
 
   const handleDateFilter = (date: Date | undefined) => {
     setSelectedDate(date);
     let filtered = [...allData];
-    
+
     if (searchTerm) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,12 +119,12 @@ export const SalesTable = () => {
         item.product.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (date) {
       const filterDate = format(date, 'dd MMMM yyyy');
       filtered = filtered.filter(item => item.dateOfSale === filterDate);
     }
-    
+
     setFilteredData(filtered);
   };
 
@@ -116,40 +132,40 @@ export const SalesTable = () => {
     const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortField(field);
     setSortDirection(newDirection);
-    
+
     const sorted = [...filteredData].sort((a, b) => {
       const aValue = a[field];
       const bValue = b[field];
-      
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return newDirection === 'asc' 
+        return newDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return newDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
-      
+
       return 0;
     });
-    
+
     setFilteredData(sorted);
   };
 
-  const handleAddSales = (newSales: Omit<SalesRecord, 'id'>) => {
-    const newRecord: SalesRecord = {
-      ...newSales,
-      id: Date.now().toString(),
-    };
-    const updatedData = [...allData, newRecord];
-    setAllData(updatedData);
-    setFilteredData(updatedData);
-    toast({
-      title: "Sales Record Added",
-      description: "New sales record has been successfully added.",
-    });
-  };
+  // const handleAddSales = (newSales: Omit<SalesRecord, 'id'>) => {
+  //   const newRecord: SalesRecord = {
+  //     ...newSales,
+  //     id: Date.now().toString(),
+  //   };
+  //   const updatedData = [...allData, newRecord];
+  //   setAllData(updatedData);
+  //   setFilteredData(updatedData);
+  //   toast({
+  //     title: "Sales Record Added",
+  //     description: "New sales record has been successfully added.",
+  //   });
+  // };
 
   const handleImportData = (importedData: SalesRecord[]) => {
     const updatedData = [...allData, ...importedData];
@@ -174,7 +190,7 @@ export const SalesTable = () => {
           ["Invoice Number", "Customer Name", "Product", "Quantity", "Unit Price", "Total Amount", "Date of Sale", "Payment Status"],
           [record.invoiceNumber, record.customerName, record.product, record.quantity, record.unitPrice, record.totalAmount, record.dateOfSale, record.paymentStatus]
         ].map(row => row.join(",")).join("\n");
-        
+
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -327,18 +343,18 @@ export const SalesTable = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newRecord: SalesRecord = {
-      id: Date.now().toString(),
-      invoiceNumber: formData.invoiceNumber,
-      customerName: formData.customerName,
-      product: formData.product,
-      quantity: parseInt(formData.quantity),
-      unitPrice: parseFloat(formData.unitPrice),
-      totalAmount: parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
-      dateOfSale: formData.dateOfSale,
-      paymentStatus: formData.paymentStatus,
-    };
-    handleAddSales(newRecord);
+    // const newRecord: SalesRecord = {
+    //   id: Date.now().toString(),
+    //   invoiceNumber: formData.invoiceNumber,
+    //   customerName: formData.customerName,
+    //   product: formData.product,
+    //   quantity: parseInt(formData.quantity),
+    //   unitPrice: parseFloat(formData.unitPrice),
+    //   totalAmount: parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
+    //   dateOfSale: formData.dateOfSale,
+    //   paymentStatus: formData.paymentStatus,
+    // };
+    // handleAddSales(newRecord);
     setFormData({
       invoiceNumber: "",
       customerName: "",

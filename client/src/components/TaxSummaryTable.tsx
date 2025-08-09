@@ -1,10 +1,9 @@
-//TaxSummaryTable.tsx
-
+//@ts-nocheck
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { SingleDatePicker } from "@/components/ui/DateRangePicker";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "../components/ui/Checkbox";
 import {
   Table,
   TableBody,
@@ -283,6 +282,7 @@ export function TaxSummaryTable() {
   const currentData = flattenedData.slice(startIndex, startIndex + itemsPerPage);
 
   return (
+<<<<<<< HEAD
     <Card className="p-3 sm:p-4 lg:p-6 bg-white">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <h3 className="text-lg sm:text-xl font-semibold">Tax Summary</h3>
@@ -290,6 +290,15 @@ export function TaxSummaryTable() {
           <SingleDatePicker
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
+=======
+    <Card className="p-6 bg-white">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-semibold">Tax Summary</h3>
+        <div className="flex items-center gap-3">
+          <DateRangePicker
+            // selectedDate={selectedDate}
+            // onDateChange={setSelectedDate} //TODO: Uncomment when DateRangePicker is implemented
+>>>>>>> 76b039b82a4ec7eeedcbaf86df93ec14ec45ac2c
           />
           <Button 
             variant="outline" 

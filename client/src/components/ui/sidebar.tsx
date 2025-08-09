@@ -7,7 +7,7 @@ import { PanelLeftIcon } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/Input"
 import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
@@ -198,8 +198,16 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          {/* Css changed here */}
-          <div className="flex h-full w-full flex-col bg-gradient-to-b from-black to-neutral-900 text-red-100">{children}</div>
+          {/* Css changed here  - Mobile*/}
+          <div
+            className="flex h-full w-full flex-col text-white"
+            style={{
+              background: 'linear-gradient(180deg, #0D121F 0%, #1A2A43 25%, #192C46 50%, #0A0F1A 75%, #000000 100%)'
+            }}
+          >
+
+
+            {children}</div>
         </SheetContent>
       </Sheet>
     )
@@ -241,12 +249,16 @@ function Sidebar({
         )}
         {...props}
       >
+        {/* // Css changed here  */}
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          // Css changed here 
-          className="bg-gradient-to-b from-black to-neutral-900 text-white group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          className="text-white flex h-full w-full flex-col group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          style={{
+            background: 'linear-gradient(180deg, #0D121F 0%, #1A2A43 25%, #192C46 50%, #0A0F1A 75%, #000000 100%)'
+          }}
         >
+
           {children}
         </div>
       </div>
