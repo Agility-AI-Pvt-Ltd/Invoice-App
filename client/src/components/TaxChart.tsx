@@ -2,15 +2,20 @@
 
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-//@ts-expect-error - TSX file, no type definitions for React
+
 const generateTaxData = (selectedDate: Date) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  return months.map((month, index) => ({
-    month,
-    cashFlow: Math.floor(Math.random() * 400) + 200 + (index * 30),
-    taxPaid: Math.floor(Math.random() * 300) + 150 + (index * 25),
-  }));
+  // Use selectedDate month to produce a slight offset so the input is meaningful
+  const monthOffset = selectedDate.getMonth();
+
+  return months.map((month, index) => {
+    const progression = (index + monthOffset) % 12;
+    return {
+      month,
+      cashFlow: Math.floor(Math.random() * 400) + 200 + progression * 30,
+      taxPaid: Math.floor(Math.random() * 300) + 150 + progression * 25,
+    };
+  });
 };
 
 interface TaxChartProps {

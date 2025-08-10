@@ -46,7 +46,8 @@ interface MobileNavMenuProps {
 
 export const Navbar = ({ children, className }: NavbarProps) => {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  // Track viewport scroll rather than the navbar element (which is fixed)
+  const { scrollY } = useScroll();
   const [visible, setVisible] = useState<boolean>(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -72,7 +73,8 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
         boxShadow: visible
           ? "0 0 24px rgba(34, 42, 53, 0.06)"
           : "none",
-        width: visible ? "45%" : "100%",
+        // Keep a larger width when shrunk for better layout stability
+        width: visible ? "85%" : "100%",
         y: visible ? 20 : 0,
       }}
       transition={{ type: "spring", stiffness: 200, damping: 30 }}
