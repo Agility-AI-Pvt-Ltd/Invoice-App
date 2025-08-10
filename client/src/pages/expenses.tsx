@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { Card, CardContent } from "@/components/ui/card";
+import ExpenseForm from "@/components/expense-form/ExpenseForm";
 
 interface Expense {
   id: string;
@@ -120,6 +122,7 @@ const initialExpenses: Expense[] = [
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState("");
+  //@ts-expect-error - might use later
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -137,6 +140,9 @@ export default function Expenses() {
     status: "Unpaid" as "Paid" | "Unpaid" | "Overdue",
     date: ""
   });
+
+  const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
+
   const { toast } = useToast();
 
   const generateExpenseId = () => {
@@ -174,7 +180,7 @@ export default function Expenses() {
   // Filter expenses based on selected filters
   const filteredExpenses = expenses.filter(expense => {
     // Search term filter
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.expenseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -190,7 +196,7 @@ export default function Expenses() {
     const matchesAmount = !filters.minAmount || expense.amount >= parseInt(filters.minAmount);
 
     // Date filter
-    const matchesDate = !filters.dateRange.from || 
+    const matchesDate = !filters.dateRange.from ||
       new Date(expense.date).getTime() >= new Date(filters.dateRange.from).getTime();
 
     return matchesSearch && matchesStatus && matchesMonth && matchesAmount && matchesDate;
@@ -209,10 +215,10 @@ export default function Expenses() {
   const parseCSV = (csvText: string): Expense[] => {
     const lines = csvText.split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
-    
+
     return lines.slice(1).filter(line => line.trim()).map((line, index) => {
       const values = line.split(',').map(v => v.trim());
-      
+
       return {
         id: `imported-${Date.now()}-${index}`,
         expenseId: values[headers.indexOf('Expense ID')] || generateExpenseId(),
@@ -254,6 +260,7 @@ export default function Expenses() {
     }
   };
 
+  //@ts-expect-error - might use later
   const handleAddExpense = () => {
     if (!newExpense.title || !newExpense.vendorName || !newExpense.amount || !newExpense.date) {
       toast({
@@ -300,31 +307,25 @@ export default function Expenses() {
     });
   };
 
+  if (isExpenseFormOpen) {
+    return (
+      <div className="px-2 sm:px-4">
+        <Card className="w-full p-4 sm:p-6 bg-white">
+          <p className="font-semibold text-2xl">Create Purchase Form</p>
+          <CardContent className="mt-2">
+            <ExpenseForm onCancel={() => setIsExpenseFormOpen(false)} />
+          </CardContent>
+        </Card>
+      </div>
+
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-8xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Hello A</h1>
-          {/* <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search Client, Invoice ID & more..."
-                className="pl-10 w-80 bg-background border-border"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-            </Dialog>
-          </div> */}
-        </div>
+
 
         {/* Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -372,7 +373,7 @@ export default function Expenses() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              
+
               <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -436,18 +437,18 @@ export default function Expenses() {
                 <PopoverContent className="w-80" align="end">
                   <div className="space-y-4">
                     <h4 className="font-medium">Filter Expenses</h4>
-                    
+
                     <div className="space-y-2">
                       <Label>Date</Label>
-                      <DateRangePicker 
-                        // date={filters.dateRange.from}
-                        // onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})} // TODO: Uncomment when DateRangePicker is implemented
+                      <DateRangePicker
+                      // date={filters.dateRange.from}
+                      // onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})} // TODO: Uncomment when DateRangePicker is implemented
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Status</Label>
-                      <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                      <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="All statuses" />
                         </SelectTrigger>
@@ -462,7 +463,7 @@ export default function Expenses() {
 
                     <div className="space-y-2">
                       <Label>Month</Label>
-                      <Select value={filters.month} onValueChange={(value) => setFilters({...filters, month: value})}>
+                      <Select value={filters.month} onValueChange={(value) => setFilters({ ...filters, month: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="All months" />
                         </SelectTrigger>
@@ -490,12 +491,12 @@ export default function Expenses() {
                         type="number"
                         placeholder="Enter minimum amount"
                         value={filters.minAmount}
-                        onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
+                        onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
                       />
                     </div>
 
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setFilters({
                         dateRange: { from: undefined, to: undefined },
                         status: "all",
@@ -509,93 +510,14 @@ export default function Expenses() {
                   </div>
                 </PopoverContent>
               </Popover>
-
-              <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
-                <DialogTrigger asChild>
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add New Expenses
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Add New Expense</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="expense-title">Expense Title</Label>
-                      <Input
-                        id="expense-title"
-                        value={newExpense.title}
-                        onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
-                        placeholder="Enter expense title"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="vendor-name">Vendor Name</Label>
-                      <Input
-                        id="vendor-name"
-                        value={newExpense.vendorName}
-                        onChange={(e) => setNewExpense({...newExpense, vendorName: e.target.value})}
-                        placeholder="Enter vendor name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="payment-method">Payment Method</Label>
-                      <Select value={newExpense.paymentMethod} onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Cash">Cash</SelectItem>
-                          <SelectItem value="UPI">UPI</SelectItem>
-                          <SelectItem value="NET Banking">NET Banking</SelectItem>
-                          <SelectItem value="Credit Card">Credit Card</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="amount">Amount</Label>
-                      <Input
-                        id="amount"
-                        type="number"
-                        value={newExpense.amount}
-                        onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                        placeholder="Enter amount"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={newExpense.status} onValueChange={(value) => setNewExpense({...newExpense, status: value as "Paid" | "Unpaid" | "Overdue"})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Unpaid">Unpaid</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="expense-date">Date</Label>
-                      <Input
-                        id="expense-date"
-                        type="date"
-                        value={newExpense.date}
-                        onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                      />
-                    </div>
-                    <Button onClick={handleAddExpense} className="w-full">
-                      Add Expense
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsExpenseFormOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Expenses
+              </Button>
             </div>
           </div>
-          
-          <ExpenseTable 
+
+          <ExpenseTable
             expenses={filteredExpenses}
             searchTerm={searchTerm}
             onDeleteExpense={handleDeleteExpense}

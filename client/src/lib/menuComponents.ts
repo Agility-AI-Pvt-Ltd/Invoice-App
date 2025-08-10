@@ -7,10 +7,10 @@ export const menuComponentMap: Record<string, React.LazyExoticComponent<() => Re
     "my-customers": lazy(() => import("@/pages/my-customer")),
     'inventory' : lazy(() => import("@/pages/inventory")),
     'purchases' : lazy(() => import("@/pages/purchase")),
-    'expenses' : lazy(() => import("@/pages/expenses-purchases")),
+    'expenses' : lazy(() => import("@/pages/expenses")),
     'invoices': lazy(() => import("@/pages/invoices")),
     "sales": lazy(() => import("@/pages/sales-revenue")),
     "sales-revenue": lazy(() => import("@/pages/sales-revenue")),
-    "expenses-purchases": lazy(() => import("@/pages/expenses-purchases")),
+    "expenses-purchases": lazy(() => import("@/pages/expenses")),
     "tax-summary": lazy(() => import("@/pages/tax-summary"))
 };
