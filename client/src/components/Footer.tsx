@@ -13,14 +13,14 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-black text-white">
+    <footer className="bg-transparent text-black">
       {/* Newsletter Subscription Section */}
       <div className="border-b border-slate-700">
         <div className="max-w-6xl mx-auto px-6 py-16">
           {/* Header */}
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Subscribe</h2>
-            <p className="text-slate-300 text-lg">
+            <p className="text-gray-500  text-lg">
               Be the first to know about updates, new tools, and exclusive deals.
             </p>
           </div>
@@ -29,7 +29,7 @@ const Footer = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             <div className="flex-1">
               <h3 className="text-2xl font-semibold mb-3">Stay in the tech loop.</h3>
-              <p className="text-slate-300 max-w-md">
+              <p className="text-gray-500 max-w-md">
                 Keep up to date with new products, all the goss, and anything else you might have missed on twitter.
               </p>
             </div>
@@ -50,12 +50,11 @@ const Footer = () => {
                   Sign Up
                 </Button>
               </div>
-              <p className="text-xs text-slate-400 mt-3">
+              <p className="text-xs text-gray-500  mt-3">
                 By clicking Sign Up you're confirming that you agree with our{" "}
                 <a href="#" className="text-purple-400 hover:underline">
                   Terms and Conditions
                 </a>
-                .
               </p>
             </div>
           </div>
@@ -78,10 +77,10 @@ const Footer = () => {
              </div>
                 <div>
                   <h3 className="text-xl font-bold">Invoice App</h3>
-                  <p className="text-sm text-slate-400">Powered by AgilityAI</p>
+                  <p className="text-sm text-gray-500 ">Powered by AgilityAI</p>
                 </div>
               </div>
-              <p className="text-slate-300 max-w-md">
+              <p className="text-gray-500  max-w-md">
                 AI-driven business solutions that simplify your workflow.
               </p>
             </div>
@@ -89,7 +88,7 @@ const Footer = () => {
             {/* Contact Info */}
             <div>
               <h4 className="text-lg font-semibold mb-4">Contact Us</h4>
-              <div className="space-y-3 text-slate-300">
+              <div className="space-y-3 text-gray-500 ">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-purple-500 mt-1" />
                   <p>Ghaziabad, Uttar Pradesh, India</p>
@@ -117,33 +116,33 @@ const Footer = () => {
             {/* Company Links */}
             <div>
               <h4 className="text-lg font-semibold mb-4">Company</h4>
-              <ul className="space-y-3 text-slate-300">
-                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
+              <ul className="space-y-3 text-gray-500 ">
+                <li><a href="#" className="hover:text-black transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Contact</a></li>
               </ul>
             </div>
 
             {/* Product Links */}
             <div>
               <h4 className="text-lg font-semibold mb-4">Product</h4>
-              <ul className="space-y-3 text-slate-300">
+              <ul className="space-y-3 text-gray-500 ">
                 <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">FAQs</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Get Started</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">FAQs</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Get Started</a></li>
               </ul>
             </div>
 
             {/* Resources Links */}
             <div>
               <h4 className="text-lg font-semibold mb-4">Resources</h4>
-              <ul className="space-y-3 text-slate-300">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">User Guide</a></li>
+              <ul className="space-y-3 text-gray-500 ">
+                <li><a href="#" className="hover:text-black transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Support</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">User Guide</a></li>
               </ul>
             </div>
           </div>
@@ -151,7 +150,7 @@ const Footer = () => {
 
         {/* Copyright */}
         <div className="text-center pt-4 border-t border-slate-700">
-          <p className="text-slate-400">
+          <p className="text-gray-800 ">
             © 2025 Agility AI Pvt. Ltd. All rights reserved.
           </p>
         </div>

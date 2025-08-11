@@ -48,12 +48,12 @@ const FAQSection = () => {
   };
 
   return (
-    <section id="FAQsection"className="py-20 px-4 bg-gradient-to-b from-slate-900 to-slate-800">
+    <section id="FAQsection"className="py-20 px-4 bg-transparent">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold text-white mb-4">FAQs</h2>
-          <p className="text-lg text-slate-300">
+          <h2 className="text-5xl font-bold text-black mb-4">FAQs</h2>
+          <p className="text-lg text-gray-500 ">
             Be the first to know about updates, new tools, and exclusive deals.
           </p>
         </div>
@@ -77,12 +77,12 @@ const FAQSection = () => {
               >
                 {/* Question Number Circle */}
                 <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">{faq.id}</span>
+                  <span className="text-black font-semibold text-sm">{faq.id}</span>
                 </div>
 
                 {/* Question Text */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-medium text-white">
+                  <h3 className="text-lg font-medium text-black">
                     {faq.question}
                   </h3>
                 </div>
@@ -107,7 +107,7 @@ const FAQSection = () => {
                 )}
               >
                 <div className="pl-16 pr-12">
-                  <p className="text-slate-300 leading-relaxed">
+                  <p className="text-gray-700  leading-relaxed">
                     {faq.answer}
                   </p>
                 </div>
