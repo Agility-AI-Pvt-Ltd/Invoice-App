@@ -43,7 +43,7 @@ const TaxSummary = () => {
         {/* Header Section */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-foreground">Hello A</h1>
-            <div className="flex flex-row items-center gap-2 sm:gap-3">
+            <div className="flex flex-row items-center gap-2 sm:gap-3 flex-nowrap">
               {/* Date picker: full on sm+, icon-only on mobile */}
               <div className="hidden sm:block">
                 <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} />

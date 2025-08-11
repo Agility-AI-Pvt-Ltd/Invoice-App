@@ -286,7 +286,7 @@ export function TaxSummaryTable() {
     <Card className="p-3 sm:p-4 lg:p-6 bg-white">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <h3 className="text-lg sm:text-xl font-semibold">Tax Summary</h3>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-row items-center gap-2 sm:gap-3 flex-nowrap">
           {/* Date picker responsive */}
           <div className="hidden sm:block">
             <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} />
