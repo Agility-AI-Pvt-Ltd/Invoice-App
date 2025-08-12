@@ -1,8 +1,16 @@
 import InventorySummary from "@/components/InventorySummary"
 import InventoryTable from "@/components/InventoryTable"
+import AddProductForm from "@/components/product-form/productForm";
 import { NavbarButton } from "@/components/ui/resizable-navbar"
+import { useState } from "react";
 
 const Inventory = () => {
+    const [showAddProductForm, setShowAddProductForm] = useState(false);
+    if (showAddProductForm) {
+        return <div className="w-full h-full">
+            <AddProductForm />
+        </div>
+    }
     return (
         <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8 space-y-6">
             {/* Header */}
@@ -11,7 +19,7 @@ const Inventory = () => {
                     Inventory Summary
                 </span>
                 {/* TODO : phone responsive */}
-                <NavbarButton className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg">
+                <NavbarButton className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg" onClick={() => setShowAddProductForm(true)}>
                     Add Products
                 </NavbarButton>
             </div>
