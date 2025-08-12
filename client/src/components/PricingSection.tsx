@@ -106,10 +106,10 @@ export default function PricingSection() {
               : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-black mb-4">
             Ready to Get Started?
           </h2>
-          <p className="text-lg text-gray-300 mb-8">
+          <p className="text-lg text-gray-500 mb-8">
             Choose a plan that suits your business needs
           </p>
 
@@ -122,7 +122,7 @@ export default function PricingSection() {
               onCheckedChange={setIsYearly}
               className="data-[state=checked]:bg-primary"
             />
-            <span className={`text-lg ${isYearly ? 'text-white' : 'text-gray-400'}`}>
+            <span className={`text-lg ${isYearly ? 'text-white' : 'text-gray-500'}`}>
               Yearly
             </span>
           </div>
