@@ -1,23 +1,39 @@
-require("dotenv").config();
-const express = require("express");
-const path = require("path");
-const connectDB = require("./config/db");
-const bodyParser = require("body-parser");
-const session = require("express-session");
-require("dotenv").config();
-const cors = require("cors");
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import connectDB from "./config/db.js";
+import bodyParser from "body-parser";
+import session from "express-session";
+import cors from "cors";
+
+// Routes (saare .js extension ke saath)
+import authRoutes from "./routes/auth.js";
+import invoiceRoutes from "./routes/invoices.js";
+import expenseInvoiceRoutes from "./routes/expense-invoices.js";
+import userRoutes from "./routes/users.js";
+import scanInvoiceRoutes from "./routes/scanInvoice.js";
+import inventoryRoutes from "./routes/inventory.js";
+
+// __dirname ka ES module version
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Initialize Express
 const app = express();
-// Enable CORS for all routes
+
+// Enable CORS
 app.use(
   cors({
-    origin: "http://localhost:5173", // Allow all origins, adjust as needed for security
+    origin: "http://localhost:5173",
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    credentials: true, // Allow credentials if needed
+    credentials: true,
   })
 );
 
-// Set security headers
+// Security headers
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -35,8 +51,8 @@ connectDB().catch((err) => {
 });
 
 // Middleware
-app.use(express.json({ limit: "2mb" })); // Increased payload size limit
-app.use(express.urlencoded({ extended: true, limit: "2mb" })); // Increased payload size limit for URL-encoded data
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
   session({
@@ -47,20 +63,12 @@ app.use(
   })
 );
 
-// Debug middleware to log requests
+// Debug log
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   console.log("Request body:", req.body);
   next();
 });
-
-// Import routes
-const authRoutes = require("./routes/auth");
-const invoiceRoutes = require("./routes/invoices");
-const expenseInvoiceRoutes = require("./routes/expense-invoices");
-const userRoutes = require("./routes/users");
-const scanInvoiceRoutes = require("./routes/scanInvoice");
-const inventoryRoutes = require("./routes/inventory");
 
 // Register routes
 app.use("/api/auth", authRoutes);
@@ -73,17 +81,16 @@ app.use("/api/inventory", inventoryRoutes);
 // Serve static files
 app.use(express.static("public"));
 
-// Serve the main HTML file
+// Serve HTML pages
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Serve the scan page
 app.get("/scan", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "scan.html"));
 });
 
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: "Something broke!" });
