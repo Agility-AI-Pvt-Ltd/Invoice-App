@@ -42,12 +42,6 @@ const StickyScroll: React.FC<StickyScrollProps> = ({
     setActiveCard(closestBreakpointIndex);
   });
 
-  const backgroundColors = [
-    "hsl(var(--background))",
-    "hsl(var(--background-secondary))",
-    "hsl(var(--background-tertiary))",
-  ];
-
   const linearGradients = [
     "linear-gradient(to bottom right, hsl(var(--primary)), hsl(var(--primary-glow)))",
     "linear-gradient(to bottom right, hsl(var(--accent)), hsl(var(--primary)))",
@@ -62,9 +56,6 @@ const StickyScroll: React.FC<StickyScrollProps> = ({
 
   return (
     <motion.div
-      animate={{
-        backgroundColor: backgroundColors[activeCard % backgroundColors.length],
-      }}
       className="relative flex h-[30rem] justify-center space-x-10 overflow-y-auto no-scrollbar"
       ref={ref}
     >

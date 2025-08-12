@@ -486,6 +486,8 @@
 // export default Navbar;
 
 
+
+
 import {
   Navbar,
   NavBody,
@@ -506,15 +508,11 @@ const NavbarUpdated = () => {
   const navigate = useNavigate();
 
   const navItems = [
-    { name: "Features", link: "#features"},
+    { name: "Features", link: "#features" },
     { name: "Pricing", link: "#pricing-section" },
     { name: "FAQs", link: "#FAQsection" },
     { name: "Testimonials", link: "#tesimonialsection" },
     { name: "About Us", link: "#about" },
-    // { name: "Careers", link: "#careers" },
-    // { name: "Contact", link: "#contact" },
-    // { name: "Blog", link: "#blog" },
-    // { name: "Press Kit", link: "#presskit" },
   ];
 
   useEffect(() => {
@@ -535,43 +533,38 @@ const NavbarUpdated = () => {
   return (
     <div
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-        scrolled
+        scrolled ? "bg-white/80 backdrop-blur-md shadow-md" : "bg-transparent"
       }`}
     >
       <Navbar>
         {/* Desktop View */}
         <NavBody>
-        <div className="">
-              <div className="flex items-center gap-3">
-              <div className="w-12 h-10 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-10 rounded-lg overflow-hidden">
               <img
                 src="/agility.jpg"
                 alt="Agility Logo"
                 className="w-full h-full object-cover"
               />
-             </div>
-                <div>
-                  <h3 className="text-xl font-bold">Invoice App</h3>
-                  <p className="text-sm text-slate-400">Powered by AgilityAI</p>
-                </div>
-              </div>
-              
             </div>
-          
+            <div>
+              <h3 className="text-xl font-bold">Invoice App</h3>
+              <p className="text-sm text-slate-400">Powered by AgilityAI</p>
+            </div>
+          </div>
 
           <NavItems
             items={navItems.map((item) => ({
-              
               name: item.name,
               link: item.link,
             }))}
           />
 
           <div className="flex items-center gap-4">
-            <NavbarButton  onClick={() => navigate("/login")}>
-              Login
-            </NavbarButton>
-            <NavbarButton  onClick={() => navigate("/signup")} className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
+            <NavbarButton onClick={() => navigate("/login")}>Login</NavbarButton>
+            <NavbarButton
+              onClick={() => navigate("/signup")}
+              className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
             >
               Signup
             </NavbarButton>
@@ -605,18 +598,17 @@ const NavbarUpdated = () => {
                   scrollTo(item.link.replace("#", ""));
                   setIsMobileMenuOpen(false);
                 }}
-                className="relative text-black dark:text-black"
+                className="relative text-black dark:text-white w-full py-2"
               >
-                <span className="block">{item.name}</span>
+                {item.name}
               </a>
             ))}
-            <div className="flex w-full flex-col gap-4">
+            <div className="flex w-full flex-col gap-4 mt-4">
               <NavbarButton
                 onClick={() => {
                   navigate("/login");
                   setIsMobileMenuOpen(false);
                 }}
-                
                 className="w-full"
               >
                 Login
@@ -635,11 +627,9 @@ const NavbarUpdated = () => {
           </MobileNavMenu>
         </MobileNav>
       </Navbar>
-
-      {/* Optional visual blur below navbar */}
-      {/* <div className="fixed top-16 left-0 right-0 h-4 bg-gradient-to-b from-black/30 to-transparent z-40 pointer-events-none" /> */}
     </div>
   );
 };
 
 export default NavbarUpdated;
+
