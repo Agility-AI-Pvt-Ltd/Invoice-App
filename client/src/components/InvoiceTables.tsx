@@ -25,9 +25,9 @@
 //   const monthMultiplier = selectedDate.getMonth() + 1;
 //   const yearSuffix = selectedDate.getFullYear();
 //   const baseAmount = 15000 + monthMultiplier * 500;
-  
+
 //   const statuses: Invoice["status"][] = ["paid", "pending", "overdue"];
-  
+
 //   return Array.from({ length: 12 + monthMultiplier }, (_, index) => ({
 //     id: `${index + 1}`,
 //     number: `INV-${yearSuffix}/${String(index + 1).padStart(3, '0')}`,
@@ -60,12 +60,12 @@
 //   const invoices = generateInvoices(selectedDate);
 //   const [currentPage, setCurrentPage] = useState(1);
 //   const itemsPerPage = 10;
-  
+
 //   const totalPages = Math.ceil(invoices.length / itemsPerPage);
 //   const startIndex = (currentPage - 1) * itemsPerPage;
 //   const endIndex = startIndex + itemsPerPage;
 //   const currentInvoices = invoices.slice(startIndex, endIndex);
-  
+
 //   const goToPage = (page: number) => {
 //     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
 //   };
@@ -160,7 +160,7 @@
 //               <ChevronLeft className="h-4 w-4 mr-1" />
 //               Previous
 //             </Button>
-            
+
 //             {/* Page Numbers */}
 //             <div className="flex items-center gap-1">
 //               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -175,7 +175,7 @@
 //                 </Button>
 //               ))}
 //             </div>
-            
+
 //             <Button 
 //               variant="outline" 
 //               size="sm" 
@@ -731,9 +731,10 @@ const downloadCSV = (data: Invoice[], filename: string) => {
 
 interface InvoiceTableProps {
   selectedDate: Date;
+  setIsInvoiceFormOpen: (val: boolean) => void
 }
 
-export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
+export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen }: InvoiceTableProps) {
   const allInvoices = generateInvoices(selectedDate);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeStatusFilter, setActiveStatusFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
@@ -784,7 +785,7 @@ export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
               </Button>
             ))}
 
-            <Button size="sm" className="hover:bg-black hover:text-white" variant="ghost"  >
+            <Button size="sm" className="hover:bg-black hover:text-white" variant="ghost" onClick={() => setIsInvoiceFormOpen(true)}>
               <PlusCircle className="h-4 w-4 mr-2 " /> New Invoice
             </Button>
             <Button size="sm" variant="ghost">
@@ -850,7 +851,7 @@ export function InvoiceTable({ selectedDate }: InvoiceTableProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-gray-900 text-white" align="end" >
                         <DropdownMenuItem>
-                          <Download className="mr-2 h-4 w-4"/> Download
+                          <Download className="mr-2 h-4 w-4" /> Download
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-500">
                           <Trash className="mr-2 h-4 w-4" /> Delete
