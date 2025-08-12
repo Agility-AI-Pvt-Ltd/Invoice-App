@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
@@ -10,12 +8,14 @@ import { ExpenseTable } from "@/components/ExpenseTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import ExpenseForm from "@/components/expense-form/ExpenseForm";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 interface Expense {
   id: string;
@@ -119,14 +119,25 @@ const initialExpenses: Expense[] = [
     date: "22 July 2024",
   },
 ];
+// Helper function to parse expense date string to Date object
+const parseExpenseDate = (dateString: string): Date | null => {
+  try {
+    // Parse date in format "29 July 2024"
+    return parse(dateString, "dd MMMM yyyy", new Date());
+  } catch (error) {
+    console.warn(`Failed to parse date: ${dateString}`, error);
+    return null;
+  }
+};
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState("");
-
   //@ts-expect-error - might use later
   const [showAddExpense, setShowAddExpense] = useState(false);
+  //@ts-expect-error - might use later
   const [showExportDialog, setShowExportDialog] = useState(false);
+  //@ts-expect-error - might use later
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [filters, setFilters] = useState({
     dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
@@ -198,8 +209,14 @@ export default function Expenses() {
     const matchesAmount = !filters.minAmount || expense.amount >= parseInt(filters.minAmount);
 
     // Date filter
-    const matchesDate = !filters.dateRange.from ||
-      new Date(expense.date).getTime() >= new Date(filters.dateRange.from).getTime();
+    // Date filter - Fixed to handle date parsing properly
+    let matchesDate = true;
+    if (filters.dateRange.from) {
+      const expenseDate = parseExpenseDate(expense.date);
+      if (expenseDate) {
+        matchesDate = expenseDate.getTime() >= filters.dateRange.from.getTime();
+      }
+    }
 
     return matchesSearch && matchesStatus && matchesMonth && matchesAmount && matchesDate;
   });
@@ -273,33 +290,34 @@ export default function Expenses() {
       return;
     }
 
-  //   const expense: Expense = {
-  //     id: `expense-${Date.now()}`,
-  //     expenseId: generateExpenseId(),
-  //     title: newExpense.title,
-  //     vendorName: newExpense.vendorName,
-  //     vendorAvatar: newExpense.vendorName[0]?.toUpperCase() || 'V',
-  //     paymentMethod: newExpense.paymentMethod,
-  //     amount: parseInt(newExpense.amount),
-  //     status: newExpense.status,
-  //     date: format(new Date(newExpense.date), 'dd MMMM yyyy'),
-  //   };
+    const expense: Expense = {
+      id: `expense-${Date.now()}`,
+      expenseId: generateExpenseId(),
+      title: newExpense.title,
+      vendorName: newExpense.vendorName,
+      vendorAvatar: newExpense.vendorName[0]?.toUpperCase() || 'V',
+      paymentMethod: newExpense.paymentMethod,
+      amount: parseInt(newExpense.amount),
+      status: newExpense.status,
+      date: format(new Date(newExpense.date), 'dd MMMM yyyy'),
+    };
 
-  //   setExpenses(prev => [expense, ...prev]);
-  //   toast({
-  //     title: "Expense Added",
-  //     description: "New expense has been added successfully"
-  //   });
+    setExpenses(prev => [expense, ...prev]);
+    toast({
+      title: "Expense Added",
+      description: "New expense has been added successfully"
+    });
 
-  //   setNewExpense({
-  //     title: "",
-  //     vendorName: "",
-  //     paymentMethod: "",
-  //     amount: "",
-  //     status: "Unpaid",
-  //     date: ""
-  //   });
-  // };
+    setNewExpense({
+      title: "",
+      vendorName: "",
+      paymentMethod: "",
+      amount: "",
+      status: "Unpaid",
+      date: ""
+    });
+  }
+
 
   const handleDeleteExpense = (expenseId: string) => {
     setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
@@ -326,9 +344,6 @@ export default function Expenses() {
   return (
     <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
       <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header */}
-
-
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <ExpenseMetricCard
@@ -377,7 +392,7 @@ export default function Expenses() {
                 />
               </div>
 
-              <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+              {/* <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Upload className="h-4 w-4 mr-2" />
@@ -404,9 +419,9 @@ export default function Expenses() {
                     </p>
                   </div>
                 </DialogContent>
-              </Dialog>
+              </Dialog> */}
 
-              <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+              {/* <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Download className="h-4 w-4 mr-2" />
@@ -428,7 +443,7 @@ export default function Expenses() {
                     </div>
                   </div>
                 </DialogContent>
-              </Dialog>
+              </Dialog> */}
 
               <Popover>
                 <PopoverTrigger asChild>
@@ -449,54 +464,54 @@ export default function Expenses() {
                       />
                     </div>
 
-                      <div className="space-y-2">
-                        <Label>Status</Label>
-                        <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All statuses" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="Paid">Paid</SelectItem>
-                            <SelectItem value="Unpaid">Unpaid</SelectItem>
-                            <SelectItem value="Overdue">Overdue</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="Paid">Paid</SelectItem>
+                          <SelectItem value="Unpaid">Unpaid</SelectItem>
+                          <SelectItem value="Overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label>Month</Label>
-                        <Select value={filters.month} onValueChange={(value) => setFilters({...filters, month: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All months" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Months</SelectItem>
-                            <SelectItem value="January">January</SelectItem>
-                            <SelectItem value="February">February</SelectItem>
-                            <SelectItem value="March">March</SelectItem>
-                            <SelectItem value="April">April</SelectItem>
-                            <SelectItem value="May">May</SelectItem>
-                            <SelectItem value="June">June</SelectItem>
-                            <SelectItem value="July">July</SelectItem>
-                            <SelectItem value="August">August</SelectItem>
-                            <SelectItem value="September">September</SelectItem>
-                            <SelectItem value="October">October</SelectItem>
-                            <SelectItem value="November">November</SelectItem>
-                            <SelectItem value="December">December</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Month</Label>
+                      <Select value={filters.month} onValueChange={(value) => setFilters({ ...filters, month: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All months" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Months</SelectItem>
+                          <SelectItem value="January">January</SelectItem>
+                          <SelectItem value="February">February</SelectItem>
+                          <SelectItem value="March">March</SelectItem>
+                          <SelectItem value="April">April</SelectItem>
+                          <SelectItem value="May">May</SelectItem>
+                          <SelectItem value="June">June</SelectItem>
+                          <SelectItem value="July">July</SelectItem>
+                          <SelectItem value="August">August</SelectItem>
+                          <SelectItem value="September">September</SelectItem>
+                          <SelectItem value="October">October</SelectItem>
+                          <SelectItem value="November">November</SelectItem>
+                          <SelectItem value="December">December</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label>Minimum Amount</Label>
-                        <Input
-                          type="number"
-                          placeholder="Enter minimum amount"
-                          value={filters.minAmount}
-                          onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Minimum Amount</Label>
+                      <Input
+                        type="number"
+                        placeholder="Enter minimum amount"
+                        value={filters.minAmount}
+                        onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label>Minimum Amount</Label>
                       <Input
@@ -507,27 +522,29 @@ export default function Expenses() {
                       />
                     </div>
 
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setFilters({
-                          dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
-                          status: "all",
-                          month: "all",
-                          minAmount: ""
-                        })}
-                        className="w-full"
-                      >
-                        Clear Filters
-                      </Button>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="h-4 w-4" />
-                      <span className="ml-2">Add New Expenses</span>
+                    <Button
+                      variant="outline"
+                      onClick={() => setFilters({
+                        dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
+                        status: "all",
+                        month: "all",
+                        minAmount: ""
+                      })}
+                      className="w-full"
+                    >
+                      Clear Filters
                     </Button>
-                {/* Add New Expenses Dropdown */}
-                {/* <DropdownMenu>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {/* </DropdownMenuContent>
+              </DropdownMenu> */}
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={()=>setIsExpenseFormOpen(true)}>
+                <Plus className="h-4 w-4" />
+                <span className="ml-2">Add New Expenses</span>
+              </Button>
+              {/* Add New Expenses Dropdown */}
+              {/* <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                       <Plus className="h-4 w-4" />
@@ -607,152 +624,152 @@ export default function Expenses() {
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu> */}
-              </div>
+            </div>
 
-              {/* Mobile Actions - Icon Only */}
-              <div className="sm:hidden flex items-center gap-2">
-                {/* Filter Icon Button */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="outline">
-                      <Filter className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Filter Expenses</h4>
-                      
-                      <div className="space-y-2">
-                        <Label>Date</Label>
-                        <SingleDatePicker 
-                          date={filters.dateRange.from}
-                          onDateChange={(date) => {
-                            setFilters({...filters, dateRange: { from: date, to: date }});
-                          }}
-                          iconOnly={true}
-                        />
-                      </div>
+            {/* Mobile Actions - Icon Only */}
+            <div className="sm:hidden flex items-center gap-2">
+              {/* Filter Icon Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="outline">
+                    <Filter className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Filter Expenses</h4>
 
-                      <div className="space-y-2">
-                        <Label>Status</Label>
-                        <Select value={filters.status} onValueChange={(value) => {
-                          setFilters({...filters, status: value});
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All statuses" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="Paid">Paid</SelectItem>
-                            <SelectItem value="Unpaid">Unpaid</SelectItem>
-                            <SelectItem value="Overdue">Overdue</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Month</Label>
-                        <Select value={filters.month} onValueChange={(value) => {
-                          setFilters({...filters, month: value});
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All months" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Months</SelectItem>
-                            <SelectItem value="January">January</SelectItem>
-                            <SelectItem value="February">February</SelectItem>
-                            <SelectItem value="March">March</SelectItem>
-                            <SelectItem value="April">April</SelectItem>
-                            <SelectItem value="May">May</SelectItem>
-                            <SelectItem value="June">June</SelectItem>
-                            <SelectItem value="July">July</SelectItem>
-                            <SelectItem value="August">August</SelectItem>
-                            <SelectItem value="September">September</SelectItem>
-                            <SelectItem value="October">October</SelectItem>
-                            <SelectItem value="November">November</SelectItem>
-                            <SelectItem value="December">December</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Minimum Amount</Label>
-                        <Input
-                          type="number"
-                          placeholder="Enter minimum amount"
-                          value={filters.minAmount}
-                          onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
-                        />
-                      </div>
-
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setFilters({
-                            dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
-                            status: "all",
-                            month: "all",
-                            minAmount: ""
-                          });
+                    <div className="space-y-2">
+                      <Label>Date</Label>
+                      <SingleDatePicker
+                        date={filters.dateRange.from}
+                        onDateChange={(date) => {
+                          setFilters({ ...filters, dateRange: { from: date, to: date } });
                         }}
-                        className="w-full"
-                      >
-                        Clear Filters
-                      </Button>
+                        iconOnly={true}
+                      />
                     </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
 
-                {/* Export Icon Button */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="outline">
-                      <Download className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-white text-black">
-                    <DropdownMenuItem onClick={() => handleExport(false)}>
-                      Export All Records
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExport(true)}>
-                      Export Filtered Records
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Import Icon Button */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="outline">
-                      <Upload className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Import Expenses</h4>
-                      <div>
-                        <Label htmlFor="file-upload">Select CSV File</Label>
-                        <Input
-                          id="file-upload"
-                          type="file"
-                          accept=".csv,.xlsx,.xls"
-                          onChange={handleImport}
-                          className="mt-2"
-                        />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Missing columns will be filled with "-". Supported formats: CSV, Excel
-                      </p>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={filters.status} onValueChange={(value) => {
+                        setFilters({ ...filters, status: value });
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="Paid">Paid</SelectItem>
+                          <SelectItem value="Unpaid">Unpaid</SelectItem>
+                          <SelectItem value="Overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
 
-                <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="h-5 w-5" />
+                    <div className="space-y-2">
+                      <Label>Month</Label>
+                      <Select value={filters.month} onValueChange={(value) => {
+                        setFilters({ ...filters, month: value });
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All months" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Months</SelectItem>
+                          <SelectItem value="January">January</SelectItem>
+                          <SelectItem value="February">February</SelectItem>
+                          <SelectItem value="March">March</SelectItem>
+                          <SelectItem value="April">April</SelectItem>
+                          <SelectItem value="May">May</SelectItem>
+                          <SelectItem value="June">June</SelectItem>
+                          <SelectItem value="July">July</SelectItem>
+                          <SelectItem value="August">August</SelectItem>
+                          <SelectItem value="September">September</SelectItem>
+                          <SelectItem value="October">October</SelectItem>
+                          <SelectItem value="November">November</SelectItem>
+                          <SelectItem value="December">December</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Minimum Amount</Label>
+                      <Input
+                        type="number"
+                        placeholder="Enter minimum amount"
+                        value={filters.minAmount}
+                        onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+                      />
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFilters({
+                          dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
+                          status: "all",
+                          month: "all",
+                          minAmount: ""
+                        });
+                      }}
+                      className="w-full"
+                    >
+                      Clear Filters
                     </Button>
-                {/* Add Expense Icon Button */}
-                {/* <DropdownMenu>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Export Icon Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="outline">
+                    <Download className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-white text-black">
+                  <DropdownMenuItem onClick={() => handleExport(false)}>
+                    Export All Records
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport(true)}>
+                    Export Filtered Records
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Import Icon Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="outline">
+                    <Upload className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80 p-4 bg-white text-black">
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Import Expenses</h4>
+                    <div>
+                      <Label htmlFor="file-upload">Select CSV File</Label>
+                      <Input
+                        id="file-upload"
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={handleImport}
+                        className="mt-2"
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Missing columns will be filled with "-". Supported formats: CSV, Excel
+                    </p>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="h-5 w-5" />
+              </Button>
+              {/* Add Expense Icon Button */}
+              {/* <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
                       <Plus className="h-5 w-5" />
@@ -831,16 +848,15 @@ export default function Expenses() {
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu> */}
-              </div>
             </div>
           </div>
-
-          <ExpenseTable
-            expenses={filteredExpenses}
-            searchTerm={searchTerm}
-            onDeleteExpense={handleDeleteExpense}
-          />
         </div>
+
+        <ExpenseTable
+          expenses={filteredExpenses}
+          searchTerm={searchTerm}
+          onDeleteExpense={handleDeleteExpense}
+        />
       </div>
     </div>
   );

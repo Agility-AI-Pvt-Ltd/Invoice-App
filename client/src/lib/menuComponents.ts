@@ -11,7 +11,6 @@ export const menuComponentMap: Record<string, React.LazyExoticComponent<() => Re
     'invoices': lazy(() => import("@/pages/invoices")),
     "sales": lazy(() => import("@/pages/sales-revenue")),
     "sales-revenue": lazy(() => import("@/pages/sales-revenue")),
-    "expenses-purchases": lazy(() => import("@/pages/expenses-purchases")),
     "tax-summary": lazy(() => import("@/pages/tax-summary")),
     "settings":lazy(()=> import("@/pages/settings")),
     "team-employees":lazy(()=> import("@/pages/team-employees"))
