@@ -70,7 +70,8 @@ const Index = () => {
             <RevenueChart selectedDate={selectedDate} />
           </div>
           <div className="lg:col-span-1">
-            <CashFlowCard selectedDate={selectedDate} />
+            {/* <CashFlowCard selectedDate={selectedDate} /> */}
+            <CashFlowCard/>
           </div>
         </div>
 

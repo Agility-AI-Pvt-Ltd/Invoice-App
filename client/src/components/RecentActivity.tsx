@@ -18,62 +18,12 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
-
-// Activity Type
-type Activity = {
-    description: string;
-    type: "Transaction" | "Invoice" | "Access Change";
-    user: string;
-    date: Date;
-    amount?: number;
-    status: "Paid" | "Pending" | "Active" | "Refunded" | "Revoked";
-};
-
-// Dummy Data
-const activities: Activity[] = [
-    {
-        description: "Payment of ₹12,500 received from Arvind Pvt Ltd",
-        type: "Transaction",
-        user: "Executive - Simran",
-        date: new Date("2025-07-18T10:45:00"),
-        amount: 12500,
-        status: "Paid",
-    },
-    {
-        description: "Invoice #INV-0932 sent to Orchid Ltd.",
-        type: "Invoice",
-        user: "CA - Rahul",
-        date: new Date("2025-07-18T10:45:00"),
-        amount: 12500,
-        status: "Pending",
-    },
-    {
-        description: "Access granted to Anita for \"Sales Data\" only",
-        type: "Access Change",
-        user: "Owner",
-        date: new Date("2025-07-18T10:45:00"),
-        status: "Active",
-    },
-    {
-        description: "Refund of ₹1,000 issued to Bluewave Pvt Ltd",
-        type: "Transaction",
-        user: "Executive - Rohan",
-        date: new Date("2025-07-18T10:45:00"),
-        amount: 12500,
-        status: "Refunded",
-    },
-    {
-        description: "Access revoked for Mohan — cannot view invoices",
-        type: "Access Change",
-        user: "Owner",
-        date: new Date("2025-07-18T10:45:00"),
-        status: "Revoked",
-    },
-];
+import { useState, useEffect } from "react";
+import Cookies from "js-cookie";
+import { getRecentActivity, type RecentActivity } from "@/services/api/dashboard";
 
 // Column Definitions
-const columns: ColumnDef<Activity>[] = [
+const columns: ColumnDef<RecentActivity>[] = [
     {
         accessorKey: "description",
         header: "Activity Description",
@@ -90,7 +40,7 @@ const columns: ColumnDef<Activity>[] = [
     {
         accessorKey: "date",
         header: "Date & Time",
-        cell: ({ row }) => format(row.original.date, "PPP, p"),
+        cell: ({ row }) => format(new Date(row.original.date), "PPP, p"),
     },
     {
         accessorKey: "amount",
@@ -102,7 +52,7 @@ const columns: ColumnDef<Activity>[] = [
         header: "Status",
         cell: ({ row }) => {
             const status = row.original.status;
-            const badgeColors: Record<Activity["status"], string> = {
+            const badgeColors: Record<RecentActivity["status"], string> = {
                 Paid: "bg-green-100 text-green-600",
                 Pending: "bg-yellow-100 text-yellow-600",
                 Active: "bg-blue-100 text-blue-600",
@@ -121,7 +71,25 @@ const columns: ColumnDef<Activity>[] = [
 
 // Component
 const RecentActivityTable = () => {
-    const [data] = useState(activities);
+    const [data, setData] = useState<RecentActivity[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchActivities = async () => {
+            try {
+                const token = Cookies.get("authToken");
+                if (!token) return;
+                const activities = await getRecentActivity(token, 10);
+                setData(activities);
+            } catch (err) {
+                console.error("Error fetching recent activity:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchActivities();
+    }, []);
+
     const table = useReactTable({
         data,
         columns,
@@ -130,7 +98,7 @@ const RecentActivityTable = () => {
 
     return (
         <div className="w-full">
-            <Card className="h-full  bg-white">
+            <Card className="h-full bg-white">
                 <CardHeader className="pb-2">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <CardTitle className="text-xl font-semibold text-gray-800">
@@ -150,33 +118,42 @@ const RecentActivityTable = () => {
                 </CardHeader>
 
                 <CardContent className="p-0 overflow-auto px-4 py-2">
-                    <Table className="text-sm">
-                        <TableHeader>
-                            {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
-                                    {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id} className="text-sm">
-                                            {flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {table.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id} className="text-sm whitespace-normal break-words max-w-xs">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    {loading ? (
+                        <div className="flex justify-center items-center py-6">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                    ) : (
+                        <Table className="text-sm">
+                            <TableHeader>
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <TableRow key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => (
+                                            <TableHead key={header.id} className="text-sm">
+                                                {flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </TableHeader>
+                            <TableBody>
+                                {table.getRowModel().rows.map((row) => (
+                                    <TableRow key={row.id}>
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell
+                                                key={cell.id}
+                                                className="text-sm whitespace-normal break-words max-w-xs"
+                                            >
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
                 </CardContent>
             </Card>
         </div>
