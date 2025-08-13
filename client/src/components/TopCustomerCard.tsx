@@ -1,99 +1,87 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bar } from "react-chartjs-2"
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Bar } from "react-chartjs-2";
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
+import { cn } from "@/lib/utils";
+import { getTopCustomers, type TopCustomersResponse } from "@/services/api/dashboard";
+import Cookies from "js-cookie";
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 export function TopCustomersCard({ className }: React.HTMLAttributes<HTMLDivElement>) {
+    const [topCustomers, setTopCustomers] = useState<TopCustomersResponse | null>(null);
 
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const token = Cookies.get("authToken");
+                if (!token) return;
+                const data = await getTopCustomers(token);
+                setTopCustomers(data);
+            } catch (error) {
+                console.error("Error fetching top customers:", error);
+            }
+        };
+        fetchData();
+    }, []);
 
     const options = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: {
-                display: false,
-            },
+            legend: { display: false },
         },
         scales: {
-            x: {
-                ticks: {
-                    font: {
-                        size: 12,
-                    },
-                },
-            },
-            y: {
-                ticks: {
-                    font: {
-                        size: 12,
-                    },
-                },
-            },
+            x: { ticks: { font: { size: 12 } } },
+            y: { ticks: { font: { size: 12 } } },
         },
-    }
+    };
 
-    const values = [9000, 80000, 70000, 68000, 64000, 54000] //backend
-    const total = values.reduce((acc, val) => acc + val, 0)
-
-    const customerLabels = values.map((val, idx) => {
-        const percent = ((val / total) * 100).toFixed(2)
-        return `Customer ${idx + 1} (${percent}%)`
-    })
-
-    const data = {
-        labels: ["Cust.1", "Cust.2", "Cust.3", "Cust.4", "Cust.5", "Cust.6"], //Nmaes wil come from backend
-        datasets: [
-            {
-                label: "Top Customers",
-                data: values,
-                backgroundColor: [
-                    "#6366f1",
-                    "#22c55e",
-                    "#eab308",
-                    "#3b82f6",
-                    "#f97316",
-                    "#ef4444",
-                ],
+    // Prepare chart data
+    const chartData = topCustomers
+        ? {
+            labels: topCustomers.labels,
+            datasets: topCustomers.datasets.map((ds) => ({
+                ...ds,
                 borderRadius: 4,
                 barThickness: 28,
-            },
-        ],
-    }
+            })),
+        }
+        : {
+            labels: [],
+            datasets: [],
+        };
 
+    // Prepare legend with percentages
+    const total = topCustomers?.datasets[0]?.data.reduce((acc, val) => acc + val, 0) || 0;
+    const customerLabels =
+        topCustomers?.labels.map((label, idx) => {
+            const val = topCustomers.datasets[0].data[idx];
+            const percent = total ? ((val / total) * 100).toFixed(2) : "0";
+            return `${label} (${percent}%)`;
+        }) || [];
 
-    const colors = [
-        "#6366f1",
-        "#22c55e",
-        "#eab308",
-        "#3b82f6",
-        "#f97316",
-        "#ef4444",
-    ]
+    const colors = topCustomers?.datasets[0]?.backgroundColor || [];
 
     return (
-        <Card className={cn("bg-white",className)}  >
+        <Card className={cn("bg-white", className)}>
             <CardHeader>
                 <CardTitle className="text-base font-semibold">Top Customers</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col lg:flex-row gap-4 items-stretch">
-                    {/* Chart area */}
+                    {/* Chart */}
                     <div className="flex-1 min-w-0 h-[260px]">
-                        <Bar data={data} options={options} />
+                        <Bar data={chartData} options={options} />
                     </div>
 
-                    {/* Legend area */}
+                    {/* Legend */}
                     <div className="flex flex-col gap-3 text-sm w-[180px] shrink-0">
                         {customerLabels.map((label, idx) => (
                             <div key={idx} className="flex items-center gap-2 whitespace-nowrap">
-                                <span
-                                    className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: colors[idx] }}
-                                />
+                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[idx] }} />
                                 <span className="text-muted-foreground">{label}</span>
                             </div>
                         ))}
@@ -101,5 +89,5 @@ export function TopCustomersCard({ className }: React.HTMLAttributes<HTMLDivElem
                 </div>
             </CardContent>
         </Card>
-    )
+    );
 }

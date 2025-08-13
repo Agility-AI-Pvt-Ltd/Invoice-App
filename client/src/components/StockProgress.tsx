@@ -22,25 +22,15 @@ const Bar = ({ values }: { values: StockSegment[] }) => {
     )
 }
 
-const StockProgress = () => {
-    const stockData = {
-        inStock: [
-            { label: "In Stock", color: "bg-green-600", value: 60 },
-            { label: "In Progress", color: "bg-green-300", value: 25 },
-        ],
-        lowStock: [
-            { label: "Low Stock", color: "bg-orange-400", value: 45 },
-            { label: "In Progress", color: "bg-green-300", value: 20 },
-            { label: "Remaining", color: "bg-gray-200", value: 35 },
-        ],
-        outOfStock: [{ label: "Out of Stock", color: "bg-gray-200", value: 100 }],
-    }
+interface StockProgressProps {
+    inStock: StockSegment[]
+    lowStock: StockSegment[]
+    outOfStock: StockSegment[]
+}
 
-    const allSegments = [
-        ...stockData.inStock,
-        ...stockData.lowStock,
-        ...stockData.outOfStock,
-    ]
+const StockProgress = ({ inStock, lowStock, outOfStock }: StockProgressProps) => {
+    const allSegments = [...inStock, ...lowStock, ...outOfStock]
+
     const uniqueLegendItems = allSegments.filter(
         (item, i, self) => i === self.findIndex((s) => s.label === item.label)
     )
@@ -57,7 +47,7 @@ const StockProgress = () => {
                                 In Stock
                             </span>
                         </div>
-                        <Bar values={stockData.inStock} />
+                        <Bar values={inStock} />
                     </div>
 
                     {/* Low Stock */}
@@ -67,7 +57,7 @@ const StockProgress = () => {
                                 Low Stock
                             </span>
                         </div>
-                        <Bar values={stockData.lowStock} />
+                        <Bar values={lowStock} />
                     </div>
 
                     {/* Out of Stock */}
@@ -77,7 +67,7 @@ const StockProgress = () => {
                                 Out of Stock
                             </span>
                         </div>
-                        <Bar values={stockData.outOfStock} />
+                        <Bar values={outOfStock} />
                     </div>
                 </div>
 
