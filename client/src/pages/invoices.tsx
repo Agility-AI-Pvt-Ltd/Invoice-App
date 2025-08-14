@@ -6,6 +6,7 @@ import { InvoiceTable } from "@/components/InvoiceTables";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import InvoiceForm from "@/components/invoice-form/InvoiceForm";
+import { useProfile } from "@/contexts/ProfileContext";
 
 const Index = () => {
   //@ts-expect-error - TSX file, no type definitions for React
@@ -25,12 +26,13 @@ const Index = () => {
 
     );
   }
+  const { profile } = useProfile();
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-8xl mx-auto space-y-6">
         {/* Header with Date Filter */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">Hello A</h1>
+          <h1 className="text-2xl font-bold text-foreground">Hello {profile?.name}</h1>
           <DateRangePicker
           // date={selectedDate} onDateChange={setSelectedDate} //TODO - Uncomment when DateRangePicker is implemented
           />
@@ -71,7 +73,7 @@ const Index = () => {
           </div>
           <div className="lg:col-span-1">
             {/* <CashFlowCard selectedDate={selectedDate} /> */}
-            <CashFlowCard/>
+            <CashFlowCard />
           </div>
         </div>
 

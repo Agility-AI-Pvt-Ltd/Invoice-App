@@ -4,22 +4,22 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Search, 
+import {
+  Search,
   CalendarIcon,
   Download,
   MoreHorizontal,
@@ -41,7 +41,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRef } from "react";
 
-export const SalesTable = () => {
+export const SalesTable = ({
+  setIsSalesFormOn
+}: {
+  setIsSalesFormOn: (isOpen: boolean) => void;
+}) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredData, setFilteredData] = useState<SalesRecord[]>(salesData);
@@ -65,7 +69,7 @@ export const SalesTable = () => {
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
     let filtered = [...allData];
-    
+
     if (value) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(value.toLowerCase()) ||
@@ -73,19 +77,19 @@ export const SalesTable = () => {
         item.product.toLowerCase().includes(value.toLowerCase())
       );
     }
-    
+
     if (selectedDate) {
       const filterDate = format(selectedDate, 'dd MMMM yyyy');
       filtered = filtered.filter(item => item.dateOfSale === filterDate);
     }
-    
+
     setFilteredData(filtered);
   }, [allData, selectedDate]);
 
   const handleDateFilter = (date: Date | undefined) => {
     setSelectedDate(date);
     let filtered = [...allData];
-    
+
     if (searchTerm) {
       filtered = filtered.filter(item =>
         item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,12 +97,12 @@ export const SalesTable = () => {
         item.product.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (date) {
       const filterDate = format(date, 'dd MMMM yyyy');
       filtered = filtered.filter(item => item.dateOfSale === filterDate);
     }
-    
+
     setFilteredData(filtered);
   };
 
@@ -106,24 +110,24 @@ export const SalesTable = () => {
     const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortField(field);
     setSortDirection(newDirection);
-    
+
     const sorted = [...filteredData].sort((a, b) => {
       const aValue = a[field];
       const bValue = b[field];
-      
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return newDirection === 'asc' 
+        return newDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return newDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
-      
+
       return 0;
     });
-    
+
     setFilteredData(sorted);
   };
 
@@ -150,7 +154,7 @@ export const SalesTable = () => {
           ["Invoice Number", "Customer Name", "Product", "Quantity", "Unit Price", "Total Amount", "Date of Sale", "Payment Status"],
           [record.invoiceNumber, record.customerName, record.product, record.quantity, record.unitPrice, record.totalAmount, record.dateOfSale, record.paymentStatus]
         ].map(row => row.join(",")).join("\n");
-        
+
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -316,7 +320,7 @@ export const SalesTable = () => {
               className="pl-10 w-full sm:w-72"
             />
           </div>
-          
+
           {/* Desktop Actions */}
           <div className="hidden sm:flex gap-2">
             {/* Filter Dropdown */}
@@ -330,11 +334,11 @@ export const SalesTable = () => {
               <DropdownMenuContent className="w-80 p-4 bg-white text-black">
                 <div className="space-y-4">
                   <h4 className="font-medium">Filter Sales Data</h4>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="paymentStatus">Payment Status</Label>
-                    <Select 
-                      value={filters.paymentStatus} 
+                    <Select
+                      value={filters.paymentStatus}
                       onValueChange={(value) => setFilters(prev => ({ ...prev, paymentStatus: value }))}
                     >
                       <SelectTrigger>
@@ -347,11 +351,11 @@ export const SalesTable = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="monthBefore">Month</Label>
-                    <Select 
-                      value={filters.monthBefore} 
+                    <Select
+                      value={filters.monthBefore}
                       onValueChange={(value) => setFilters(prev => ({ ...prev, monthBefore: value }))}
                     >
                       <SelectTrigger>
@@ -374,7 +378,7 @@ export const SalesTable = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="minQuantity">Minimum Quantity</Label>
                     <Input
@@ -385,7 +389,7 @@ export const SalesTable = () => {
                       onChange={(e) => setFilters(prev => ({ ...prev, minQuantity: e.target.value }))}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="minAmount">Minimum Amount (₹)</Label>
                     <Input
@@ -396,7 +400,7 @@ export const SalesTable = () => {
                       onChange={(e) => setFilters(prev => ({ ...prev, minAmount: e.target.value }))}
                     />
                   </div>
-                  
+
                   <div className="flex justify-end gap-2 pt-4">
                     <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
                       Clear
@@ -408,7 +412,7 @@ export const SalesTable = () => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className={cn(!selectedDate && "text-black")}>
@@ -431,7 +435,7 @@ export const SalesTable = () => {
                 />
               </PopoverContent>
             </Popover>
-            
+
             {/* Import Dropdown */}
             <DropdownMenu >
               <DropdownMenuTrigger asChild>
@@ -443,7 +447,7 @@ export const SalesTable = () => {
               <DropdownMenuContent className="w-80 p-4 bg-white text-black">
                 <div className="space-y-4">
                   <h4 className="font-medium">Import Sales Data</h4>
-                  
+
                   <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
                     <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <div className="space-y-2">
@@ -467,12 +471,12 @@ export const SalesTable = () => {
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="text-xs text-muted-foreground">
                     <p>Supported formats: CSV, Excel (.xlsx, .xls)</p>
                     <p>Expected columns: Invoice Number, Customer Name, Product, Quantity, Unit Price, Total Amount, Date of Sale, Payment Status</p>
                   </div>
-                  
+
                   <div className="flex justify-end gap-2 pt-4">
                     <Button size="sm" onClick={handleImport} disabled={!selectedFile}>
                       Import Data
@@ -481,7 +485,7 @@ export const SalesTable = () => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {/* Export Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -499,12 +503,12 @@ export const SalesTable = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsSalesFormOn(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add New Sales
             </Button>
-            
-            
+
+
           </div>
 
           {/* Mobile Actions - Icon Only */}
@@ -519,11 +523,11 @@ export const SalesTable = () => {
               <DropdownMenuContent className="w-80 p-4 bg-white text-black">
                 <div className="space-y-4">
                   <h4 className="font-medium">Filter Sales Data</h4>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="paymentStatus">Payment Status</Label>
-                    <Select 
-                      value={filters.paymentStatus} 
+                    <Select
+                      value={filters.paymentStatus}
                       onValueChange={(value) => setFilters(prev => ({ ...prev, paymentStatus: value }))}
                     >
                       <SelectTrigger>
@@ -536,11 +540,11 @@ export const SalesTable = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="monthBefore">Month</Label>
-                    <Select 
-                      value={filters.monthBefore} 
+                    <Select
+                      value={filters.monthBefore}
                       onValueChange={(value) => setFilters(prev => ({ ...prev, monthBefore: value }))}
                     >
                       <SelectTrigger>
@@ -563,7 +567,7 @@ export const SalesTable = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="minQuantity">Minimum Quantity</Label>
                     <Input
@@ -574,7 +578,7 @@ export const SalesTable = () => {
                       onChange={(e) => setFilters(prev => ({ ...prev, minQuantity: e.target.value }))}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="minAmount">Minimum Amount (₹)</Label>
                     <Input
@@ -585,7 +589,7 @@ export const SalesTable = () => {
                       onChange={(e) => setFilters(prev => ({ ...prev, minAmount: e.target.value }))}
                     />
                   </div>
-                  
+
                   <div className="flex justify-end gap-2 pt-4">
                     <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
                       Clear
@@ -597,7 +601,7 @@ export const SalesTable = () => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {/* Date Icon Button */}
             <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
               <PopoverTrigger asChild>
@@ -618,7 +622,7 @@ export const SalesTable = () => {
                 />
               </PopoverContent>
             </Popover>
-            
+
             {/* Import Icon Button */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -629,7 +633,7 @@ export const SalesTable = () => {
               <DropdownMenuContent className="w-80 p-4 bg-white text-black">
                 <div className="space-y-4">
                   <h4 className="font-medium">Import Sales Data</h4>
-                  
+
                   <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
                     <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <div className="space-y-2">
@@ -653,12 +657,12 @@ export const SalesTable = () => {
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="text-xs text-muted-foreground">
                     <p>Supported formats: CSV, Excel (.xlsx, .xls)</p>
                     <p>Expected columns: Invoice Number, Customer Name, Product, Quantity, Unit Price, Total Amount, Date of Sale, Payment Status</p>
                   </div>
-                  
+
                   <div className="flex justify-end gap-2 pt-4">
                     <Button size="sm" onClick={handleImport} disabled={!selectedFile}>
                       Import Data
@@ -667,7 +671,7 @@ export const SalesTable = () => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {/* Export Icon Button */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -685,8 +689,8 @@ export const SalesTable = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  <Plus className="h-5 w-5" />
-                </Button>
+              <Plus className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -700,9 +704,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Invoices Number
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('invoiceNumber')}
                     >
@@ -713,9 +717,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Customer Name
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('customerName')}
                     >
@@ -726,9 +730,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Product
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('product')}
                     >
@@ -740,9 +744,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Unit Price
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('unitPrice')}
                     >
@@ -753,9 +757,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Total Amount
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('totalAmount')}
                     >
@@ -766,9 +770,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Date of Sale
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('dateOfSale')}
                     >
@@ -779,9 +783,9 @@ export const SalesTable = () => {
                 <TableHead className="text-card-foreground font-medium text-xs sm:text-sm whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     Payment Status
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-auto p-1"
                       onClick={() => handleSort('paymentStatus')}
                     >
@@ -812,20 +816,20 @@ export const SalesTable = () => {
                   <TableCell className="text-card-foreground text-xs sm:text-sm whitespace-nowrap">₹{row.totalAmount.toLocaleString()}</TableCell>
                   <TableCell className="text-card-foreground text-xs sm:text-sm whitespace-nowrap">{row.dateOfSale}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <Badge 
+                    <Badge
                       variant={row.paymentStatus === 'Paid' ? 'default' : 'destructive'}
-                      className={`text-xs ${row.paymentStatus === 'Paid' 
-                        ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                      className={`text-xs ${row.paymentStatus === 'Paid'
+                        ? 'bg-green-100 text-green-800 hover:bg-green-100'
                         : 'bg-red-100 text-red-800 hover:bg-red-100'
-                      }`}
+                        }`}
                     >
                       {row.paymentStatus}
                     </Badge>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleActionClick('edit', row)}
                         className="h-6 w-6 sm:h-8 sm:w-8 p-0"
@@ -864,7 +868,7 @@ export const SalesTable = () => {
             </TableBody>
           </Table>
         </div>
-        
+
         {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <Button variant="outline" size="sm" disabled>

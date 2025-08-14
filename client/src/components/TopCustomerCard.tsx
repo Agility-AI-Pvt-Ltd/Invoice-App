@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip as tp, Legend } from "chart.js";
 import { cn } from "@/lib/utils";
 import { getTopCustomers, type TopCustomersResponse } from "@/services/api/dashboard";
 import Cookies from "js-cookie";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+ChartJS.register(BarElement, CategoryScale, LinearScale, tp, Legend);
 
 export function TopCustomersCard({ className }: React.HTMLAttributes<HTMLDivElement>) {
     const [topCustomers, setTopCustomers] = useState<TopCustomersResponse | null>(null);
@@ -82,7 +83,18 @@ export function TopCustomersCard({ className }: React.HTMLAttributes<HTMLDivElem
                         {customerLabels.map((label, idx) => (
                             <div key={idx} className="flex items-center gap-2 whitespace-nowrap">
                                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[idx] }} />
-                                <span className="text-muted-foreground">{label}</span>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span
+                                            className="text-muted-foreground max-w-[120px] truncate block"
+                                        >
+                                            {label}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{label}</p>
+                                    </TooltipContent>
+                                </Tooltip>
                             </div>
                         ))}
                     </div>

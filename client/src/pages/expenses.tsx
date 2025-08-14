@@ -539,7 +539,7 @@ export default function Expenses() {
               </Popover>
               {/* </DropdownMenuContent>
               </DropdownMenu> */}
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={()=>setIsExpenseFormOpen(true)}>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsExpenseFormOpen(true)}>
                 <Plus className="h-4 w-4" />
                 <span className="ml-2">Add New Expenses</span>
               </Button>
@@ -852,11 +852,13 @@ export default function Expenses() {
           </div>
         </div>
 
+
         <ExpenseTable
           expenses={filteredExpenses}
           searchTerm={searchTerm}
           onDeleteExpense={handleDeleteExpense}
         />
+
       </div>
     </div>
   );

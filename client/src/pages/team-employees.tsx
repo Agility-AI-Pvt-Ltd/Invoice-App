@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,125 +9,24 @@ import { Search, Calendar, Download, Upload, Plus, Edit, MoreHorizontal, Chevron
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-
-interface TeamMember {
-  id: number;
-  name: string;
-  role: string;
-  email: string;
-  phone: string;
-  dateJoined: string;
-  lastActive: string;
-  status: "Active" | "Inactive";
-  avatar: string;
-}
-
-const teamMembers: TeamMember[] = [
-  {
-    id: 1,
-    name: "Name",
-    role: "Admin",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 2,
-    name: "Name",
-    role: "Manager",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 3,
-    name: "Name",
-    role: "Accountant",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Inactive",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 4,
-    name: "Name",
-    role: "Sales",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 5,
-    name: "Name",
-    role: "Viewer",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 6,
-    name: "Name",
-    role: "Sales",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 7,
-    name: "Name",
-    role: "Viewer",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 8,
-    name: "Name",
-    role: "Sales",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Inactive",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  },
-  {
-    id: 9,
-    name: "Name",
-    role: "Sales",
-    email: "user@mail.com",
-    phone: "+91 XXXXXXXXXX",
-    dateJoined: "29 July 2024",
-    lastActive: "19 Dec 2024",
-    status: "Active",
-    avatar: "/lovable-uploads/75c941b6-fc40-47ce-9e9f-f06b4d573123.png"
-  }
-];
+import { getTeamMembers, type TeamMember } from "@/services/api/team";
+import { useToast } from "@/hooks/use-toast";
+import Cookies from "js-cookie";
 
 export default function TeamManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  //@ts-ignore
+  const [loading, setLoading] = useState(true);
+  //@ts-ignore
+  const [totalMembers, setTotalMembers] = useState(0);
+  //@ts-ignore
+  const [totalPages, setTotalPages] = useState(0);
+  const { toast } = useToast();
+
+
   const [formData, setFormData] = useState({
     name: "",
     role: "",
@@ -136,11 +35,47 @@ export default function TeamManagement() {
     joiningDate: "",
     status: ""
   });
-  
+
+  const token = Cookies.get('authToken') || "";
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        const token = Cookies.get('authToken') || "";
+        const response = await getTeamMembers(token, currentPage, 10, {
+          search: searchTerm || undefined
+        });
+        setTeamMembers(response.members);
+        setTotalMembers(response.total);
+        setTotalPages(response.totalPages);
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch team members",
+          variant: "destructive",
+        });
+        // Fallback to empty array if API fails
+        setTeamMembers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeamMembers();
+  }, [token, currentPage, searchTerm, toast]);
+  // const handleSearch = (value: string) => {
+  //   setSearchTerm(value);
+  //   setCurrentPage(1); // Reset to first page when searching
+  // };
+
+  // const handlePageChange = (page: number) => {
+  //   setCurrentPage(page);
+  // };
+
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
       <div className="max-w-8xl mx-auto">
-        
+
         <Card className="bg-white border-0 shadow-sm">
           {!showAddForm ? (
             <>
@@ -148,26 +83,26 @@ export default function TeamManagement() {
               <div className="p-4 lg:p-6 border-b border-slate-200">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <h2 className="text-xl font-semibold text-slate-800">Team Member List</h2>
-                  
+
                   <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                     {/* Search */}
                     <div className="relative flex-1 lg:w-80">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                      <Input 
+                      <Input
                         placeholder="Search"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10 bg-white border-slate-200 text-slate-600 h-10"
                       />
                     </div>
-                    
+
                     {/* Desktop/Tablet Actions (labels) */}
                     <div className="hidden sm:flex gap-2 flex-wrap">
                       <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-4">
                         <Calendar className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">Date</span>
                       </Button>
-                      
+
                       <Select>
                         <SelectTrigger className="w-auto min-w-[100px] border-slate-200 text-slate-600 hover:bg-slate-50 h-10">
                           <Download className="h-4 w-4 mr-2" />
@@ -179,7 +114,7 @@ export default function TeamManagement() {
                           <SelectItem value="pdf">PDF</SelectItem>
                         </SelectContent>
                       </Select>
-                      
+
                       <Select>
                         <SelectTrigger className="w-auto min-w-[100px] border-slate-200 text-slate-600 hover:bg-slate-50 h-10">
                           <Upload className="h-4 w-4 mr-2" />
@@ -190,8 +125,8 @@ export default function TeamManagement() {
                           <SelectItem value="excel">Excel</SelectItem>
                         </SelectContent>
                       </Select>
-                      
-                      <Button 
+
+                      <Button
                         className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
                         onClick={() => setShowAddForm(true)}
                       >
@@ -231,7 +166,7 @@ export default function TeamManagement() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       {/* Add */}
-                      <Button 
+                      <Button
                         size="icon"
                         className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white shrink-0"
                         onClick={() => setShowAddForm(true)}
@@ -279,11 +214,11 @@ export default function TeamManagement() {
                         <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.dateJoined}</TableCell>
                         <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.lastActive}</TableCell>
                         <TableCell className="py-4 px-6">
-                          <Badge 
+                          <Badge
                             variant={member.status === "Active" ? "secondary" : "destructive"}
                             className={
-                              member.status === "Active" 
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200" 
+                              member.status === "Active"
+                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
                                 : "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
                             }
                           >
@@ -312,49 +247,49 @@ export default function TeamManagement() {
                   <ChevronLeft className="h-4 w-4" />
                   <span className="hidden sm:inline">Previous</span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Button 
+                  <Button
                     variant={currentPage === 1 ? "default" : "outline"}
-                    size="sm" 
+                    size="sm"
                     className={currentPage === 1 ? "bg-indigo-500 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50"}
                     onClick={() => setCurrentPage(1)}
                   >
                     1
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-slate-200 text-slate-600 hover:bg-slate-50"
                     onClick={() => setCurrentPage(2)}
                   >
                     2
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-slate-200 text-slate-600 hover:bg-slate-50"
                     onClick={() => setCurrentPage(3)}
                   >
                     3
                   </Button>
                   <span className="text-slate-400 hidden sm:inline">...</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-slate-200 text-slate-600 hover:bg-slate-50 hidden sm:inline-flex"
                   >
                     67
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-slate-200 text-slate-600 hover:bg-slate-50 hidden sm:inline-flex"
                   >
                     68
                   </Button>
                 </div>
-                
+
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="h-4 w-4" />
@@ -366,7 +301,7 @@ export default function TeamManagement() {
               {/* Add New Member Form */}
               <div className="p-6 lg:p-8">
                 <h2 className="text-xl font-semibold text-slate-800 mb-8">Add New Member</h2>
-                
+
                 <form className="space-y-6">
                   {/* Name and Role Row */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -376,13 +311,13 @@ export default function TeamManagement() {
                         id="name"
                         placeholder="New Member Name"
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="role" className="text-sm font-medium text-slate-700">Role</Label>
-                      <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                      <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
                         <SelectTrigger className="h-12 border-slate-200 text-slate-600">
                           <SelectValue placeholder="Select Admin/ Manager/ Accountant/ Viewer" />
                         </SelectTrigger>
@@ -405,7 +340,7 @@ export default function TeamManagement() {
                         type="email"
                         placeholder="EmailAddress@123gmail.com"
                         value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                       />
                     </div>
@@ -416,7 +351,7 @@ export default function TeamManagement() {
                         type="date"
                         placeholder="dd/mm/yyyy"
                         value={formData.joiningDate}
-                        onChange={(e) => setFormData({...formData, joiningDate: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                       />
                     </div>
@@ -430,13 +365,13 @@ export default function TeamManagement() {
                         id="phone"
                         placeholder="+ 91 855 **** 987"
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="status" className="text-sm font-medium text-slate-700">Status</Label>
-                      <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+                      <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                         <SelectTrigger className="h-12 border-slate-200 text-slate-600">
                           <SelectValue placeholder="Active/ Inactive" />
                         </SelectTrigger>
