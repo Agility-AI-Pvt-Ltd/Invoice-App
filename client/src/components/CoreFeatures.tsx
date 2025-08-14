@@ -6,25 +6,25 @@ const CoreFeatures = () => {
     {
       title: "Instant Credit & Debit Notes",
       description: "Handle refunds, adjustments, and partial payments with easy-to-generate credit and debit notes.",
-      image: "public/gauge.png",
+      image: "/gauge.png",
       alt: "Gauge meter for credit and debit tracking"
     },
     {
       title: "AI-Analytics & Dashboards",
       description: "Access real-time reports on income, expenses, taxes, and outstanding balances—all from one intuitive dashboard.",
-      image: "public/ai-chip.png",
+      image: "/ai-chip.png",
       alt: "AI chip for analytics and dashboards"
     },
     {
       title: "Inventory Management",
       description: "Track products and services, monitor stock levels, and set inclusive tax pricing to avoid manual errors.",
-      image: "public/coin.png",
+      image: "/coin.png",
       alt: "Coins representing inventory management"
     },
     {
       title: "UPI-Integrated Payments",
       description: "Accept fast, secure UPI payments directly from your invoices.",
-      image: "public/files.png",
+      image: "/files.png",
       alt: "Mobile payment interface"
     }
   ];
