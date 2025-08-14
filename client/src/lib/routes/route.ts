@@ -1,9 +1,11 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+// const BACKEND_URL = "http://localhost:3000"; // Replace with your actual backend URL
+
 
 export const routes = {
     auth: {
-        signup: `${BACKEND_URL}/api/auth/register`,
-        login: `${BACKEND_URL}/api/auth/login`,
+        signup: `${BACKEND_URL}/api/register`,
+        login: `${BACKEND_URL}/api/login`,
         getProfile: `${BACKEND_URL}/api/auth/profile`,
         updateProfile: `${BACKEND_URL}/api/auth/profile/update`,
     },

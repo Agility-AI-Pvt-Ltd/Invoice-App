@@ -3,15 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import type { ChangeEvent, FormEvent } from 'react';
 import FloatingInput from '@/components/ui/FloatingInput';
-import FloatingSelect from './ui/FloatingSelect';
 import Checkbox from './ui/custom-checkbox';
 import SocialButton from './ui/SocialButtons';
 import { Button } from '@/components/ui/button';
-import { UploadCloud } from 'lucide-react';
 import { AiFillApple, AiFillFacebook } from 'react-icons/ai';
 import { BsGoogle } from 'react-icons/bs';
-import { signup } from '@/services/api/auth';
-import Cookies from 'js-cookie';
+// import { signup } from '@/services/api/auth';
+// import Cookies from 'js-cookie';
 
 interface SignUpFormData {
     fullName: string;
@@ -55,13 +53,7 @@ const SignupForm: React.FC = () => {
         }));
     };
 
-    const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
-        setForm((prevForm) => ({
-            ...prevForm,
-            logo: file,
-        }));
-    };
+
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -70,52 +62,33 @@ const SignupForm: React.FC = () => {
             return toast.error('Passwords do not match');
         }
 
-        if (!form.fullName || !form.businessEmail || !form.phone || !form.password || !form.businessName || !form.address || !form.pan) {
+        if (!form.fullName || !form.businessEmail || !form.phone || !form.password || !form.confirmPassword || !form.website) {
             return toast.error('Please fill in all required fields');
         }
 
         try {
             setIsSubmitting(true);
-            let logoBase64 = '';
-            if (form.logo) {
-                const reader = new FileReader();
-                const logoData = await new Promise<string>((resolve, reject) => {
-                    reader.onloadend = () => {
-                        if (typeof reader.result === 'string') resolve(reader.result);
-                        else reject('Failed to read file');
-                    };
-                    reader.onerror = reject;
-                    //@ts-ignore
-                    reader.readAsDataURL(form.logo); //convert to BLOB
-                });
-                logoBase64 = logoData;
-            }
 
-            const payload = {
-                name: form.fullName,
-                email: form.businessEmail,
-                phone: form.phone,
-                password: form.password,
-                company: form.businessName,
-                address: form.address,
-                website: form.website,
-                panNumber: form.pan,
-                isGstRegistered: form.gstStatus === 'yes',
-                gstNumber: form.gstStatus === 'yes' ? form.gstNumber : '',
-                businessLogo: logoBase64,
-            };
+            // const payload = {
+            //     name: form.fullName,
+            //     email: form.businessEmail,
+            //     phone: form.phone,
+            //     password: form.password,
+            //     website: form.website,
+            // };
 
-            const res = await signup(payload);
-            
-            // Set auth token in cookies
-            Cookies.set('authToken', res.token, {
-                expires: 1, // 1 day
-                secure: true,
-                sameSite: 'Strict',
+            // const res = await signup(payload);
+
+            toast.success('Account created successfully! Please verify OTP.');
+
+            // Navigate to OTP verification page
+            navigate('/signup/verify/otp', {
+                state: {
+                    email: form.businessEmail, // or phone if OTP is via SMS
+                    token: "res.token" // if your OTP API needs an auth token
+                }
             });
-            
-            toast.success('Account created successfully!');
-            navigate('/app/dashboard');
+
         } catch (error: any) {
             const message =
                 error?.response?.data?.error ||
@@ -127,8 +100,9 @@ const SignupForm: React.FC = () => {
         }
     };
 
+
     return (
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4 w-full" onSubmit={handleSubmit}>
             <ToastContainer position="top-right" autoClose={5000} hideProgressBar closeOnClick pauseOnHover draggable pauseOnFocusLoss theme="light" />
             <div className="mb-8 flex items-center space-x-3">
                 <img src="/agility.jpg" alt="Logo" width={60} height={60} />
@@ -141,64 +115,65 @@ const SignupForm: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Sign up</h2>
             <p className="text-sm text-gray-500 mb-4">Your invoicing process is about to be effortless.</p>
 
-            <FloatingInput id="fullName" label="Full Name" value={form.fullName} onChange={handleChange} isImportant />
-            <FloatingInput id="businessEmail" label="Business Email" type="email" value={form.businessEmail} onChange={handleChange} isImportant />
-            <FloatingInput id="phone" label="Phone Number" type="tel" value={form.phone} onChange={handleChange} isImportant />
-            <FloatingInput id="address" label="Business Address" value={form.address} onChange={handleChange} isImportant />
+            <FloatingInput
+                id="fullName"
+                label="Full Name"
+                type="text"
+                value={form.fullName}
+                onChange={handleChange}
+                isImportant
+            />
 
-            <div className="flex gap-4">
-                <div className="w-1/2">
-                    <FloatingInput id="password" label="Password" type="password" value={form.password} onChange={handleChange} isImportant />
-                </div>
-                <div className="w-1/2">
-                    <FloatingInput id="confirmPassword" label="Confirm Password" type="password" value={form.confirmPassword} onChange={handleChange} isImportant />
-                </div>
-            </div>
+            <FloatingInput
+                id="phone"
+                label="Phone Number"
+                type="tel"
+                value={form.phone}
+                onChange={handleChange}
+                isImportant
+            />
 
-            <FloatingInput id="businessName" label="Business Name" value={form.businessName} onChange={handleChange} isImportant />
-            <FloatingInput id="website" label="Website" value={form.website} onChange={handleChange} />
-            <FloatingInput id="pan" label="PAN Number" value={form.pan} onChange={handleChange} isImportant />
+            <FloatingInput
+                id="businessEmail"
+                label="Business Email"
+                type="email"
+                value={form.businessEmail}
+                onChange={handleChange}
+                isImportant
+            />
 
-            <div className="flex gap-4">
-                <div className="w-1/2">
-                    <FloatingSelect
-                        id="gstStatus"
-                        label="Is your business GST registered?"
-                        value={form.gstStatus}
-                        onChange={handleChange}
-                        options={[
-                            { value: 'yes', label: 'Yes' },
-                            { value: 'no', label: 'No' },
-                        ]}
-                    />
-                </div>
+            <FloatingInput
+                id="password"
+                label="Password"
+                type="password"
+                value={form.password}
+                onChange={handleChange}
+                isImportant
+            />
 
-                <div className="w-1/2">
-                    <FloatingInput
-                        id="gstNumber"
-                        label="GST Number"
-                        value={form.gstNumber}
-                        onChange={handleChange}
-                        isImportant
-                        disabled={form.gstStatus !== 'yes'}
-                    />
-                </div>
-            </div>
+            <FloatingInput
+                id="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                isImportant
+            />
 
-            <div>
-                <label className="block mb-1 text-sm text-gray-600">Business Logo</label>
-                <label htmlFor="logo-upload" className="flex items-center justify-center border border-dashed border-gray-400 rounded-md px-4 py-6 cursor-pointer text-gray-600 hover:border-gray-600">
-                    <UploadCloud className="mr-2" />
-                    {form.logo ? form.logo.name : 'Upload File'}
-                    <input type="file" id="logo-upload" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                </label>
-            </div>
+            <FloatingInput
+                id="website"
+                label="Website"
+                type="text"
+                value={form.website}
+                onChange={handleChange}
+                isImportant
+            />
 
             <div className="flex items-start gap-2">
                 <Checkbox label="I agree to all the Terms and Privacy Policies" id="checkbox" />
             </div>
 
-            <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
+            <Button type="submit" className="w-full mt-2 bg-black text-white hover:bg-slate-900" disabled={isSubmitting}>
                 {isSubmitting ? 'Creating account...' : 'Create account'}
             </Button>
 
