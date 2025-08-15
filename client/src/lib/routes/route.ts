@@ -6,8 +6,8 @@ export const routes = {
         sendOtpRegister: `${API_BASE}/api/send-otp-register`,
         verifyOtpAndRegister: `${API_BASE}/api/verify-otp-register`,
         login: `${BACKEND_URL}/api/login`,
-        getProfile: `${API_BASE}/api/auth/profile`,
-        updateProfile: `${API_BASE}/api/auth/profile/update`,
+        getProfile: `${API_BASE}/api/profile`,
+        updateProfile: `${API_BASE}/api/profile/update`,
     },
     tax: {
         metrics: `${API_BASE}/api/tax/metrics`,
