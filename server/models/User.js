@@ -19,11 +19,11 @@ const userSchema = new mongoose.Schema({
     },
     company: {
         type: String,
-        required: true
+        // required: true
     },
     address: {
         type: String,
-        required: true
+        // required: true
     },
     gstNumber: {
         type: String,

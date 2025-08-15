@@ -71,7 +71,7 @@ app.use((req, res, next) => {
 });
 
 // Register routes
-app.use("/api/auth", authRoutes);
+app.use("/api", authRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/expense-invoices", expenseInvoiceRoutes);
 app.use("/api/users", userRoutes);

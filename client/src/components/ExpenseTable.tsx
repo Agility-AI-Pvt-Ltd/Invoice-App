@@ -78,7 +78,7 @@ export function ExpenseTable({ expenses, searchTerm, onDeleteExpense }: ExpenseT
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-white">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>

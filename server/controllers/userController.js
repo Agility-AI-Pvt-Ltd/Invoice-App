@@ -67,15 +67,19 @@ const sendOtpHelper = async (phonenumber, otp, res) => {
 const sendOtpForRegistration = async (req, res) => {
     try {
         const {
-            phonenumber, email, password, name, company, address,
-            gstNumber, panNumber, website, isGstRegistered, businessLogo
+            name,            
+            phonenumber,             
+            email,       
+            password,
+            website
         } = req.body;
 
-        if (!phonenumber || !email || !password || !name) {
+        // Required fields check
+        if (!name || !phonenumber || !email || !password || !website) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        // Generate OTP only once
+        // Generate OTP
         const otp = otpGenerator.generate(6, {
             upperCaseAlphabets: false,
             specialChars: false,
@@ -84,20 +88,24 @@ const sendOtpForRegistration = async (req, res) => {
 
         const otpExpiration = new Date(Date.now() + 5 * 60 * 1000);
 
-        // Save data in PendingUser
+        // Save in PendingUser
         await PendingUser.findOneAndUpdate(
-            { phonenumber },
+            { phonenumber: phonenumber },
             {
-                phonenumber, email, password, name, company, address,
-                gstNumber, panNumber, website, isGstRegistered, businessLogo,
-                otp, otpExpiration
+                phonenumber: phonenumber,
+                email: email,
+                password,
+                name: name,
+                website,
+                otp,
+                otpExpiration
             },
             { upsert: true, new: true }
         );
 
         console.log(`📩 OTP for ${phonenumber}: ${otp}`);
 
-        // Call helper with same OTP
+        // Send OTP via helper
         return sendOtpHelper(phonenumber, otp, res);
 
     } catch (err) {
@@ -105,6 +113,7 @@ const sendOtpForRegistration = async (req, res) => {
         return res.status(500).json({ message: "Internal server error", error: err.message });
     }
 };
+
 
 
 
@@ -123,34 +132,32 @@ const sendOtpForLogin = async (req, res) => {
 const verifyOtpAndRegister = async (req, res) => {
     try {
         const { phonenumber, otp } = req.body;
+        console.log("📥 Request Body:", req.body);
 
         if (!phonenumber || !otp) {
             return res.status(400).json({ message: "Phone number and OTP are required" });
         }
 
         const pending = await PendingUser.findOne({ phonenumber });
+        console.log("🔍 Pending User:", pending);
 
         if (!pending || pending.otp !== otp || new Date() > pending.otpExpiration) {
             return res.status(400).json({ message: "Invalid or expired OTP" });
         }
 
-        // Create user in actual User collection
         const user = await User.create({
-            phonenumber: pending.phonenumber,
+            phonenumber: phonenumber,
             email: pending.email,
             password: pending.password,
             name: pending.name,
-            company: pending.company,
-            address: pending.address,
-            gstNumber: pending.gstNumber,
-            panNumber: pending.panNumber,
-            website: pending.website,
-            isGstRegistered: pending.isGstRegistered,
-            businessLogo: pending.businessLogo
+            website: pending.website
         });
 
-        // Delete pending record
         await PendingUser.deleteOne({ _id: pending._id });
+
+        if (!process.env.Jwt_sec) {
+            throw new Error("JWT secret is missing");
+        }
 
         const token = jwt.sign({ id: user._id }, process.env.Jwt_sec, { expiresIn: "5d" });
 
@@ -158,11 +165,9 @@ const verifyOtpAndRegister = async (req, res) => {
 
     } catch (error) {
         console.error("verifyOtpAndRegister error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
 };
-
-
 
 
 
@@ -173,15 +178,15 @@ const verifyOtpAndLogin = async (req, res) => {
 
         const phone = normalizePhone(phonenumber);
 
-        const otpRecord = await OtpVerification.findOne({ phonenumber: phone });
+        const otpRecord = await OtpVerification.findOne({ phonenumber: phonenumber });
         if (!otpRecord || otpRecord.otp !== otp || new Date() > otpRecord.otpExpiration) {
             return res.status(400).json({ message: "Invalid or expired OTP" });
         }
 
-        const user = await User.findOne({ phonenumber: phone });
+        const user = await User.findOne({ phonenumber: phonenumber });
         if (!user) return res.status(404).json({ message: "User not found. Please register." });
 
-        await OtpVerification.deleteOne({ phonenumber: phone });
+        await OtpVerification.deleteOne({ phonenumber: phonenumber });
 
         const token = jwt.sign({ id: user._id }, process.env.Jwt_sec, { expiresIn: "5d" });
 
