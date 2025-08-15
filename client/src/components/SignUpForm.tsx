@@ -8,13 +8,13 @@ import SocialButton from './ui/SocialButtons';
 import { Button } from '@/components/ui/button';
 import { AiFillApple, AiFillFacebook } from 'react-icons/ai';
 import { BsGoogle } from 'react-icons/bs';
-// import { signup } from '@/services/api/auth';
-// import Cookies from 'js-cookie';
+import axios from 'axios';
+import { routes } from '@/lib/routes/route';
 
 interface SignUpFormData {
-    fullName: string;
-    businessEmail: string;
-    phone: string;
+    name: string;
+    email: string;
+    phonenumber: string;
     password: string;
     confirmPassword: string;
     businessName: string;
@@ -28,9 +28,9 @@ interface SignUpFormData {
 
 const SignupForm: React.FC = () => {
     const [form, setForm] = useState<SignUpFormData>({
-        fullName: '',
-        businessEmail: '',
-        phone: '',
+        name: '',
+        email: '',
+        phonenumber: '',
         password: '',
         confirmPassword: '',
         businessName: '',
@@ -53,8 +53,6 @@ const SignupForm: React.FC = () => {
         }));
     };
 
-
-
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
@@ -62,44 +60,40 @@ const SignupForm: React.FC = () => {
             return toast.error('Passwords do not match');
         }
 
-        if (!form.fullName || !form.businessEmail || !form.phone || !form.password || !form.confirmPassword || !form.website) {
+        if (!form.name || !form.email || !form.phonenumber || !form.password || !form.confirmPassword || !form.website) {
             return toast.error('Please fill in all required fields');
         }
 
         try {
             setIsSubmitting(true);
 
-            // const payload = {
-            //     name: form.fullName,
-            //     email: form.businessEmail,
-            //     phone: form.phone,
-            //     password: form.password,
-            //     website: form.website,
-            // };
+            const payload = {
+                name: form.name,
+                phonenumber: form.phonenumber,
+                email: form.email,
+                password: form.password,
+                website: form.website,
+            };
 
-            // const res = await signup(payload);
+            await axios.post(routes.auth.sendOtpRegister, payload);
 
-            toast.success('Account created successfully! Please verify OTP.');
+            toast.success('OTP sent successfully! Please verify.');
 
-            // Navigate to OTP verification page
             navigate('/signup/verify/otp', {
-                state: {
-                    email: form.businessEmail, // or phone if OTP is via SMS
-                    token: "res.token" // if your OTP API needs an auth token
-                }
+                state: { phonenumber: form.phonenumber }
             });
 
-        } catch (error: any) {
-            const message =
-                error?.response?.data?.error ||
-                error?.response?.data?.msg ||
-                'Something went wrong. Please try again.';
+        } catch (error: unknown) {
+            let message = 'Something went wrong. Please try again.';
+            if (axios.isAxiosError(error)) {
+                const data = error.response?.data as { message?: string } | undefined;
+                if (data?.message) message = data.message;
+            }
             toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
     };
-
 
     return (
         <form className="space-y-4 w-full" onSubmit={handleSubmit}>
@@ -115,59 +109,12 @@ const SignupForm: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Sign up</h2>
             <p className="text-sm text-gray-500 mb-4">Your invoicing process is about to be effortless.</p>
 
-            <FloatingInput
-                id="fullName"
-                label="Full Name"
-                type="text"
-                value={form.fullName}
-                onChange={handleChange}
-                isImportant
-            />
-
-            <FloatingInput
-                id="phone"
-                label="Phone Number"
-                type="tel"
-                value={form.phone}
-                onChange={handleChange}
-                isImportant
-            />
-
-            <FloatingInput
-                id="businessEmail"
-                label="Business Email"
-                type="email"
-                value={form.businessEmail}
-                onChange={handleChange}
-                isImportant
-            />
-
-            <FloatingInput
-                id="password"
-                label="Password"
-                type="password"
-                value={form.password}
-                onChange={handleChange}
-                isImportant
-            />
-
-            <FloatingInput
-                id="confirmPassword"
-                label="Confirm Password"
-                type="password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                isImportant
-            />
-
-            <FloatingInput
-                id="website"
-                label="Website"
-                type="text"
-                value={form.website}
-                onChange={handleChange}
-                isImportant
-            />
+            <FloatingInput id="name" label="name" type="text" value={form.name} onChange={handleChange} isImportant />
+            <FloatingInput id="phonenumber" label="Phone Number" type="tel" value={form.phonenumber} onChange={handleChange} isImportant />
+            <FloatingInput id="email" label="Business Email" type="email" value={form.email} onChange={handleChange} isImportant />
+            <FloatingInput id="password" label="Password" type="password" value={form.password} onChange={handleChange} isImportant />
+            <FloatingInput id="confirmPassword" label="Confirm Password" type="password" value={form.confirmPassword} onChange={handleChange} isImportant />
+            <FloatingInput id="website" label="Website" type="text" value={form.website} onChange={handleChange} isImportant />
 
             <div className="flex items-start gap-2">
                 <Checkbox label="I agree to all the Terms and Privacy Policies" id="checkbox" />

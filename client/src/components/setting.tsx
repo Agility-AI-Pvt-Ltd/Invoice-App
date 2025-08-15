@@ -243,8 +243,13 @@ export default function Settings() {
           <Card className="p-4 sm:p-6 xl:col-span-1 bg-white">
             <div className="flex flex-col items-center space-y-4 mb-6">
               <Avatar className="w-24 h-24 sm:w-32 sm:h-32">
+
                 <AvatarImage src={userProfile?.data?.businessLogo} alt="Profile" />
                 <AvatarFallback>{userProfile?.data?.name?.charAt(0) || "FN"}</AvatarFallback>
+
+                <AvatarImage src="/dp.png" alt="Profile" />
+                <AvatarFallback>FN</AvatarFallback>
+
               </Avatar>
               <Button variant="link" className="text-primary font-medium p-0 h-auto text-sm sm:text-base">
                 Change Profile Photo

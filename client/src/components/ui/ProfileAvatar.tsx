@@ -4,7 +4,7 @@ type Props = {
     error?: string;
 };
 
-const ProfileAvatar = ({ imgUrl, loading = false, error = "" }: Props) => {
+const ProfileAvatar = ({ loading = false, error = "" }: Props) => {
     if (loading) {
         return (
             <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
@@ -21,7 +21,7 @@ const ProfileAvatar = ({ imgUrl, loading = false, error = "" }: Props) => {
 
     return (
         <img
-            src={imgUrl}
+            src={"/agility.jpg"}
             alt="Profile"
             className="w-10 h-10 rounded-full object-cover border"
             onError={(e) => {

@@ -1,5 +1,8 @@
 
 import { useState, useEffect } from "react";
+
+import { useEffect, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import { MetricCard } from "@/components/MetricCard";
@@ -8,6 +11,7 @@ import { TaxCollectedChart } from "@/components/TaxCollection";
 import { TaxSummaryTable } from "@/components/TaxSummaryTable";
 import { Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 import { getTaxMetrics, exportTaxSummary } from "@/services/api/tax";
 import { useToast } from "@/hooks/use-toast";
 import Cookies from "js-cookie";
@@ -74,6 +78,51 @@ const TaxSummary = () => {
         description: "Failed to export tax summary",
         variant: "destructive",
       });
+
+import axios from "axios";
+import Cookies from "js-cookie";
+import { routes } from "@/lib/routes/route";
+
+const TaxSummary = () => {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [metrics, setMetrics] = useState({ taxCollected: 0, taxPaid: 0, netTaxLiability: 0, taxableSales: 0 });
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const token = Cookies.get("authToken") || localStorage.getItem("token") || "";
+        const res = await axios.get(routes.tax.metrics, {
+          params: { date: selectedDate.toISOString() },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const { taxCollected = 0, taxPaid = 0, netTaxLiability = 0, taxableSales = 0 } = res.data || {};
+        setMetrics({ taxCollected, taxPaid, netTaxLiability, taxableSales });
+      } catch (e) {
+        console.error("Failed to fetch tax metrics:", e);
+        setMetrics({ taxCollected: 0, taxPaid: 0, netTaxLiability: 0, taxableSales: 0 });
+      }
+    };
+    fetchMetrics();
+  }, [selectedDate]);
+
+  const handleExport = async (type: 'all' | 'filtered') => {
+    try {
+      const token = Cookies.get("authToken") || localStorage.getItem("token") || "";
+      const res = await axios.get(routes.tax.exportSummary, {
+        params: { from: selectedDate.toISOString(), to: selectedDate.toISOString(), groupBy: 'period' },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tax-summary-${type === 'filtered' ? 'filtered' : 'all'}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export failed:", e);
+
     }
   };
 
@@ -128,6 +177,7 @@ const TaxSummary = () => {
 
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+
           <MetricCard
             title="Tax Collected"
             amount={`₹ ${loading ? '...' : taxMetrics.taxCollected.toLocaleString()}`}
@@ -138,20 +188,34 @@ const TaxSummary = () => {
           <MetricCard
             title="Tax Paid"
             amount={`₹ ${loading ? '...' : taxMetrics.taxPaid.toLocaleString()}`}
+
+          <MetricCard title="Tax Collected" amount={`₹ ${metrics.taxCollected.toLocaleString()}`} trend="up" trendPercentage="" subtitle="" />
+          <MetricCard
+            title="Tax Paid"
+            amount={`₹ ${metrics.taxPaid.toLocaleString()}`}
+
             trend="down"
             trendPercentage="3.48%"
             subtitle="Since last month"
           />
           <MetricCard
             title="Net Tax Liability"
+
             amount={`₹ ${loading ? '...' : taxMetrics.netTaxLiability.toLocaleString()}`}
+
+            amount={`₹ ${metrics.netTaxLiability.toLocaleString()}`}
+
             trend="up"
             trendPercentage="3.48%"
             subtitle="Since last month"
           />
           <MetricCard
             title="Taxable Sales"
+
             amount={`₹ ${loading ? '...' : taxMetrics.taxableSales.toLocaleString()}`}
+
+            amount={`₹ ${metrics.taxableSales.toLocaleString()}`}
+
             trend="up"
             trendPercentage="3.48%"
             subtitle="Since last month"

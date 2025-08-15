@@ -11,7 +11,7 @@ const config = {
 
 export const signup = async (data: any) => {
     try {
-        const res = await axios.post(routes.auth.signup, data, config);
+        const res = await axios.post(routes.auth.sendOtpRegister, data, config);
         return res.data;
     } catch (err: any) {
         const message = err.response?.data?.error || 'Registration failed';

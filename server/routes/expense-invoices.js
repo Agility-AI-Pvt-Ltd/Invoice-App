@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const ExpenseInvoice = require('../models/ExpenseInvoice');
-const auth = require('../middleware/auth');
+const authModule = require('../middleware/auth');
+const auth = authModule && authModule.default ? authModule.default : authModule;
 
 // Get all expense invoices
 router.get('/', auth, async (req, res) => {
@@ -32,11 +33,11 @@ router.get('/:id', auth, async (req, res) => {
             _id: req.params.id,
             userId: req.user._id
         });
-        
+
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });
         }
-        
+
         res.json(invoice);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching invoice' });
@@ -50,7 +51,7 @@ router.post('/', auth, async (req, res) => {
             ...req.body,
             userId: req.user._id
         });
-        
+
         await invoice.save();
         res.status(201).json(invoice);
     } catch (error) {
@@ -66,11 +67,11 @@ router.put('/:id', auth, async (req, res) => {
             req.body,
             { new: true }
         );
-        
+
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });
         }
-        
+
         res.json(invoice);
     } catch (error) {
         res.status(500).json({ message: 'Error updating invoice' });
@@ -84,11 +85,11 @@ router.delete('/:id', auth, async (req, res) => {
             _id: req.params.id,
             userId: req.user._id
         });
-        
+
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });
         }
-        
+
         res.json({ message: 'Invoice deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting invoice' });
