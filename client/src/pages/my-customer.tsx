@@ -45,7 +45,7 @@ export default function CustomerDashboard() {
         return (
             <Card className="max-w-full p-4 sm:p-6 bg-white mx-2 sm:mx-4">
                     <p className="font-semibold text-2xl ">Add New Customer</p>
-                <CardContent className="mt-2">
+                <CardContent className="mt-2 ">
                     <MultiStepForm onCancel={() => setShowAddCustomerForm(false)} />
                 </CardContent>
             </Card>

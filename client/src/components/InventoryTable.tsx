@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Search, Edit, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,6 +40,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import axios from "axios";
 import { INVENTORY_API } from "@/services/api/inventory";
 import Cookies from "js-cookie";
+import { Input } from "./ui/Input";
 
 const StatusBadge = ({ status }: { status: InventoryItem["status"] }) => {
     const variants: Record<string, string> = {

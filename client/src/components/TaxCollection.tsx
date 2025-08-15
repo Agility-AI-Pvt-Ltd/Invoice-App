@@ -1,16 +1,28 @@
-//TaxCollection.tsx
 import { useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { routes } from "@/lib/routes/route";
-import { Card } from "@/components/ui/card";
 
-interface TaxCollectedChartProps { selectedDate: Date }
-interface ApiTaxPoint { date: string; collected?: number; paid?: number }
-interface BarPoint { month: string; collected: number; paid: number }
+interface TaxCollectedChartProps {
+  selectedDate: Date;
+}
+
+interface ApiTaxPoint {
+  date: string;
+  collected?: number;
+  paid?: number;
+}
+
+interface BarPoint {
+  month: string;
+  collected: number;
+  paid: number;
+}
 
 export function TaxCollectedChart({ selectedDate }: TaxCollectedChartProps) {
   const [series, setSeries] = useState<ApiTaxPoint[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,6 +42,8 @@ export function TaxCollectedChart({ selectedDate }: TaxCollectedChartProps) {
       } catch (e) {
         console.error("Failed to fetch tax collected timeseries:", e);
         setSeries([]);
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -52,41 +66,45 @@ export function TaxCollectedChart({ selectedDate }: TaxCollectedChartProps) {
           <option>Last Year</option>
         </select>
       </div>
-      
-      <div className="space-y-4">
-        {data.map((item) => (
-          <div key={item.month} className="space-y">
-            <div className="flex items-center gap-4 group">
-              <div className="w-12 text-xs sm:text-sm font-medium text-muted-foreground">
-                {item.month}
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : (
+        <div className="space-y-4">
+          {data.map((item) => (
+            <div key={item.month} className="space-y-2">
+              <div className="flex items-center gap-4 group">
+                <div className="w-12 text-xs sm:text-sm font-medium text-muted-foreground">
+                  {item.month}
+                </div>
+                <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-pink-400 to-pink-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, item.collected)}%` }}
+                    title={`Tax Collected: ₹${item.collected.toLocaleString()}`}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground w-16 text-right">
+                  ₹{item.collected.toLocaleString()}
+                </div>
               </div>
-              <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-pink-400 to-pink-500 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, item.collected)}%` }}
-                  title={`Tax Collected: ₹${item.collected.toLocaleString()}`}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground w-16 text-right">
-                ₹{item.collected.toLocaleString()}
+              <div className="flex items-center gap-4 group">
+                <div className="w-12" />
+                <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
+                  <div
+                    className="h-full bg-pink-200 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, item.paid)}%` }}
+                    title={`Tax Paid: ₹${item.paid.toLocaleString()}`}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground w-16 text-right">
+                  ₹{item.paid.toLocaleString()}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 group">
-              <div className="w-12" />
-              <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
-                <div 
-                  className="h-full bg-pink-200 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, item.paid)}%` }}
-                  title={`Tax Paid: ₹${item.paid.toLocaleString()}`}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground w-16 text-right">
-                ₹{item.paid.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, Mail, Globe } from "lucide-react";
+import { Input } from "./ui/Input";
 
 const Footer = () => {
   const [email, setEmail] = useState("");

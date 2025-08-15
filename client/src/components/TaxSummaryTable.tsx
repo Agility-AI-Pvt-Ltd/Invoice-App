@@ -119,9 +119,9 @@ export function TaxSummaryTable() {
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'tax-summary.csv';
+    a.download = "tax-summary.csv";
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -137,11 +137,24 @@ export function TaxSummaryTable() {
           <div className="sm:hidden">
             <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} iconOnly />
           </div>
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex items-center gap-2 w-full sm:w-auto" onClick={handleExportSelected}>
+
+          {/* Export button responsive */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex items-center gap-2 w-full sm:w-auto"
+            onClick={handleExportSelected}
+          >
             <Download className="h-4 w-4" />
             <span>Export</span>
           </Button>
-          <Button variant="outline" size="icon" className="inline-flex sm:hidden" aria-label="Export" onClick={handleExportSelected}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="inline-flex sm:hidden"
+            aria-label="Export"
+            onClick={handleExportSelected}
+          >
             <Download className="h-5 w-5" />
           </Button>
         </div>
@@ -204,16 +217,40 @@ export function TaxSummaryTable() {
         <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           Showing {rows.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, rows.length)} of {rows.length} entries
         </div>
+
         <Pagination>
           <PaginationContent className="flex-wrap">
             <PaginationItem>
-              <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }} className={`text-xs sm:text-sm ${currentPage === 1 ? "pointer-events-none opacity-50" : ""}`} />
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 1) setCurrentPage(currentPage - 1);
+                }}
+                className={`text-xs sm:text-sm ${currentPage === 1 ? "pointer-events-none opacity-50" : ""}`}
+              />
             </PaginationItem>
+
             <PaginationItem>
-              <PaginationLink href="#" onClick={(e) => e.preventDefault()} isActive className="bg-primary text-primary-foreground text-xs sm:text-sm">{currentPage}</PaginationLink>
+              <PaginationLink
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                isActive
+                className="bg-primary text-primary-foreground text-xs sm:text-sm"
+              >
+                {currentPage}
+              </PaginationLink>
             </PaginationItem>
+
             <PaginationItem>
-              <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }} className="text-xs sm:text-sm" />
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                }}
+                className={`text-xs sm:text-sm ${currentPage === totalPages ? "pointer-events-none opacity-50" : ""}`}
+              />
             </PaginationItem>
           </PaginationContent>
         </Pagination>

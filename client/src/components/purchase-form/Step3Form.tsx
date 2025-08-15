@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/Input";
 // import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Trash2 } from "lucide-react";
 import { NavbarButton } from "../ui/resizable-navbar";
+import { Input } from "../ui/Input";
 
 export default function Step3ItemTable() {
 

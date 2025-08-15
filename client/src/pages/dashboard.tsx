@@ -14,7 +14,7 @@ import Cookies from 'js-cookie';
 const Dashboard = () => {
   const { profile, loading, error, isAuthenticated } = useProfile();
   const [stats, setStats] = useState<DashboardStat[]>([]);
-
+  // console.log("Profile:", profile);
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -77,7 +77,7 @@ const Dashboard = () => {
         {/* Header */}
         <section className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-lg sm:text-xl font-semibold">
-            Hello! <span className="text-blue-600">{profile?.name || 'User'}</span>
+            Hello! <span className="text-blue-600">{profile?.data?.name || 'User'}</span>
           </h1>
           <ActionToolbar />
         </section>

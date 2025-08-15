@@ -1,5 +1,5 @@
-import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
+import { Input } from "../ui/Input";
 
 export default function Step2Form() {
   return (

@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "../ui/Checkbox";
+import { Input } from "../ui/Input";
 
 export default function Step2Form() {
     const [billing, setBilling] = useState({
