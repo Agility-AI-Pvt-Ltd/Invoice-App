@@ -3,7 +3,7 @@ import SearchBar from "./ui/SearchBar";
 import ProfileAvatar from "./ui/ProfileAvatar";
 import Notification from "./ui/Notification";
 import { DateRangePicker } from "./ui/DateRangePicker";
-import { getProfile } from "@/services/api/auth";
+import { useProfile } from "@/contexts/ProfileContext";
 
 const Header: React.FC<any> = ({ label }: { label: string }) => {
     const [avatarUrl, setAvatarUrl] = useState<string>("/default-avatar.png"); // fallback
@@ -21,9 +21,10 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const profile = await getProfile();
-                if (profile.businessLogo) {
-                    setAvatarUrl(profile.businessLogo);
+                const {profile} = useProfile();
+                if (profile?.data?.businessLogo) {
+                    // console.log("Profile avatar URL:", profile.data.businessLogo);
+                    setAvatarUrl(profile.data.businessLogo);
                 }
             } catch (err: any) {
                 console.error("Failed to fetch profile:", err.message);

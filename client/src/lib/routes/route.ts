@@ -6,6 +6,10 @@ export const routes = {
         sendOtpRegister: `${API_BASE}/api/send-otp-register`,
         verifyOtpAndRegister: `${API_BASE}/api/verify-otp-register`,
         login: `${BACKEND_URL}/api/login`,
+
+        getProfile: `${BACKEND_URL}/api/profile`,
+        updateProfile: `${BACKEND_URL}/api/auth/profile/update`,
+
         getProfile: `${API_BASE}/api/profile`,
         updateProfile: `${API_BASE}/api/profile/update`,
     },
@@ -14,6 +18,7 @@ export const routes = {
         collectedTimeseries: `${API_BASE}/api/tax/collected-timeseries`,
         summary: `${API_BASE}/api/tax/summary`,
         exportSummary: `${API_BASE}/api/tax/summary/export`,
+
     },
     users: {
         getUserProfile: `${API_BASE}/api/users/profile`,

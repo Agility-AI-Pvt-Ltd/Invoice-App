@@ -1,9 +1,11 @@
 //TaxSummaryTable.tsx
 
 import { useEffect, useState } from "react";
+
 import axios from "axios";
 import Cookies from "js-cookie";
 import { routes } from "@/lib/routes/route";
+
 import { Card } from "@/components/ui/card";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import { Button } from "@/components/ui/button";
@@ -24,7 +26,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+
+import { ChevronDown, ChevronRight, Download } from "lucide-react";
+import Cookies from "js-cookie";
+import { getTaxSummary } from "@/services/api/tax";
+
 import { ChevronDown, Download } from "lucide-react";
+
 
 interface ApiSummaryRow {
   taxType?: string;
@@ -50,11 +58,40 @@ interface TableRowItem {
 }
 
 export function TaxSummaryTable() {
+
+  const [data, setData] = useState<TaxItem[]>([]);
+
   const [rows, setRows] = useState<TableRowItem[]>([]);
+
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const itemsPerPage = 10;
+
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = Cookies.get("authToken")  // or however you store it
+        if (!token) return;
+        const res = await getTaxSummary(token);
+        //@ts-ignore
+        setData(res);
+      } catch (error) {
+        console.error("Failed to fetch tax summary:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const toggleRowExpansion = (id: string) => {
+    setData(prevData =>
+      prevData.map(item =>
+        item.id === id ? { ...item, expanded: !item.expanded } : item
+      )
+    );
+  };
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -87,6 +124,7 @@ export function TaxSummaryTable() {
     fetchSummary();
   }, [selectedDate]);
 
+
   const toggleRowSelection = (id: string) => {
     const next = new Set(selectedRows);
     if (next.has(id)) {
@@ -105,6 +143,18 @@ export function TaxSummaryTable() {
     }
   };
 
+
+  const handleExport = () => {
+    const exportData = selectedRows.size > 0 ? data.filter(item => selectedRows.has(item.id)) : data;
+    const csvContent = [
+      "Tax Type,Tax Rate%,Taxable Amount,Tax Collected,Tax Paid,Net Tax Liability,Period,No. of Invoices",
+      ...exportData.map(item =>
+        `${item.taxType},${item.taxRate},${item.taxableAmount},${item.taxCollected},${item.taxPaid},${item.netTaxLiability},${item.period},${item.noOfInvoices}`
+      )
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+
   const currency = (n: number) => `₹${n.toLocaleString()}`;
 
   const totalPages = Math.ceil(rows.length / itemsPerPage) || 1;
@@ -118,13 +168,28 @@ export function TaxSummaryTable() {
       ...exportData.map(r => `${r.taxType},${r.taxRate},${r.taxableAmount},${r.taxCollected},${r.taxPaid},${r.netTaxLiability},${r.period},${r.noOfInvoices}`)
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
+
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'tax-summary.csv';
+    a.download = "tax-summary.csv";
     a.click();
     window.URL.revokeObjectURL(url);
   };
+
+
+  const flattenedData: TaxItem[] = data.reduce((acc: TaxItem[], item) => {
+    acc.push(item);
+    if (item.expanded && item.children) {
+      acc.push(...item.children);
+    }
+    return acc;
+  }, []);
+
+  const totalPages = Math.ceil(flattenedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = flattenedData.slice(startIndex, startIndex + itemsPerPage);
+
 
   return (
     <Card className="p-3 sm:p-4 lg:p-6 bg-white">
@@ -137,11 +202,32 @@ export function TaxSummaryTable() {
           <div className="sm:hidden">
             <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} iconOnly />
           </div>
+
+
+          {/* Export button responsive */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex items-center gap-2 w-full sm:w-auto"
+            onClick={handleExport}
+          >
+            <Download className="h-4 w-4" />
+            <span>Export</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="inline-flex sm:hidden"
+            aria-label="Export"
+            onClick={handleExport}
+          >
+
           <Button variant="outline" size="sm" className="hidden sm:inline-flex items-center gap-2 w-full sm:w-auto" onClick={handleExportSelected}>
             <Download className="h-4 w-4" />
             <span>Export</span>
           </Button>
           <Button variant="outline" size="icon" className="inline-flex sm:hidden" aria-label="Export" onClick={handleExportSelected}>
+
             <Download className="h-5 w-5" />
           </Button>
         </div>
@@ -204,16 +290,79 @@ export function TaxSummaryTable() {
         <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           Showing {rows.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, rows.length)} of {rows.length} entries
         </div>
+
+
+        <Pagination>
+          <PaginationContent className="flex-wrap">
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 1) setCurrentPage(currentPage - 1);
+                }}
+                className={`text-xs sm:text-sm ${currentPage === 1 ? "pointer-events-none opacity-50" : ""}`}
+              />
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationLink
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                isActive={true}
+                className="bg-primary text-primary-foreground text-xs sm:text-sm"
+              >
+                1
+              </PaginationLink>
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
+                2
+              </PaginationLink>
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
+                3
+              </PaginationLink>
+            </PaginationItem>
+
+            <PaginationItem>
+              <span className="px-2 sm:px-3 py-2 text-xs sm:text-sm">...</span>
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
+                67
+              </PaginationLink>
+            </PaginationItem>
+
+
         <Pagination>
           <PaginationContent className="flex-wrap">
             <PaginationItem>
               <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }} className={`text-xs sm:text-sm ${currentPage === 1 ? "pointer-events-none opacity-50" : ""}`} />
             </PaginationItem>
+
             <PaginationItem>
               <PaginationLink href="#" onClick={(e) => e.preventDefault()} isActive className="bg-primary text-primary-foreground text-xs sm:text-sm">{currentPage}</PaginationLink>
             </PaginationItem>
+
+
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                }}
+                className="text-xs sm:text-sm"
+              />
+
             <PaginationItem>
               <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }} className="text-xs sm:text-sm" />
+
             </PaginationItem>
           </PaginationContent>
         </Pagination>
