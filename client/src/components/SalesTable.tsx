@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -35,11 +35,11 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { salesData } from "@/lib/mock/salesData";
-import type { SalesRecord } from "@/lib/mock/salesData.ts";
+import { getSalesData, type SalesRecord } from "@/services/api/sales";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRef } from "react";
+import Cookies from "js-cookie";
 
 export const SalesTable = ({
   setIsSalesFormOn
@@ -48,8 +48,8 @@ export const SalesTable = ({
 }) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredData, setFilteredData] = useState<SalesRecord[]>(salesData);
-  const [allData, setAllData] = useState<SalesRecord[]>(salesData);
+  const [filteredData, setFilteredData] = useState<SalesRecord[]>([]);
+  const [allData, setAllData] = useState<SalesRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [sortField, setSortField] = useState<keyof SalesRecord | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -64,6 +64,23 @@ export const SalesTable = ({
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = Cookies.get("authToken") || "";
+        const data = await getSalesData(token);
+        setAllData(data);
+        setFilteredData(data);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load sales data.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchData();
+  }, [toast]);
 
 
   const handleSearch = useCallback((value: string) => {
@@ -190,7 +207,7 @@ export const SalesTable = ({
   };
 
   const exportToCSV = (filtered = false) => {
-    const dataToExport = filtered ? filteredData : salesData;
+    const dataToExport = filtered ? filteredData : allData;
     const headers = ["Invoice Number", "Customer Name", "Product", "Quantity", "Unit Price", "Total Amount", "Date of Sale", "Payment Status"];
     const csvContent = [
       headers.join(","),
@@ -870,7 +887,7 @@ export const SalesTable = ({
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+        {/* <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <Button variant="outline" size="sm" disabled>
             ← Previous
           </Button>
@@ -885,7 +902,7 @@ export const SalesTable = ({
           <Button variant="outline" size="sm">
             Next →
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

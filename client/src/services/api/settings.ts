@@ -2,7 +2,7 @@ import axios from 'axios';
 import { SETTINGS_API } from '../routes/settings';
 
 // Types
-export interface UserProfile {
+export interface User {
   _id: string;
   name: string;
   email: string;
@@ -16,6 +16,9 @@ export interface UserProfile {
   isGstRegistered?: boolean;
   businessLogo?: string;
   createdAt?: string;
+}
+export interface UserProfile {
+  data : User;
 }
 
 export interface ProfileUpdate {
@@ -32,8 +35,8 @@ export interface ProfileUpdate {
 }
 
 export interface PasswordChange {
-  old_password: string;
-  new_password: string;
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface AppSettings {
@@ -75,7 +78,7 @@ export const getUserProfile = async (token: string): Promise<UserProfile> => {
  */
 export const updateUserProfile = async (token: string, updates: ProfileUpdate): Promise<{ success: boolean }> => {
   try {
-    const response = await axios.put(SETTINGS_API.PROFILE, updates, {
+    const response = await axios.put(SETTINGS_API.UPDATE_PROFILE, updates, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -92,7 +95,7 @@ export const updateUserProfile = async (token: string, updates: ProfileUpdate): 
  */
 export const changePassword = async (token: string, passwordData: PasswordChange): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await axios.post(SETTINGS_API.CHANGE_PASSWORD, passwordData, {
+    const response = await axios.put(SETTINGS_API.CHANGE_PASSWORD, passwordData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -107,10 +110,10 @@ export const changePassword = async (token: string, passwordData: PasswordChange
 /**
  * Upload business logo
  */
-export const uploadBusinessLogo = async (token: string, file: File): Promise<{ success: boolean; logoUrl: string }> => {
+export const uploadBusinessLogo = async (token: string, file: File): Promise<{ success: boolean; message: string; fileUrl: string }> => {
   try {
     const formData = new FormData();
-    formData.append('logo', file);
+    formData.append('file', file);
     
     const response = await axios.post(SETTINGS_API.UPLOAD_LOGO, formData, {
       headers: {

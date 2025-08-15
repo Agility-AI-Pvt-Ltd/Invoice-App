@@ -7,6 +7,47 @@ export const SALES_API = {
     STATS: `${BASE_URL}/api/sales/stats`,
     PERFORMANCE: `${BASE_URL}/api/sales/performance`,
     REGIONS: `${BASE_URL}/api/sales/regions`,
+    ITEMS: `${BASE_URL}/api/inventory/items`,
+    SUMMARY: `${BASE_URL}/api/inventory/summary`,
+    EXPORT: `${BASE_URL}/api/inventory/export`,
+    IMPORT: `${BASE_URL}/api/inventory/import`,
+    CATEGORIES: `${BASE_URL}/api/inventory/categories`,
+    LIST: `${BASE_URL}/api/sales`,
+    
+}
+
+
+// ---- Types ----
+export interface SalesRecord {
+    id: string;
+    invoiceNumber: string;
+    customerName: string;
+    product: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+    dateOfSale: string;
+    paymentStatus: string; // can be 'Paid', 'Unpaid', 'Draft', 'Sent', etc.
+}
+
+/**
+ * Fetch sales data
+ * @param token JWT authentication token
+ */
+export const getSalesData = async (
+    token: string
+): Promise<SalesRecord[]> => {
+    try {
+        const response = await axios.get(`${SALES_API.LIST}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching sales data:", error);
+        throw error;
+    }
 };
 
 
@@ -17,9 +58,6 @@ export const SALES_API = {
  * @param to Optional end date (ISO string)
  */
 
-/**
- * Fetch sales stats (total sales, current month sales, average order value)
- */
 export const getSalesStats = async (
     token: string,
     from?: string,

@@ -6,7 +6,7 @@ export const routes = {
     auth: {
         signup: `${BACKEND_URL}/api/register`,
         login: `${BACKEND_URL}/api/login`,
-        getProfile: `${BACKEND_URL}/api/auth/profile`,
+        getProfile: `${BACKEND_URL}/api/profile`,
         updateProfile: `${BACKEND_URL}/api/auth/profile/update`,
     },
     users: {

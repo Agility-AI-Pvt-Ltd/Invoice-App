@@ -40,21 +40,23 @@ export default function TeamManagement() {
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
-        const token = Cookies.get('authToken') || "";
+        setLoading(true);
+        const token = Cookies.get("authToken") || "";
         const response = await getTeamMembers(token, currentPage, 10, {
-          search: searchTerm || undefined
+          search: searchTerm || undefined,
         });
-        setTeamMembers(response.members);
-        setTotalMembers(response.total);
-        setTotalPages(response.totalPages);
+
+        // match updated return format from getTeamMembers
+        setTeamMembers(response.data || []);
+        setTotalMembers(response.total || 0);
+        setTotalPages(response.totalPages || 0);
       } catch (error) {
-        console.error('Error fetching team members:', error);
+        console.error("Error fetching team members:", error);
         toast({
           title: "Error",
           description: "Failed to fetch team members",
           variant: "destructive",
         });
-        // Fallback to empty array if API fails
         setTeamMembers([]);
       } finally {
         setLoading(false);
@@ -63,6 +65,7 @@ export default function TeamManagement() {
 
     fetchTeamMembers();
   }, [token, currentPage, searchTerm, toast]);
+
   // const handleSearch = (value: string) => {
   //   setSearchTerm(value);
   //   setCurrentPage(1); // Reset to first page when searching
@@ -195,49 +198,64 @@ export default function TeamManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {teamMembers.map((member) => (
-                      <TableRow key={member.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <TableCell className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={member.avatar} alt={member.name} />
-                              <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
-                                {member.name.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-slate-800">{member.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 text-slate-600">{member.role}</TableCell>
-                        <TableCell className="py-4 px-6 text-slate-600 hidden sm:table-cell">{member.email}</TableCell>
-                        <TableCell className="py-4 px-6 text-slate-600 hidden md:table-cell">{member.phone}</TableCell>
-                        <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.dateJoined}</TableCell>
-                        <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.lastActive}</TableCell>
-                        <TableCell className="py-4 px-6">
-                          <Badge
-                            variant={member.status === "Active" ? "secondary" : "destructive"}
-                            className={
-                              member.status === "Active"
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
-                                : "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
-                            }
-                          >
-                            {member.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-4 px-6">
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </div>
+                    {teamMembers.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          className="text-center text-slate-500 py-6"
+                        >
+                          No team members found
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      teamMembers.map((member) => (
+                        <TableRow
+                          key={member.id}
+                          className="border-b border-slate-100 hover:bg-slate-50"
+                        >
+                          <TableCell className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={member.avatar} alt={member.name} />
+                                <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
+                                  {member.name.split(' ').map((n) => n[0]).join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium text-slate-800">{member.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 px-6 text-slate-600">{member.role}</TableCell>
+                          <TableCell className="py-4 px-6 text-slate-600 hidden sm:table-cell">{member.email}</TableCell>
+                          <TableCell className="py-4 px-6 text-slate-600 hidden md:table-cell">{member.phone}</TableCell>
+                          <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.dateJoined}</TableCell>
+                          <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.lastActive}</TableCell>
+                          <TableCell className="py-4 px-6">
+                            <Badge
+                              variant={member.status === "Active" ? "secondary" : "destructive"}
+                              className={
+                                member.status === "Active"
+                                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
+                                  : "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
+                              }
+                            >
+                              {member.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-4 px-6">
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
+
                 </Table>
               </div>
 

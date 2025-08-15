@@ -32,7 +32,7 @@ const Index = () => {
       <div className="max-w-8xl mx-auto space-y-6">
         {/* Header with Date Filter */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">Hello {profile?.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">Hello {profile?.data?.name}</h1>
           <DateRangePicker
           // date={selectedDate} onDateChange={setSelectedDate} //TODO - Uncomment when DateRangePicker is implemented
           />

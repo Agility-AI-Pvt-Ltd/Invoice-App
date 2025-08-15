@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Search, Download, Upload, Plus, Filter } from "lucide-react";
@@ -15,7 +15,8 @@ import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import ExpenseForm from "@/components/expense-form/ExpenseForm";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
+import { getExpenseInvoices, type ExpenseInvoice } from "@/services/api/expense";
+import Cookies from "js-cookie";
 
 interface Expense {
   id: string;
@@ -29,96 +30,21 @@ interface Expense {
   date: string;
 }
 
-const initialExpenses: Expense[] = [
-  {
-    id: "expense-1",
-    expenseId: "EX-2024/001",
-    title: "Product 1",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "Cash",
-    amount: 2000,
-    status: "Paid",
-    date: "29 July 2024",
-  },
-  {
-    id: "expense-2",
-    expenseId: "EX-2024/002",
-    title: "Product 2",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "UPI",
-    amount: 3500,
-    status: "Paid",
-    date: "28 July 2024",
-  },
-  {
-    id: "expense-3",
-    expenseId: "EX-2024/003",
-    title: "Product 3",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "NET Banking",
-    amount: 1500,
-    status: "Overdue",
-    date: "27 July 2024",
-  },
-  {
-    id: "expense-4",
-    expenseId: "EX-2024/004",
-    title: "Product 4",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "Credit Card",
-    amount: 5000,
-    status: "Paid",
-    date: "26 July 2024",
-  },
-  {
-    id: "expense-5",
-    expenseId: "EX-2024/005",
-    title: "Product 5",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "Cash",
-    amount: 2200,
-    status: "Paid",
-    date: "25 July 2024",
-  },
-  {
-    id: "expense-6",
-    expenseId: "EX-2024/006",
-    title: "Product 6",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "UPI",
-    amount: 1800,
-    status: "Paid",
-    date: "24 July 2024",
-  },
-  {
-    id: "expense-7",
-    expenseId: "EX-2024/007",
-    title: "Product 7",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "NET Banking",
-    amount: 4200,
-    status: "Paid",
-    date: "23 July 2024",
-  },
-  {
-    id: "expense-8",
-    expenseId: "EX-2024/008",
-    title: "Product 8",
-    vendorName: "Vendor Name",
-    vendorAvatar: "V",
-    paymentMethod: "Credit Card",
-    amount: 3000,
-    status: "Unpaid",
-    date: "22 July 2024",
-  },
-];
+// Transform API data to match the Expense interface
+const transformExpenseData = (apiExpense: ExpenseInvoice): Expense => {
+  return {
+    id: apiExpense._id || `expense-${Date.now()}`,
+    expenseId: apiExpense.invoiceNumber,
+    title: apiExpense.items?.[0]?.description || "No Description",
+    vendorName: apiExpense.billFrom?.name || "Unknown Vendor",
+    vendorAvatar: apiExpense.billFrom?.name?.[0]?.toUpperCase() || "V",
+    paymentMethod: "Cash", // Default value as API doesn't provide this
+    amount: apiExpense.total || 0,
+    status: apiExpense.status === "paid" ? "Paid" : 
+            apiExpense.status === "overdue" ? "Overdue" : "Unpaid",
+    date: format(new Date(apiExpense.date), "dd MMMM yyyy"),
+  };
+};
 // Helper function to parse expense date string to Date object
 const parseExpenseDate = (dateString: string): Date | null => {
   try {
@@ -131,7 +57,9 @@ const parseExpenseDate = (dateString: string): Date | null => {
 };
 
 export default function Expenses() {
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   //@ts-expect-error - might use later
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -157,6 +85,39 @@ export default function Expenses() {
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
 
   const { toast } = useToast();
+
+  // Fetch expenses from API
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = Cookies.get('authToken');
+        
+        if (!token) {
+          setError('Authentication token not found');
+          setLoading(false);
+          return;
+        }
+
+        const apiExpenses = await getExpenseInvoices(token);
+        const transformedExpenses = apiExpenses.map(transformExpenseData);
+        setExpenses(transformedExpenses);
+      } catch (err) {
+        console.error('Error fetching expenses:', err);
+        setError('Failed to fetch expenses');
+        toast({
+          title: "Error",
+          description: "Failed to fetch expenses from the server",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpenses();
+  }, [toast]);
 
   const generateExpenseId = () => {
     const year = new Date().getFullYear();
@@ -391,60 +352,6 @@ export default function Expenses() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-
-              {/* <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Import Expenses</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="file-upload">Select CSV File</Label>
-                      <Input
-                        id="file-upload"
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleImport}
-                        className="mt-2"
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Missing columns will be filled with "-". Supported formats: CSV, Excel
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog> */}
-
-              {/* <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white">
-                  <DialogHeader>
-                    <DialogTitle>Export Expenses</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-3">
-                      <Button onClick={() => handleExport(false)} variant="outline">
-                        Export All Records
-                      </Button>
-                      <Button onClick={() => handleExport(true)} variant="outline">
-                        Export Filtered Records
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog> */}
-
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -543,87 +450,6 @@ export default function Expenses() {
                 <Plus className="h-4 w-4" />
                 <span className="ml-2">Add New Expenses</span>
               </Button>
-              {/* Add New Expenses Dropdown */}
-              {/* <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="h-4 w-4" />
-                      <span className="ml-2">Add New Expenses</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Add New Expense</h4>
-                      <div>
-                        <Label htmlFor="expense-title">Expense Title</Label>
-                        <Input
-                          id="expense-title"
-                          value={newExpense.title}
-                          onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
-                          placeholder="Enter expense title"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="vendor-name">Vendor Name</Label>
-                        <Input
-                          id="vendor-name"
-                          value={newExpense.vendorName}
-                          onChange={(e) => setNewExpense({...newExpense, vendorName: e.target.value})}
-                          placeholder="Enter vendor name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="payment-method">Payment Method</Label>
-                        <Select value={newExpense.paymentMethod} onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="UPI">UPI</SelectItem>
-                            <SelectItem value="NET Banking">NET Banking</SelectItem>
-                            <SelectItem value="Credit Card">Credit Card</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="amount">Amount</Label>
-                        <Input
-                          id="amount"
-                          type="number"
-                          value={newExpense.amount}
-                          onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                          placeholder="Enter amount"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="status">Status</Label>
-                        <Select value={newExpense.status} onValueChange={(value) => setNewExpense({...newExpense, status: value as "Paid" | "Unpaid" | "Overdue"})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Paid">Paid</SelectItem>
-                            <SelectItem value="Unpaid">Unpaid</SelectItem>
-                            <SelectItem value="Overdue">Overdue</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="expense-date">Date</Label>
-                        <Input
-                          id="expense-date"
-                          type="date"
-                          value={newExpense.date}
-                          onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                        />
-                      </div>
-                      <Button className="w-full">
-                        Add Expense
-                      </Button>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu> */}
             </div>
 
             {/* Mobile Actions - Icon Only */}
@@ -768,96 +594,45 @@ export default function Expenses() {
               <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-5 w-5" />
               </Button>
-              {/* Add Expense Icon Button */}
-              {/* <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80 p-4 bg-white text-black">
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Add New Expense</h4>
-                      <div>
-                        <Label htmlFor="expense-title">Expense Title</Label>
-                        <Input
-                          id="expense-title"
-                          value={newExpense.title}
-                          onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
-                          placeholder="Enter expense title"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="vendor-name">Vendor Name</Label>
-                        <Input
-                          id="vendor-name"
-                          value={newExpense.vendorName}
-                          onChange={(e) => setNewExpense({...newExpense, vendorName: e.target.value})}
-                          placeholder="Enter vendor name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="payment-method">Payment Method</Label>
-                        <Select value={newExpense.paymentMethod} onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="UPI">UPI</SelectItem>
-                            <SelectItem value="NET Banking">NET Banking</SelectItem>
-                            <SelectItem value="Credit Card">Credit Card</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="amount">Amount</Label>
-                        <Input
-                          id="amount"
-                          type="number"
-                          value={newExpense.amount}
-                          onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                          placeholder="Enter amount"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="status">Status</Label>
-                        <Select value={newExpense.status} onValueChange={(value) => setNewExpense({...newExpense, status: value as "Paid" | "Unpaid" | "Overdue"})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Paid">Paid</SelectItem>
-                            <SelectItem value="Unpaid">Unpaid</SelectItem>
-                            <SelectItem value="Overdue">Overdue</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="expense-date">Date</Label>
-                        <Input
-                          id="expense-date"
-                          type="date"
-                          value={newExpense.date}
-                          onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                        />
-                      </div>
-                      <Button className="w-full">
-                        Add Expense
-                      </Button>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu> */}
             </div>
           </div>
         </div>
 
+        {/* Loading and Error States */}
+        {loading && (
+          <div className="bg-white rounded-lg border border-border p-6 w-full">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading expenses...</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <ExpenseTable
-          expenses={filteredExpenses}
-          searchTerm={searchTerm}
-          onDeleteExpense={handleDeleteExpense}
-        />
+        {error && !loading && (
+          <div className="bg-white rounded-lg border border-border p-6 w-full">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <p className="text-destructive mb-4">{error}</p>
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  variant="outline"
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <ExpenseTable
+            expenses={filteredExpenses}
+            searchTerm={searchTerm}
+            onDeleteExpense={handleDeleteExpense}
+          />
+        )}
 
       </div>
     </div>

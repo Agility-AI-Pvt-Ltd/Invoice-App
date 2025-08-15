@@ -1,6 +1,6 @@
 //TaxSummaryTable.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { ChevronDown, ChevronRight, Download } from "lucide-react";
+import Cookies from "js-cookie";
+import { getTaxSummary } from "@/services/api/tax";
 
 interface TaxItem {
   id: string;
@@ -39,194 +41,32 @@ interface TaxItem {
   isChild?: boolean;
 }
 
-const taxData: TaxItem[] = [
-  {
-    id: '1',
-    taxType: 'CGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 2,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '2',
-    taxType: 'SGST',
-    taxRate: '5%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 3,
-    expanded: false,
-    isParent: true,
-    children: [
-      {
-        id: '2-1',
-        taxType: 'IGST',
-        taxRate: '12%',
-        taxableAmount: '₹2000',
-        taxCollected: '₹2000',
-        taxPaid: '₹2000',
-        netTaxLiability: '₹5000',
-        period: '29 July 2024',
-        noOfInvoices: 5,
-        isChild: true
-      },
-      {
-        id: '2-2',
-        taxType: 'CGST',
-        taxRate: '18%',
-        taxableAmount: '₹2000',
-        taxCollected: '₹2000',
-        taxPaid: '₹2000',
-        netTaxLiability: '₹5000',
-        period: '29 July 2024',
-        noOfInvoices: 2,
-        isChild: true
-      },
-      {
-        id: '2-3',
-        taxType: 'IGST',
-        taxRate: '18%',
-        taxableAmount: '₹2000',
-        taxCollected: '₹2000',
-        taxPaid: '₹2000',
-        netTaxLiability: '₹5000',
-        period: '29 July 2024',
-        noOfInvoices: 2,
-        isChild: true
-      },
-      {
-        id: '2-4',
-        taxType: 'CGST',
-        taxRate: '18%',
-        taxableAmount: '₹2000',
-        taxCollected: '₹2000',
-        taxPaid: '₹2000',
-        netTaxLiability: '₹5000',
-        period: '29 July 2024',
-        noOfInvoices: 2,
-        isChild: true
-      }
-    ]
-  },
-  {
-    id: '3',
-    taxType: 'IGST',
-    taxRate: '12%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 5,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '4',
-    taxType: 'CGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 2,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '5',
-    taxType: 'IGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 2,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '6',
-    taxType: 'CGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 2,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '7',
-    taxType: 'IGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 2,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '8',
-    taxType: 'CGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 12,
-    expanded: false,
-    children: [],
-    isParent: false
-  },
-  {
-    id: '9',
-    taxType: 'IGST',
-    taxRate: '18%',
-    taxableAmount: '₹2000',
-    taxCollected: '₹2000',
-    taxPaid: '₹2000',
-    netTaxLiability: '₹5000',
-    period: '29 July 2024',
-    noOfInvoices: 5,
-    expanded: false,
-    children: [],
-    isParent: false
-  }
-];
-
 export function TaxSummaryTable() {
-  const [data, setData] = useState<TaxItem[]>(taxData);
+  const [data, setData] = useState<TaxItem[]>([]);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const itemsPerPage = 10;
 
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = Cookies.get("authToken")  // or however you store it
+        if (!token) return;
+        const res = await getTaxSummary(token);
+        //@ts-ignore
+        setData(res);
+      } catch (error) {
+        console.error("Failed to fetch tax summary:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   const toggleRowExpansion = (id: string) => {
-    setData(prevData => 
-      prevData.map(item => 
+    setData(prevData =>
+      prevData.map(item =>
         item.id === id ? { ...item, expanded: !item.expanded } : item
       )
     );
@@ -251,25 +91,23 @@ export function TaxSummaryTable() {
   };
 
   const handleExport = () => {
-    // Create CSV content for selected rows or all data if none selected
     const exportData = selectedRows.size > 0 ? data.filter(item => selectedRows.has(item.id)) : data;
     const csvContent = [
       "Tax Type,Tax Rate%,Taxable Amount,Tax Collected,Tax Paid,Net Tax Liability,Period,No. of Invoices",
-      ...exportData.map(item => 
+      ...exportData.map(item =>
         `${item.taxType},${item.taxRate},${item.taxableAmount},${item.taxCollected},${item.taxPaid},${item.netTaxLiability},${item.period},${item.noOfInvoices}`
       )
-    ].join('\n');
+    ].join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'tax-summary.csv';
+    a.download = "tax-summary.csv";
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
-  // Flatten data to include expanded children
   const flattenedData: TaxItem[] = data.reduce((acc: TaxItem[], item) => {
     acc.push(item);
     if (item.expanded && item.children) {
@@ -296,18 +134,18 @@ export function TaxSummaryTable() {
           </div>
 
           {/* Export button responsive */}
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="hidden sm:inline-flex items-center gap-2 w-full sm:w-auto"
             onClick={handleExport}
           >
             <Download className="h-4 w-4" />
             <span>Export</span>
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             className="inline-flex sm:hidden"
             aria-label="Export"
             onClick={handleExport}
@@ -424,11 +262,11 @@ export function TaxSummaryTable() {
         <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, data.length)} of {data.length} entries
         </div>
-        
+
         <Pagination>
           <PaginationContent className="flex-wrap">
             <PaginationItem>
-              <PaginationPrevious 
+              <PaginationPrevious
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
@@ -437,7 +275,7 @@ export function TaxSummaryTable() {
                 className={`text-xs sm:text-sm ${currentPage === 1 ? "pointer-events-none opacity-50" : ""}`}
               />
             </PaginationItem>
-            
+
             <PaginationItem>
               <PaginationLink
                 href="#"
@@ -448,37 +286,37 @@ export function TaxSummaryTable() {
                 1
               </PaginationLink>
             </PaginationItem>
-            
+
             <PaginationItem>
               <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 2
               </PaginationLink>
             </PaginationItem>
-            
+
             <PaginationItem>
               <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 3
               </PaginationLink>
             </PaginationItem>
-            
+
             <PaginationItem>
               <span className="px-2 sm:px-3 py-2 text-xs sm:text-sm">...</span>
             </PaginationItem>
-            
+
             <PaginationItem>
               <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 67
               </PaginationLink>
             </PaginationItem>
-            
+
             <PaginationItem>
               <PaginationLink href="#" onClick={(e) => e.preventDefault()} className="text-xs sm:text-sm">
                 68
               </PaginationLink>
             </PaginationItem>
-            
+
             <PaginationItem>
-              <PaginationNext 
+              <PaginationNext
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();

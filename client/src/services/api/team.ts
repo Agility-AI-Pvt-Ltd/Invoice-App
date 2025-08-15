@@ -52,19 +52,37 @@ export const getTeamMembers = async (
   page: number = 1,
   limit: number = 10,
   filters?: TeamFilters
-): Promise<{ members: TeamMember[]; total: number; page: number; totalPages: number }> => {
+): Promise<{ data: TeamMember[]; total: number; page: number; totalPages: number }> => {
   try {
     const params: any = { page, limit, ...filters };
-    
+
     const response = await axios.get(TEAM_API.GET_ALL, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       params,
     });
-    return response.data;
+
+    const { data, pagination } = response.data || {};
+
+    // Handle empty or invalid data
+    if (!Array.isArray(data) || data.length === 0) {
+      return {
+        data: [],
+        total: pagination?.totalItems || 0,
+        page: pagination?.currentPage || 1,
+        totalPages: pagination?.totalPages || 0,
+      };
+    }
+
+    return {
+      data,
+      total: pagination?.totalItems || 0,
+      page: pagination?.currentPage || 1,
+      totalPages: pagination?.totalPages || 0,
+    };
   } catch (error) {
-    console.error('Error fetching team members:', error);
+    console.error("Error fetching team members:", error);
     throw error;
   }
 };

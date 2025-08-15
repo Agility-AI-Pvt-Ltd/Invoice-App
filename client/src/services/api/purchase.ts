@@ -71,7 +71,7 @@ export const getPurchaseMetrics = async (token: string): Promise<PurchaseMetrics
 export const getSummaryCardsData = async (token: string): Promise<SummaryCardData[]> => {
   try {
     const metrics = await getPurchaseMetrics(token);
-    
+
     return [
       {
         title: "Total Purchase",
@@ -119,7 +119,6 @@ export const getPurchaseItems = async (
   filters?: PurchaseFilters
 ): Promise<{ items: PurchaseItem[]; total: number; page: number; totalPages: number }> => {
   try {
-    // Since there's no dedicated purchase API, we'll use expense invoices as purchase data
     const response = await axios.get(PURCHASE_API.GET_ALL, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -130,9 +129,26 @@ export const getPurchaseItems = async (
         ...filters,
       },
     });
-    
-    // Transform expense invoices to purchase items
-    const items: PurchaseItem[] = response.data.map((expense: any, index: number) => ({
+
+    // Ensure data exists and is an array
+    if (!response.data || !Array.isArray(response.data.data) || response.data.data.length === 0) {
+      return {
+        items: [],
+        total: 0,
+        page: response.data?.pagination?.page || 1,
+        totalPages: response.data?.pagination?.totalPages || 0,
+      };
+    }
+
+    const expenses = response.data.data;
+    const pagination = response.data.pagination || {
+      page: 1,
+      totalPages: 0,
+      total: 0,
+    };
+
+    // Transform API response to PurchaseItem[]
+    const items: PurchaseItem[] = expenses.map((expense: any, index: number) => ({
       id: expense._id || `purchase-${index + 1}`,
       purchaseId: expense.invoiceNumber,
       supplierName: expense.billFrom?.name || 'Supplier Name',
@@ -148,18 +164,19 @@ export const getPurchaseItems = async (
       totalAmount: expense.total || 0,
       paymentStatus: expense.status === 'paid' ? 'Paid' : 'Unpaid',
     }));
-    
+
     return {
       items,
-      total: response.data.length,
-      page,
-      totalPages: Math.ceil(response.data.length / limit),
+      total: pagination.total,
+      page: pagination.page,
+      totalPages: pagination.totalPages,
     };
   } catch (error) {
     console.error('Error fetching purchase items:', error);
     throw error;
   }
 };
+
 
 /**
  * Import purchases from file
@@ -168,7 +185,7 @@ export const importPurchases = async (token: string, file: File): Promise<{ impo
   try {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await axios.post(PURCHASE_API.IMPORT, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
