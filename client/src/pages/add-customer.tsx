@@ -24,7 +24,7 @@ export default function MultiStepForm({ onCancel }: Props) {
     const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
     return (
-        <div className="mx-auto p-8">
+        <div className="p-8">
             <StepIndicator currentStep={step} steps={steps}/>
 
             <div className="mt-6">

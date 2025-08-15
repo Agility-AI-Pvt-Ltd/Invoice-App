@@ -1,7 +1,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/Input";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "./Input";
 
 const SearchBar = ({ iconOnly = false }: { iconOnly?: boolean }) => {
     if (iconOnly) {

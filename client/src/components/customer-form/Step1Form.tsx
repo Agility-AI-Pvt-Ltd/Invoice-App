@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/Input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronDown } from "lucide-react";
+import { Input } from "../ui/Input";
 
 export default function Step1Form() {
     return (
