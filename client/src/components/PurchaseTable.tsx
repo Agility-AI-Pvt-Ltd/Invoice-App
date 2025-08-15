@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react"
 import { Search, Calendar, Download, Upload, Plus, Edit, MoreVertical, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/Input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -23,6 +22,7 @@ import { getPurchaseItems } from "@/services/api/purchase";
 import { NavbarButton } from "./ui/resizable-navbar"
 import Cookies from "js-cookie"
 import type { PurchaseItem, PurchaseTableFilters } from "@/types/purchase"
+import { Input } from "./ui/Input"
 
 const PaymentStatusBadge = ({ status }: { status: PurchaseItem["paymentStatus"] }) => {
     const variants = {

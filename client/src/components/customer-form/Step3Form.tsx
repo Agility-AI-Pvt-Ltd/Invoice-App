@@ -1,4 +1,3 @@
-import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import {
     Select,
@@ -8,6 +7,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { Input } from "../ui/Input";
 
 export default function Step3Form() {
     //@ts-expect-error - TSX file, no type definitions for React
@@ -25,7 +25,7 @@ export default function Step3Form() {
                 <Label htmlFor="pan" className="text-sm font-medium text-gray-900">
                     PAN Number
                 </Label>
-                <Input 
+                <Input
                     id="pan" 
                     className="h-12 border-gray-300 focus:border-gray-400 focus:ring-0" 
                 />

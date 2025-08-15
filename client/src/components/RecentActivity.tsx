@@ -6,7 +6,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -21,6 +20,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { getRecentActivity, type RecentActivity } from "@/services/api/dashboard";
+import { Input } from "./ui/Input";
 
 // Column Definitions
 const columns: ColumnDef<RecentActivity>[] = [
