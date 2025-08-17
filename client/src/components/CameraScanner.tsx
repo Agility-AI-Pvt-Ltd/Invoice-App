@@ -1,14 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Camera,
-  X,
-  RotateCcw,
-  Check,
-  ScanLine,
-  AlertCircle
-} from "lucide-react";
+import { useRef, useEffect, useState } from 'react';
+import { X, Camera, RotateCcw, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface CameraScannerProps {
   isOpen: boolean;
@@ -17,66 +9,169 @@ interface CameraScannerProps {
 }
 
 export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScannerProps) {
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  //@ts-ignore
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
-  const startCamera = useCallback(async () => {
+  // Start camera stream
+  const startCamera = async () => {
+    setIsLoading(true);
+    setError(null);
+    console.log('Starting camera with facingMode:', facingMode);
+
     try {
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported in this browser');
+      }
+
+      // Stop existing stream first
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      // Request camera permission with simpler constraints first
+      const constraints = {
+        video: {
+          facingMode: facingMode,
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 }
+        },
+        audio: false
+      };
+
+      console.log('Requesting camera with constraints:', constraints);
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Camera stream obtained:', mediaStream);
+
+      setStream(mediaStream);
+      setHasPermission(true);
+
+      if (videoRef.current) {
+        console.log('Setting video srcObject');
+        videoRef.current.srcObject = mediaStream;
+
+        // Force video to load and play
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              console.log('Video playing successfully');
+              setIsLoading(false);
+            }).catch((playError) => {
+              console.error('Error playing video:', playError);
+              // Try to play without waiting
+              try {
+                videoRef.current?.play();
+                setIsLoading(false);
+              } catch (e) {
+                setError('Failed to start video playback');
+                setIsLoading(false);
+              }
+            });
+          }
+        };
+
+        videoRef.current.oncanplay = () => {
+          console.log('Video can play event fired');
+          setIsLoading(false);
+        };
+
+        videoRef.current.onplay = () => {
+          console.log('Video play event fired');
+        };
+
+        videoRef.current.onerror = (e) => {
+          console.error('Video element error:', e);
+          setError('Video playback error');
+          setIsLoading(false);
+        };
+
+        // Immediate attempt to load
+        try {
+          videoRef.current.load();
+        } catch (e) {
+          console.log('Video load failed, trying direct play');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error accessing camera:', err);
+      setHasPermission(false);
+      setIsLoading(false);
+
+      if (err.name === 'NotAllowedError') {
+        setError('Camera permission denied. Please allow camera access to scan invoices.');
+      } else if (err.name === 'NotFoundError') {
+        setError('No camera found on this device.');
+      } else if (err.name === 'NotSupportedError') {
+        setError('Camera not supported in this browser.');
+      } else if (err.name === 'OverconstrainedError') {
+        setError('Camera constraints not supported. Trying with basic settings...');
+        // Try with basic constraints
+        setTimeout(() => startCameraBasic(), 1000);
+      } else {
+        setError(`Failed to access camera: ${err.message}`);
+      }
+    }
+  };
+
+  // Fallback method with basic constraints
+  const startCameraBasic = async () => {
+    try {
+      console.log('Trying basic camera constraints');
+      const basicConstraints = {
+        video: true,
+        audio: false
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+      console.log('Basic camera stream obtained:', mediaStream);
+
+      setStream(mediaStream);
+      setHasPermission(true);
       setError(null);
 
-      let stream: MediaStream | null = null;
-
-      try {
-        // First try back camera (mobile)
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: { exact: "environment" }
-          }
-        });
-      } catch (err) {
-        console.warn("Back camera not available, falling back to default camera:", err);
-
-        // Fallback: default camera (usually laptop webcam)
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().then(() => {
+          console.log('Basic video playing successfully');
+          setIsLoading(false);
         });
       }
-
-      if (videoRef.current && stream) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsStreaming(true);
-      }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      setError("Unable to access camera. Please ensure camera permissions are granted.");
+    } catch (err: any) {
+      console.error('Basic camera also failed:', err);
+      setError('Unable to access any camera on this device');
+      setIsLoading(false);
     }
-  }, []);
+  };
 
-
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+  // Stop camera stream
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
-    setIsStreaming(false);
-    setCapturedImage(null);
-  }, []);
+  };
 
-  const capturePhoto = useCallback(() => {
+  // Switch between front and back camera
+  const switchCamera = () => {
+    stopCamera();
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  // Capture image from video
+  const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
 
     if (!context) return;
 
@@ -84,204 +179,232 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw the current video frame to canvas
+    // Draw video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert to data URL
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    setCapturedImage(imageDataUrl);
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        // Create data URL for preview
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setCapturedImage(dataUrl);
+      }
+    }, 'image/jpeg', 0.8);
+  };
 
-    // Stop the camera stream
-    stopCamera();
-  }, [stopCamera]);
+  // Confirm and send captured image
+  const confirmCapture = () => {
+    if (!canvasRef.current) return;
 
-  const retakePhoto = useCallback(() => {
+    canvasRef.current.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `invoice-scan-${Date.now()}.jpg`, {
+          type: 'image/jpeg',
+        });
+        onImageCapture(file);
+        handleClose();
+      }
+    }, 'image/jpeg', 0.8);
+  };
+
+  // Retake photo
+  const retakePhoto = () => {
     setCapturedImage(null);
-    startCamera();
-  }, [startCamera]);
+  };
 
-  const confirmPhoto = useCallback(async () => {
-    if (!capturedImage || !canvasRef.current) return;
-
-    setIsProcessing(true);
-    try {
-      // Convert data URL to blob
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
-
-      // Create file object
-      const file = new File([blob], `invoice-scan-${Date.now()}.jpg`, {
-        type: "image/jpeg"
-      });
-
-      // Call the parent component's callback with the image file
-      onImageCapture(file);
-
-      // Close the scanner
-      handleClose();
-    } catch (err) {
-      console.error("Error processing image:", err);
-      setError("Failed to process the captured image. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [capturedImage, onImageCapture, onClose]);
-
-  const handleClose = useCallback(() => {
+  // Handle modal close
+  const handleClose = () => {
     stopCamera();
     setCapturedImage(null);
     setError(null);
-    setIsProcessing(false);
+    setIsLoading(true);
     onClose();
-  }, [stopCamera, onClose]);
+  };
 
-  // Start camera when component opens
+  // Effect to start camera when modal opens
   useEffect(() => {
-    if (isOpen && !isStreaming && !capturedImage) {
+    if (isOpen) {
       startCamera();
+    } else {
+      stopCamera();
     }
-    return () => {
-      // Cleanup on unmount
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [isOpen, isStreaming, capturedImage, startCamera]);
 
+    // Cleanup on unmount
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, facingMode]);
+
+  // Don't render if modal is closed
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl bg-white">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <ScanLine className="h-5 w-5 text-blue-600" />
-              <h3 className="text-lg font-semibold">Scan Invoice</h3>
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
+      <div className="relative w-full h-full max-w-md mx-auto bg-black">
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
+          <h2 className="text-white text-lg font-semibold">Scan Invoice</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClose}
+            className="text-white hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <p className="text-sm text-red-600">{error}</p>
+        {/* Camera View */}
+        <div className="relative w-full h-full">
+          {/* Loading State */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="text-white text-center">
+                <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p>Starting camera...</p>
+              </div>
             </div>
           )}
 
-          {/* Camera/Image Display */}
-          <div className="relative mb-4">
-            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
-              {/* Video Stream */}
-              {isStreaming && (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-              )}
-
-              {/* Captured Image */}
-              {capturedImage && (
-                <img
-                  src={capturedImage}
-                  alt="Captured invoice"
-                  className="w-full h-full object-cover"
-                />
-              )}
-
-              {/* Loading State */}
-              {!isStreaming && !capturedImage && !error && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <Camera className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500">Starting camera...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Scanning Overlay */}
-              {isStreaming && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-4 border-2 border-white border-dashed rounded-lg opacity-70">
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-500"></div>
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500"></div>
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500"></div>
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500"></div>
-                  </div>
-                  <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-                    Position invoice within the frame
-                  </div>
-                </div>
-              )}
+          {/* Error State */}
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black p-6">
+              <div className="text-white text-center">
+                <Camera className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p className="mb-4">{error}</p>
+                <Button onClick={startCamera} className="bg-white text-black hover:bg-gray-200">
+                  Try Again
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-3">
-            {isStreaming && (
-              <>
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button onClick={capturePhoto} className="bg-blue-600 hover:bg-blue-700">
-                  <Camera className="h-4 w-4 mr-2" />
-                  Capture
-                </Button>
-              </>
-            )}
+          {/* Captured Image Preview */}
+          {capturedImage && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <img
+                src={capturedImage}
+                alt="Captured invoice"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          )}
 
-            {capturedImage && (
-              <>
-                <Button variant="outline" onClick={retakePhoto}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Retake
-                </Button>
-                <Button
-                  onClick={confirmPhoto}
-                  disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  {isProcessing ? "Processing..." : "Use This Photo"}
-                </Button>
-              </>
-            )}
+          {/* Live Video Feed */}
+          {!capturedImage && !error && (
+            <>
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                playsInline
+                muted
+                autoPlay
+                controls={false}
+                style={{
+                  transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                  backgroundColor: '#000',
+                  display: isLoading ? 'none' : 'block'
+                }}
+                onCanPlay={() => {
+                  console.log('Video can play - hiding loader');
+                  setIsLoading(false);
+                }}
+                onLoadedData={() => {
+                  console.log('Video loaded data');
+                  setIsLoading(false);
+                }}
+                onError={(e) => {
+                  console.error('Video error:', e);
+                  setError('Video display error');
+                }}
+              />
 
-            {error && !isStreaming && !capturedImage && (
-              <Button onClick={startCamera} className="bg-blue-600 hover:bg-blue-700">
-                <Camera className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
-            )}
-          </div>
+              {/* Show loading overlay while video loads */}
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  <div className="text-white text-center">
+                    <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p>Loading camera...</p>
+                  </div>
+                </div>
+              )}
+              {/* Overlay guidelines */}
+              {!isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="border-2 border-white border-dashed rounded-lg w-4/5 h-3/5 flex items-center justify-center">
+                    <p className="text-white text-sm text-center bg-black/50 px-3 py-1 rounded">
+                      Position invoice within frame
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
-          {/* Instructions */}
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Tips for best results:</strong>
-            </p>
-            <ul className="text-sm text-blue-700 mt-1 list-disc list-inside">
-              <li>Ensure good lighting</li>
-              <li>Keep the invoice flat and straight</li>
-              <li>Fill the frame with the invoice</li>
-              <li>Avoid shadows and glare</li>
-            </ul>
-          </div>
+          {/* Hidden canvas for image capture */}
+          <canvas ref={canvasRef} className="hidden" />
         </div>
 
-        {/* Hidden canvas for image processing */}
-        <canvas
-          ref={canvasRef}
-          style={{ display: "none" }}
-        />
-      </Card>
+        {/* Bottom Controls */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/60 to-transparent">
+          {capturedImage ? (
+            // Preview controls
+            <div className="flex items-center justify-center gap-4">
+              <Button
+                onClick={retakePhoto}
+                variant="outline"
+                size="lg"
+                className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+              >
+                <RotateCcw className="h-5 w-5 mr-2" />
+                Retake
+              </Button>
+              <Button
+                onClick={confirmCapture}
+                size="lg"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Check className="h-5 w-5 mr-2" />
+                Use Photo
+              </Button>
+            </div>
+          ) : (
+            // Camera controls
+            <div className="flex items-center justify-between">
+              {/* Switch camera button */}
+              <Button
+                onClick={switchCamera}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20"
+                disabled={isLoading || !!error}
+              >
+                <RotateCcw className="h-5 w-5" />
+              </Button>
+
+              {/* Capture button */}
+              <Button
+                onClick={captureImage}
+                size="lg"
+                className="bg-white hover:bg-gray-200 text-black rounded-full w-16 h-16 p-0"
+                disabled={isLoading || !!error}
+              >
+                <Camera className="h-6 w-6" />
+              </Button>
+
+              {/* Placeholder for symmetry */}
+              <div className="w-8"></div>
+            </div>
+          )}
+        </div>
+
+        {/* Camera facing indicator */}
+        {!capturedImage && !isLoading && !error && (
+          <div className="absolute top-16 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded">
+            {facingMode === 'user' ? 'Front Camera' : 'Back Camera'}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
