@@ -18,6 +18,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { CameraScanner } from "./CameraScanner"; // Import the camera scanner component
+import Cookies from "js-cookie";
 
 interface InvoiceTableProps {
   selectedDate: Date;
@@ -59,40 +60,59 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen }: InvoiceTabl
   const handleScanInvoice = () => {
     setIsCameraScannerOpen(true);
   };
-  //@ts-ignore
+
   const handleImageCapture = async (imageFile: File) => {
+    console.log("Image captured:", imageFile.name, imageFile.size);
     setIsProcessingScannedImage(true);
+    setIsCameraScannerOpen(false); // Close the scanner
 
-    // try {
-    //   // Create FormData to send the image file
-    //   const formData = new FormData();
-    //   formData.append('image', imageFile);
-    //   formData.append('type', 'invoice'); // Additional metadata if needed
+    try {
+      // Create FormData to send the image file
+      const formData = new FormData();
+      formData.append('file', imageFile); // Note: parameter name is 'file' not 'image'
 
-      // Replace with your actual API endpoint for invoice scanning
-      // const response = await invoicesAPI.scanInvoice(formData);
+      // Get auth token (adjust this based on how you store auth tokens)
+      const authToken = Cookies.get('authToken'); 
 
-      // Handle the response - this might contain extracted invoice data
-    //   if (response.data) {
-    //     // Option 1: Open invoice form with pre-filled data
-    //     // setExtractedInvoiceData(response.data);
-    //     // setIsInvoiceFormOpen(true);
+      if (!authToken) {
+        throw new Error('Authentication token not found. Please login again.');
+      }
 
-    //     // Option 2: Show success message and refresh invoices
-    //     alert('Invoice scanned successfully! The invoice has been processed.');
-    //     fetchInvoices(); // Refresh the invoice list
+      // Call your scan invoice API
+      const response = await fetch('https://invoice-backend-604217703209.asia-south1.run.app/api/scan-invoice', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          // Don't set Content-Type for FormData, let browser set it automatically
+        },
+        body: formData
+      });
 
-    //     // Option 3: Navigate to edit the newly created invoice
-    //     // You might want to implement this based on your routing
-    //   }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
 
-    // } catch (err: any) {
-    //   console.error('Error processing scanned invoice:', err);
-    //   alert(err.message || 'Failed to process the scanned invoice. Please try again.');
-    // } finally {
-    //   setIsProcessingScannedImage(false);
-    // }
+      const result = await response.json();
+
+      if (result.success) {
+        // Success notification
+        alert(`${result.message}\nInvoice ID: ${result.invoiceId}\nType: ${result.invoiceType}`);
+
+        // Refresh the invoice list to show the new invoice
+        fetchInvoices();
+      } else {
+        throw new Error('Failed to process invoice');
+      }
+
+    } catch (err: any) {
+      console.error('Error processing scanned invoice:', err);
+      alert(err.message || 'Failed to process the scanned invoice. Please try again.');
+    } finally {
+      setIsProcessingScannedImage(false);
+    }
   };
+
 
   useEffect(() => {
     fetchInvoices();
