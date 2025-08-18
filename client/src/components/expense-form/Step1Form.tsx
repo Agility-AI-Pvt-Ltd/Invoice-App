@@ -2,7 +2,21 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/Input";
 import { ChevronDown } from "lucide-react";
 
-export default function Step1Form() {
+type Step1Props = {
+  data: {
+    expenseNumber?: string;
+    invoiceNumber?: string;
+    expenseDate?: string;
+    dueDate?: string;
+    paymentMethod?: string;
+    currency?: string;
+    status?: string;
+    notes?: string;
+  };
+  onChange: (partial: Partial<any>) => void;
+};
+
+export default function Step1Form({ data = {}, onChange }: Step1Props) {
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -16,6 +30,8 @@ export default function Step1Form() {
             id="expenseNumber"
             placeholder="INXXXX"
             className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.expenseNumber || ""}
+            onChange={(e) => onChange({ expenseNumber: e.target.value })}
           />
         </div>
 
@@ -28,7 +44,8 @@ export default function Step1Form() {
             <select
               id="invoiceNumber"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-muted-foreground appearance-none w-full rounded-md"
-              defaultValue=""
+              value={data.invoiceNumber || ""}
+              onChange={(e) => onChange({ invoiceNumber: e.target.value })}
             >
               <option value="" disabled>
                 Select
@@ -53,6 +70,8 @@ export default function Step1Form() {
             type="date"
             placeholder="Pick the Date"
             className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.expenseDate || ""}
+            onChange={(e) => onChange({ expenseDate: e.target.value })}
           />
         </div>
 
@@ -66,6 +85,8 @@ export default function Step1Form() {
             type="date"
             placeholder="date"
             className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.dueDate || ""}
+            onChange={(e) => onChange({ dueDate: e.target.value })}
           />
         </div>
 
@@ -78,7 +99,8 @@ export default function Step1Form() {
             <select
               id="paymentMethod"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background appearance-none w-full rounded-md text-muted-foreground"
-              defaultValue=""
+              value={data.paymentMethod || ""}
+              onChange={(e) => onChange({ paymentMethod: e.target.value })}
             >
               <option value="" disabled>
                 Select
@@ -101,8 +123,10 @@ export default function Step1Form() {
           </Label>
           <Input
             id="currency"
-            placeholder="Online, POS etc."
+            placeholder="INR"
             className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.currency || ""}
+            onChange={(e) => onChange({ currency: e.target.value })}
           />
         </div>
 
@@ -115,7 +139,8 @@ export default function Step1Form() {
             <select
               id="status"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background appearance-none w-full rounded-md text-muted-foreground"
-              defaultValue=""
+              value={data.status || ""}
+              onChange={(e) => onChange({ status: e.target.value })}
             >
               <option value="" disabled>
                 Select
@@ -138,8 +163,10 @@ export default function Step1Form() {
           </Label>
           <Input
             id="notes"
-            placeholder="INR"
+            placeholder="Notes"
             className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.notes || ""}
+            onChange={(e) => onChange({ notes: e.target.value })}
           />
         </div>
       </div>

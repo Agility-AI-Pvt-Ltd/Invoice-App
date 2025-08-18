@@ -1,12 +1,23 @@
+import { useContext } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/Input";
 import { ChevronDown } from "lucide-react";
+import { InvoiceContext } from "./InvoiceForm";
 
 export default function Step1Form() {
+  const ctx = useContext(InvoiceContext) as any | undefined;
+
+  // helper to safely set invoice fields when context is available
+  const setField = (key: string, value: any) => {
+    if (!ctx) return;
+    ctx.setInvoice((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const invoice = ctx?.invoice ?? {};
+
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
         {/* Invoice Number */}
         <div className="space-y-2">
           <Label htmlFor="invoiceNumber" className="text-sm font-medium text-foreground">
@@ -16,6 +27,8 @@ export default function Step1Form() {
             id="invoiceNumber"
             placeholder="INXXXX"
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
+            value={invoice.invoiceNumber ?? ""}
+            onChange={(e) => setField("invoiceNumber", e.target.value)}
           />
         </div>
 
@@ -28,7 +41,8 @@ export default function Step1Form() {
             <select
               id="paymentTerms"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
-              defaultValue=""
+              value={invoice.paymentTerms ?? ""}
+              onChange={(e) => setField("paymentTerms", e.target.value)}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -54,6 +68,8 @@ export default function Step1Form() {
             type="date"
             placeholder="Pick the Date"
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
+            value={invoice.date ?? ""}
+            onChange={(e) => setField("date", e.target.value)}
           />
         </div>
 
@@ -67,6 +83,8 @@ export default function Step1Form() {
             type="date"
             placeholder="Pick the Date"
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
+            value={invoice.dueDate ?? ""}
+            onChange={(e) => setField("dueDate", e.target.value)}
           />
         </div>
 
@@ -79,7 +97,8 @@ export default function Step1Form() {
             <select
               id="status"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
-              defaultValue=""
+              value={invoice.status ?? ""}
+              onChange={(e) => setField("status", e.target.value)}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -104,6 +123,8 @@ export default function Step1Form() {
             id="currency"
             placeholder="INR"
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
+            value={invoice.currency ?? ""}
+            onChange={(e) => setField("currency", e.target.value)}
           />
         </div>
       </div>
