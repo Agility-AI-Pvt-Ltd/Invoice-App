@@ -17,8 +17,8 @@ function FormSection({ title, children }: FormSectionProps) {
             <div className="flex justify-between items-center px-6 py-3 bg-[#F4F0FF] rounded-t-lg">
                 <h2 className="text-base font-semibold text-gray-800">{title}</h2>
                 <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
-                    <Plus className="h-5 w-5" />
-                    <span className="sr-only">Add new section</span>
+                    {/* <Plus className="h-5 w-5" /> */}
+                    {/* <span className="sr-only">Add new section</span> */}
                 </Button>
             </div>
 
@@ -38,7 +38,7 @@ export default function AddProductForm() {
                 <FormSection title="Product Details">
                     <div className="grid gap-2">
                         <Label htmlFor="product-name">Product Name</Label>
-                        <Input id="product-name"  />
+                        <Input id="product-name" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="product-sku">Product Code/ SKU</Label>
@@ -58,7 +58,7 @@ export default function AddProductForm() {
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
-                        <Input id="description"  />
+                        <Input id="description" />
                     </div>
                 </FormSection>
 
@@ -66,11 +66,11 @@ export default function AddProductForm() {
                 <FormSection title="Pricing & Tax">
                     <div className="grid gap-2">
                         <Label htmlFor="purchase-price">Purchase Price</Label>
-                        <Input id="purchase-price"  />
+                        <Input id="purchase-price" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="selling-price">Selling Price</Label>
-                        <Input id="selling-price"  />
+                        <Input id="selling-price" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="discount">Discount (if applicable) (% or amount)</Label>
@@ -86,19 +86,40 @@ export default function AddProductForm() {
                 <FormSection title="Stock and Quantity Details">
                     <div className="grid gap-2">
                         <Label htmlFor="payment-status">Payment Status</Label>
-                        <Input id="payment-status"  />
+                        <select
+                            id="payment-status"
+                            name="payment-status"
+                            className="border rounded-md p-2 w-full"
+                        >
+                            <option value="">Select Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="amount-received">Amount Received</Label>
-                        <Input id="amount-received"  />
+                        <Input id="amount-received" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="payment-method">Payment Method</Label>
-                        <Input id="payment-method"  />
+                        <select
+                            id="payment-method"
+                            name="payment-method"
+                            className="border rounded-md p-2 w-full"
+                        >
+                            <option value="">Select Method</option>
+                            <option value="upi">UPI</option>
+                            <option value="card">Credit/Debit Card</option>
+                            <option value="netbanking">Net Banking</option>
+                            <option value="cod">Cash on Delivery</option>
+                        </select>
+
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="due-amount">Due Amount</Label>
-                        <Input id="due-amount"  />
+                        <Input id="due-amount" />
                     </div>
                 </FormSection>
 
@@ -118,7 +139,7 @@ export default function AddProductForm() {
                 <FormSection title="Images and Attachments">
                     <div className="grid gap-2 md:col-span-2">
                         <Label htmlFor="product-image">Product Image</Label>
-                        <Input id="product-image"  />
+                        <Input id="product-image" type="file" accept="image/*" />
                     </div>
                     <div className="grid gap-2 md:col-span-2">
                         <Label htmlFor="remark">Remark</Label>
