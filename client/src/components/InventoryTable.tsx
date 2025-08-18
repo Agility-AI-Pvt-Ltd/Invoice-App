@@ -1,3 +1,5 @@
+// FILE: client\src\components\InventoryTable.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -42,6 +44,15 @@ import { INVENTORY_API } from "@/services/api/inventory";
 import Cookies from "js-cookie";
 import { Input } from "./ui/Input";
 
+type Props = {
+    // optional callback when user clicks Edit button (parent should open the product form with initial data)
+    onEdit?: (item: InventoryItem) => void;
+    // optional external signal to force refresh (incrementing number)
+    refreshSignal?: number;
+    // optional callback after successful delete
+    onDeleteSuccess?: () => void;
+};
+
 const StatusBadge = ({ status }: { status: InventoryItem["status"] }) => {
     const variants: Record<string, string> = {
         "In Stock": "bg-green-100 text-green-800 border-green-200",
@@ -56,6 +67,7 @@ const StatusBadge = ({ status }: { status: InventoryItem["status"] }) => {
 };
 
 const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || Number.isNaN(amount)) return "-";
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
@@ -63,7 +75,7 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-export default function InventoryTable() {
+export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess }: Props) {
     const [data, setData] = useState<PaginatedResponse<InventoryItem> | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -106,12 +118,14 @@ export default function InventoryTable() {
                 `${INVENTORY_API.ITEMS}?${params.toString()}`,
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: token ? `Bearer ${token}` : "",
                     },
                 }
             );
 
             setData(res.data);
+            // reset selection when data changes
+            setSelectedItems([]);
         } catch (error) {
             console.error("Failed to fetch inventory items:", error);
         } finally {
@@ -123,7 +137,16 @@ export default function InventoryTable() {
         if (token) {
             fetchData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, itemsPerPage, filters, token]);
+
+    // Listen to external refresh signal
+    useEffect(() => {
+        if (typeof refreshSignal !== "undefined") {
+            fetchData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshSignal]);
 
     const handleSort = (column: string) => {
         setFilters((prev) => ({
@@ -132,6 +155,33 @@ export default function InventoryTable() {
             sortOrder:
                 prev.sortBy === column && prev.sortOrder === "asc" ? "desc" : "asc",
         }));
+    };
+
+    const deleteItem = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this item?")) return;
+        try {
+            setLoading(true);
+            await axios.delete(`${INVENTORY_API.ITEMS}/${id}`, {
+                headers: { Authorization: token ? `Bearer ${token}` : "" },
+            });
+            // refresh list
+            await fetchData();
+            if (onDeleteSuccess) onDeleteSuccess();
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert("Failed to delete item");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEditClick = (item: InventoryItem) => {
+        if (onEdit) {
+            onEdit(item);
+        } else {
+            // no-op if parent didn't pass onEdit; keep UI unchanged
+            console.warn("Edit clicked but no onEdit handler provided by parent.");
+        }
     };
 
     const renderPaginationItems = () => {
@@ -348,10 +398,10 @@ export default function InventoryTable() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
-                                            <Button variant="ghost" size="sm">
+                                            <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button variant="ghost" size="sm">
+                                            <Button variant="ghost" size="sm" onClick={() => deleteItem(item.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>

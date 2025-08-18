@@ -1,12 +1,32 @@
+import { useContext } from "react";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { ChevronDown } from "lucide-react";
+import { InvoiceContext } from "./InvoiceForm";
 
 export default function Step2Form() {
+  const ctx = useContext(InvoiceContext) as any | undefined;
+  const invoice = ctx?.invoice ?? {};
+
+  const setBillFromField = (key: string, value: any) => {
+    if (!ctx) return;
+    ctx.setInvoice((prev: any) => ({
+      ...prev,
+      billFrom: { ...(prev.billFrom || {}), [key]: value },
+    }));
+  };
+
+  const setBillToField = (key: string, value: any) => {
+    if (!ctx) return;
+    ctx.setInvoice((prev: any) => ({
+      ...prev,
+      billTo: { ...(prev.billTo || {}), [key]: value },
+    }));
+  };
+
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
         {/* Seller Details */}
         <div className="space-y-6">
           <h3 className="font-semibold text-lg">Seller Details (Bill From)</h3>
@@ -18,6 +38,8 @@ export default function Step2Form() {
               id="businessName"
               placeholder="ABZ Pvt. Ltd."
               className="h-11 px-3 pr-10 text-sm"
+              value={invoice.billFrom?.businessName ?? ""}
+              onChange={(e) => setBillFromField("businessName", e.target.value)}
             />
             <ChevronDown
               className="absolute right-3 top-[55%] -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -32,6 +54,8 @@ export default function Step2Form() {
               id="businessAddress"
               placeholder="Address"
               className="h-11 px-3 text-sm"
+              value={invoice.billFrom?.address ?? ""}
+              onChange={(e) => setBillFromField("address", e.target.value)}
             />
           </div>
 
@@ -42,6 +66,8 @@ export default function Step2Form() {
               id="state"
               placeholder="State"
               className="h-11 px-3 pr-10 text-sm"
+              value={invoice.billFrom?.state ?? ""}
+              onChange={(e) => setBillFromField("state", e.target.value)}
             />
             <ChevronDown
               className="absolute right-3 top-[55%] -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -57,6 +83,8 @@ export default function Step2Form() {
               type="email"
               placeholder="Email"
               className="h-11 px-3 text-sm"
+              value={invoice.billFrom?.email ?? ""}
+              onChange={(e) => setBillFromField("email", e.target.value)}
             />
           </div>
 
@@ -67,6 +95,8 @@ export default function Step2Form() {
               id="sellerPhone"
               placeholder="+91 xxx"
               className="h-11 px-3 text-sm"
+              value={invoice.billFrom?.phone ?? ""}
+              onChange={(e) => setBillFromField("phone", e.target.value)}
             />
           </div>
 
@@ -77,6 +107,8 @@ export default function Step2Form() {
               id="gstin"
               placeholder="XXX"
               className="h-11 px-3 text-sm"
+              value={invoice.billFrom?.gst ?? ""}
+              onChange={(e) => setBillFromField("gst", e.target.value)}
             />
           </div>
         </div>
@@ -92,6 +124,8 @@ export default function Step2Form() {
               id="customerName"
               placeholder="Name"
               className="h-11 px-3 pr-10 text-sm"
+              value={invoice.billTo?.name ?? ""}
+              onChange={(e) => setBillToField("name", e.target.value)}
             />
             <ChevronDown
               className="absolute right-3 top-[55%] -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -106,6 +140,8 @@ export default function Step2Form() {
               id="companyName"
               placeholder="Name"
               className="h-11 px-3 text-sm"
+              value={invoice.billTo?.companyName ?? ""}
+              onChange={(e) => setBillToField("companyName", e.target.value)}
             />
           </div>
 
@@ -116,6 +152,8 @@ export default function Step2Form() {
               id="billingAddress"
               placeholder="Address"
               className="h-11 px-3 text-sm"
+              value={invoice.billTo?.address ?? ""}
+              onChange={(e) => setBillToField("address", e.target.value)}
             />
           </div>
 
@@ -127,6 +165,8 @@ export default function Step2Form() {
               type="email"
               placeholder="Mail"
               className="h-11 px-3 text-sm"
+              value={invoice.billTo?.email ?? ""}
+              onChange={(e) => setBillToField("email", e.target.value)}
             />
           </div>
 
@@ -137,6 +177,8 @@ export default function Step2Form() {
               id="customerPhone"
               placeholder="+91 XXX"
               className="h-11 px-3 text-sm"
+              value={invoice.billTo?.phone ?? ""}
+              onChange={(e) => setBillToField("phone", e.target.value)}
             />
           </div>
 
@@ -147,6 +189,8 @@ export default function Step2Form() {
               id="gstNumber"
               placeholder="GST Number"
               className="h-11 px-3 text-sm"
+              value={invoice.billTo?.gst ?? ""}
+              onChange={(e) => setBillToField("gst", e.target.value)}
             />
           </div>
 
@@ -157,6 +201,8 @@ export default function Step2Form() {
               id="panNumber"
               placeholder="XXXX"
               className="h-11 px-3 text-sm"
+              value={invoice.billTo?.pan ?? ""}
+              onChange={(e) => setBillToField("pan", e.target.value)}
             />
           </div>
         </div>

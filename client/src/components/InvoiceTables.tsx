@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { invoicesAPI, type Invoice as APIInvoice } from "@/services/api/dashboard"; // your API module
+import { invoicesAPI, type Invoice as APIInvoice } from "@/services/api/dashboard"; 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +23,10 @@ import Cookies from "js-cookie";
 interface InvoiceTableProps {
   selectedDate: Date;
   setIsInvoiceFormOpen: (val: boolean) => void;
+  refreshFlag?: number; // 👈 added
 }
 
-export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen }: InvoiceTableProps) {
+export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag = 0 }: InvoiceTableProps) {
   const [invoices, setInvoices] = useState<APIInvoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +117,8 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen }: InvoiceTabl
 
   useEffect(() => {
     fetchInvoices();
-  }, [selectedDate, currentPage, activeStatusFilter]);
+    // 👇 whenever refreshFlag changes -> re-fetch
+  }, [selectedDate, currentPage, activeStatusFilter, refreshFlag]);
 
   const totalPages = Math.ceil(invoices.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

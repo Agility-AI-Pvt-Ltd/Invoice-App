@@ -1,14 +1,20 @@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
 
-export default function BusinessForm() {
-  //@ts-expect-error - TSX file, no type definitions for React
-  const [logo, setLogo] = useState<File | null>(null);
+type Step4FormProps = {
+  formData: any;
+  setFormData: React.Dispatch<React.SetStateAction<any>>;
+};
+
+export default function Step4Form({ formData, setFormData }: Step4FormProps) {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData((prev: any) => ({ ...prev, logo: file }));
+  };
 
   return (
-    <div className="w-full max-w-md  space-y-6 ">
+    <div className="w-full max-w-md space-y-6">
       {/* Add Business Logo */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Add Business Logo</Label>
@@ -18,7 +24,7 @@ export default function BusinessForm() {
               type="file"
               accept=".png,.jpg,.jpeg,.pdf,.webp"
               className="hidden"
-              onChange={(e) => setLogo(e.target.files?.[0] || null)}
+              onChange={handleLogoChange}
             />
             <span className="text-gray-700">Upload</span>
             <span className="text-xs text-slate-400">
@@ -26,26 +32,34 @@ export default function BusinessForm() {
             </span>
           </label>
         </div>
+        {formData.logo && (
+          <p className="text-xs text-green-600 mt-1">Selected: {formData.logo.name}</p>
+        )}
       </div>
 
       {/* Notes */}
       <div className="space-y-2">
-        <Label htmlFor="notes" className="text-sm font-medium">
-          Notes
-        </Label>
+        <Label htmlFor="notes" className="text-sm font-medium">Notes</Label>
         <Textarea
           id="notes"
           placeholder="Write a Note."
-          className="resize-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none placeholder:text-slate-400"
+          className="resize-none placeholder:text-slate-400"
+          value={formData.notes || ""}
+          onChange={(e) =>
+            setFormData((prev: any) => ({ ...prev, notes: e.target.value }))
+          }
         />
       </div>
 
       {/* Tags */}
       <div className="space-y-2">
-        <Label htmlFor="tags" className="text-sm font-medium">
-          Tags
-        </Label>
-        <Select>
+        <Label htmlFor="tags" className="text-sm font-medium">Tags</Label>
+        <Select
+          value={formData.tags || ""}
+          onValueChange={(value) =>
+            setFormData((prev: any) => ({ ...prev, tags: value }))
+          }
+        >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select" />
           </SelectTrigger>

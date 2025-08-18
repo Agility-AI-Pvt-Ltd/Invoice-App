@@ -15,9 +15,8 @@ import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import ExpenseForm from "@/components/expense-form/ExpenseForm";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { getExpenseInvoices, type ExpenseInvoice } from "@/services/api/expense";
 import Cookies from "js-cookie";
-
+const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 interface Expense {
   id: string;
   expenseId: string;
@@ -30,21 +29,26 @@ interface Expense {
   date: string;
 }
 
-// Transform API data to match the Expense interface
-const transformExpenseData = (apiExpense: ExpenseInvoice): Expense => {
+// NOTE: this was your old transform for an external API; we keep it in case some entries come in that shape
+const transformExpenseData = (apiExpense: any): Expense => {
   return {
     id: apiExpense._id || `expense-${Date.now()}`,
-    expenseId: apiExpense.invoiceNumber,
-    title: apiExpense.items?.[0]?.description || "No Description",
-    vendorName: apiExpense.billFrom?.name || "Unknown Vendor",
-    vendorAvatar: apiExpense.billFrom?.name?.[0]?.toUpperCase() || "V",
-    paymentMethod: "Cash", // Default value as API doesn't provide this
-    amount: apiExpense.total || 0,
-    status: apiExpense.status === "paid" ? "Paid" : 
-            apiExpense.status === "overdue" ? "Overdue" : "Unpaid",
-    date: format(new Date(apiExpense.date), "dd MMMM yyyy"),
+    expenseId: apiExpense.invoiceNumber || apiExpense.expenseId || "",
+    title: apiExpense.items?.[0]?.description || apiExpense.step3?.items?.[0]?.name || "No Description",
+    vendorName: apiExpense.billFrom?.name || apiExpense.step2?.vendorName || "Unknown Vendor",
+    vendorAvatar: (apiExpense.billFrom?.name || apiExpense.step2?.vendorName || "V")[0]?.toUpperCase() || "V",
+    paymentMethod: apiExpense.step2?.paymentMethod || apiExpense.paymentMethod || "Cash",
+    amount: apiExpense.total || apiExpense.step4?.total || apiExpense.step2?.amount || 0,
+    status: apiExpense.status === "paid" ? "Paid" : apiExpense.step1?.status?.toLowerCase?.() === "paid" ? "Paid" :
+      apiExpense.status === "overdue" ? "Overdue" : apiExpense.step1?.status === "overdue" ? "Overdue" : "Unpaid",
+    date: apiExpense.step1?.expenseDate
+      ? format(new Date(apiExpense.step1.expenseDate), "dd MMMM yyyy")
+      : apiExpense.date
+        ? format(new Date(apiExpense.date), "dd MMMM yyyy")
+        : format(new Date(), "dd MMMM yyyy"),
   };
 };
+
 // Helper function to parse expense date string to Date object
 const parseExpenseDate = (dateString: string): Date | null => {
   try {
@@ -86,39 +90,6 @@ export default function Expenses() {
 
   const { toast } = useToast();
 
-  // Fetch expenses from API
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const token = Cookies.get('authToken');
-        
-        if (!token) {
-          setError('Authentication token not found');
-          setLoading(false);
-          return;
-        }
-
-        const apiExpenses = await getExpenseInvoices(token);
-        const transformedExpenses = apiExpenses.map(transformExpenseData);
-        setExpenses(transformedExpenses);
-      } catch (err) {
-        console.error('Error fetching expenses:', err);
-        setError('Failed to fetch expenses');
-        toast({
-          title: "Error",
-          description: "Failed to fetch expenses from the server",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpenses();
-  }, [toast]);
-
   const generateExpenseId = () => {
     const year = new Date().getFullYear();
     const count = expenses.length + 1;
@@ -151,46 +122,68 @@ export default function Expenses() {
     document.body.removeChild(link);
   };
 
-  // Filter expenses based on selected filters
-  const filteredExpenses = expenses.filter(expense => {
-    // Search term filter
-    const matchesSearch = !searchTerm ||
-      expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.expenseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch expenses from backend (our integrated version)
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Status filter
-    const matchesStatus = filters.status === "all" || expense.status === filters.status;
-
-    // Month filter
-    const matchesMonth = filters.month === "all" || expense.date.includes(filters.month);
-
-    // Minimum amount filter
-    const matchesAmount = !filters.minAmount || expense.amount >= parseInt(filters.minAmount);
-
-    // Date filter
-    // Date filter - Fixed to handle date parsing properly
-    let matchesDate = true;
-    if (filters.dateRange.from) {
-      const expenseDate = parseExpenseDate(expense.date);
-      if (expenseDate) {
-        matchesDate = expenseDate.getTime() >= filters.dateRange.from.getTime();
+      const token = Cookies.get("authToken");
+      if (!token) {
+        setError("Authentication token not found");
+        setLoading(false);
+        return;
       }
+
+      const url = `${API_BASE}/api/expenses`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.detail || "Failed to fetch expenses";
+        throw new Error(message);
+      }
+
+      const body = await res.json();
+      const serverExpenses = body?.data?.expenses ?? body?.expenses ?? body ?? [];
+
+      const mapped = (serverExpenses as []).map((e) => transformExpenseData(e));
+      setExpenses(mapped);
+    } catch (err: any) {
+      console.error("Error fetching expenses:", err);
+      setError(err?.message || "Failed to fetch expenses");
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to fetch expenses from the server",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-
-    return matchesSearch && matchesStatus && matchesMonth && matchesAmount && matchesDate;
-  });
-
-  const handleExport = (includeFilters: boolean) => {
-    const dataToExport = includeFilters ? filteredExpenses : expenses;
-    downloadCSV(dataToExport, `expenses_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    toast({
-      title: "Export Successful",
-      description: `Expenses exported as CSV ${includeFilters ? 'with filters applied' : 'without filters'}`
-    });
-
   };
+
+  // call fetch on mount
+  useEffect(() => {
+    fetchExpenses();
+
+    // Listen for expense created event (dispatched by ExpenseForm after successful create)
+    const handler = () => {
+      // optionally use e.detail to show created data
+      fetchExpenses();
+      toast({ title: "Expense Created", description: "New expense added" });
+    };
+    window.addEventListener("expense:created", handler as EventListener);
+
+    return () => {
+      window.removeEventListener("expense:created", handler as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const parseCSV = (csvText: string): Expense[] => {
     const lines = csvText.split('\n');
@@ -236,7 +229,6 @@ export default function Expenses() {
         }
       };
       reader.readAsText(file);
-
     }
   };
 
@@ -279,14 +271,71 @@ export default function Expenses() {
     });
   }
 
+  // Delete expense => hit backend, then update local list
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      const token = Cookies.get("authToken");
+      if (!token) throw new Error("Auth token not found");
 
-  const handleDeleteExpense = (expenseId: string) => {
-    setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
-    toast({
-      title: "Expense Deleted",
-      description: "Expense has been deleted successfully"
-    });
+      const res = await fetch(`/api/expenses/${expenseId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || "Failed to delete expense");
+      }
+
+      toast({
+        title: "Expense Deleted",
+        description: "Expense has been deleted successfully"
+      });
+
+      // remove locally
+      setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
+    } catch (err: any) {
+      console.error("Delete expense error:", err);
+      toast({
+        title: "Delete Failed",
+        description: err?.message || "Failed to delete expense",
+        variant: "destructive"
+      });
+    }
   };
+
+  // Filter logic remains unchanged
+  const filteredExpenses = expenses.filter(expense => {
+    // Search term filter
+    const matchesSearch = !searchTerm ||
+      expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.expenseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Status filter
+    const matchesStatus = filters.status === "all" || expense.status === filters.status;
+
+    // Month filter
+    const matchesMonth = filters.month === "all" || expense.date.includes(filters.month);
+
+    // Minimum amount filter
+    const matchesAmount = !filters.minAmount || expense.amount >= parseInt(filters.minAmount);
+
+    // Date filter
+    // Date filter - Fixed to handle date parsing properly
+    let matchesDate = true;
+    if (filters.dateRange.from) {
+      const expenseDate = parseExpenseDate(expense.date);
+      if (expenseDate) {
+        matchesDate = expenseDate.getTime() >= filters.dateRange.from.getTime();
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesMonth && matchesAmount && matchesDate;
+  });
 
   if (isExpenseFormOpen) {
     return (
@@ -555,10 +604,10 @@ export default function Expenses() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-white text-black">
-                  <DropdownMenuItem onClick={() => handleExport(false)}>
+                  <DropdownMenuItem onClick={() => downloadCSV(filteredExpenses, `expenses_${format(new Date(), 'yyyy-MM-dd')}.csv`)}>
                     Export All Records
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport(true)}>
+                  <DropdownMenuItem onClick={() => downloadCSV(filteredExpenses, `expenses_filtered_${format(new Date(), 'yyyy-MM-dd')}.csv`)}>
                     Export Filtered Records
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -615,8 +664,8 @@ export default function Expenses() {
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <p className="text-destructive mb-4">{error}</p>
-                <Button 
-                  onClick={() => window.location.reload()} 
+                <Button
+                  onClick={() => window.location.reload()}
                   variant="outline"
                 >
                   Retry

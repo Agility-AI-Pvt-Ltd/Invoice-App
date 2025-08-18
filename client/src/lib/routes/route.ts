@@ -38,12 +38,19 @@ export const routes = {
         getLast: `${API_BASE}/api/expense-invoices/last`,
     },
     inventory: {
-        getAll: `${API_BASE}/api/inventory`,
-        getById: (id: string) => `${API_BASE}/api/inventory/${id}`,
-        update: (id: string) => `${API_BASE}/api/inventory/${id}`,
-        delete: (id: string) => `${API_BASE}/api/inventory/${id}`,
+        getAll: `${BACKEND_URL}/api/inventory`,
+        getById: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
+        update: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
     },
     scan: {
         invoice: `${API_BASE}/api/scan-invoice`,
+    },
+    customers: {
+        getAll: `${BACKEND_URL}/api/customers`,
+        create: `${BACKEND_URL}/api/customers`,
+        getById: (id: string) => `${BACKEND_URL}/api/customers/${id}`,
+        update: (id: string) => `${BACKEND_URL}/api/customers/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/customers/${id}`,
     },
 } as const;

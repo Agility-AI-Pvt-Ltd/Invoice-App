@@ -1,4 +1,5 @@
-import { useState } from "react";
+// client/src/pages/invoices.tsx
+import { useState, useEffect } from "react";
 import { MetricCard } from '@/components/MetricCard';
 import { RevenueChart } from "@/components/RevenueChart";
 import { CashFlowCard } from "@/components/CashFlowCard";
@@ -9,9 +10,23 @@ import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import { useProfile } from "@/contexts/ProfileContext";
 
 const Index = () => {
-  //@ts-expect-error - TSX file, no type definitions for React
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate] = useState<Date>(new Date());
   const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState<boolean>(false);
+
+  // trigger for refresh
+  const [refreshFlag, setRefreshFlag] = useState<number>(0);
+  const { profile } = useProfile();
+  useEffect(() => {
+    const handleInvoiceCreated = () => {
+      setIsInvoiceFormOpen(false);
+      // bump refresh flag so InvoiceTable re-fetches
+      setRefreshFlag((f) => f + 1);
+    };
+    window.addEventListener("invoice:created", handleInvoiceCreated);
+    return () => {
+      window.removeEventListener("invoice:created", handleInvoiceCreated);
+    };
+  }, []);
 
   if (isInvoiceFormOpen) {
     return (
@@ -23,20 +38,23 @@ const Index = () => {
           </CardContent>
         </Card>
       </div>
-
     );
   }
-  const { profile } = useProfile();
+
+ 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-8xl mx-auto space-y-6">
         {/* Header with Date Filter */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">Hello {profile?.data?.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Hello {profile?.data?.name}
+          </h1>
           <DateRangePicker
-          // date={selectedDate} onDateChange={setSelectedDate} //TODO - Uncomment when DateRangePicker is implemented
+            // date={selectedDate} onDateChange={setSelectedDate}
           />
         </div>
+
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
@@ -72,13 +90,16 @@ const Index = () => {
             <RevenueChart selectedDate={selectedDate} />
           </div>
           <div className="lg:col-span-1">
-            {/* <CashFlowCard selectedDate={selectedDate} /> */}
             <CashFlowCard />
           </div>
         </div>
 
         {/* Invoice Table */}
-        <InvoiceTable selectedDate={selectedDate} setIsInvoiceFormOpen={setIsInvoiceFormOpen} />
+        <InvoiceTable
+          selectedDate={selectedDate}
+          setIsInvoiceFormOpen={setIsInvoiceFormOpen}
+          refreshFlag={refreshFlag} // pass refresh trigger down
+        />
       </div>
     </div>
   );
