@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import Cookies from "js-cookie";
+// import Cookies from "js-cookie";
 import { getRegionalSales } from "@/services/api/sales"; // adjust path if needed
 
 export const RegionalSalesChart = () => {
@@ -19,7 +19,7 @@ export const RegionalSalesChart = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = Cookies.get("authToken") || "";
+      // const token = Cookies.get("authToken") || "";
 
       // Build optional from/to (month range)
       let from: string | undefined;
@@ -32,7 +32,7 @@ export const RegionalSalesChart = () => {
         to = end.toISOString();
       }
 
-      const data = await getRegionalSales(token, from, to);
+      const data = await getRegionalSales(from, to);
       // Defensive: ensure array
       const regions = Array.isArray(data) ? data : [];
 
