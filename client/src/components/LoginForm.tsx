@@ -103,7 +103,7 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
 
       <p className="text-sm text-center text-gray-600">
         Don’t have an account?{' '}
-        <a href="#" className="text-red-500 hover:underline">Sign up</a>
+        <a href="/signup" className="text-red-500 hover:underline">Sign up</a>
       </p>
 
       <div className="flex items-center space-x-2">
