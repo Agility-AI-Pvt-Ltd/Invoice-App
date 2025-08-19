@@ -1,6 +1,10 @@
+
 // FILE: client/src/components/product-form/productForm.tsx
 
 import React, { useEffect, useRef, useState } from "react";
+
+import React, { useEffect, useState } from "react";
+
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

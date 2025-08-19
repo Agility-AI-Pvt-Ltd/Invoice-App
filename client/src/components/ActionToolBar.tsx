@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import ActionButton from "./ui/ActionButton";
 import { Plus } from "lucide-react";
@@ -17,6 +18,27 @@ const ActionToolbar = () => {
     // ✅ Navigate to my-customer page and trigger Add Customer form
     navigate("/app/invoices");
   };
+
+import { useState } from 'react';
+import ActionButton from './ui/ActionButton';
+import { Plus } from 'lucide-react';
+import { Button } from './ui/button'; // Assuming you're using shadcn/ui or similar
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { useNavigate } from 'react-router-dom';
+
+const ActionToolbar = () => {
+    const [open, setOpen] = useState(false);
+    const navigate = useNavigate();
+    return (
+        <div className="flex gap-3">
+            {/* Full buttons for medium+ screens */}
+            <div className="hidden sm:flex flex-wrap gap-3">
+                <ActionButton label="New Invoice" onClick={()=>navigate("/app/invoices")}/>
+                <ActionButton label="Add Client" />
+                <ActionButton label="Add Payment" />
+                <ActionButton label="Generate Report" />
+            </div>
+
 
   return (
     <div className="flex gap-3">
