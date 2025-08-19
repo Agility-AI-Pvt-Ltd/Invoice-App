@@ -30,7 +30,7 @@ const CoreFeatures = () => {
   ];
 
   return (
-    <section className="py-20 px-6 lg:px-8">
+    <section id="features" className="py-20 px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16">
