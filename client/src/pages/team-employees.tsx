@@ -5,11 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-import { Search, Calendar, Download, Upload, Plus, Edit, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Search, Download, Upload, Plus, Edit, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Calendar } from "@/components/ui/calendar";
+import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
+import Cookies from "js-cookie";
 
 // Type definitions
 interface TeamMember {
@@ -41,17 +44,6 @@ interface TeamMemberUpdate {
   status?: "Active" | "Inactive";
 }
 
-const Cookies = {
-  get: (name: string): string | undefined => {
-    // Mock implementation - in real app, this would get actual cookies
-    if (name === 'authToken') {
-      return undefined; // Return undefined to use mock data
-    }
-    return undefined;
-  }
-};
-
-// API base (change via Vite env: VITE_API_URL)
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
 export default function TeamManagement() {
@@ -59,6 +51,7 @@ export default function TeamManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  // const [isImporting, setIsImporting] = useState(false);
   //@ts-ignore
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [pagination, setPagination] = useState({
@@ -97,12 +90,12 @@ export default function TeamManagement() {
     q.append("limit", String(limit));
     if (params.search) q.append("search", params.search);
 
-    const url = `${API_BASE}/api/team-members?${q.toString()}`;
+    const url = `${API_BASE}/api/team/members?${q.toString()}`;
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
     if (!res.ok) {
       // try to parse error body
       let errText = `Failed to fetch team members (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
+      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
       throw new Error(errText);
     }
 
@@ -121,7 +114,7 @@ export default function TeamManagement() {
     };
     if (member.joiningDate) payload.joiningDate = member.joiningDate;
 
-    const res = await fetch(`${API_BASE}/api/team-members`, {
+    const res = await fetch(`${API_BASE}/api/team/members`, {
       method: "POST",
       headers: buildAuthHeaders(token),
       body: JSON.stringify(payload),
@@ -129,7 +122,7 @@ export default function TeamManagement() {
 
     if (!res.ok) {
       let errText = `Failed to create team member (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
+      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
       throw new Error(errText);
     }
 
@@ -143,7 +136,7 @@ export default function TeamManagement() {
     if (update.phone) cleaned.phone = update.phone;
     if (update.status) cleaned.status = update.status.toLowerCase();
 
-    const res = await fetch(`${API_BASE}/api/team-members/${id}`, {
+    const res = await fetch(`${API_BASE}/api/team/members/${id}`, {
       method: "PUT",
       headers: buildAuthHeaders(token),
       body: JSON.stringify(cleaned),
@@ -151,7 +144,7 @@ export default function TeamManagement() {
 
     if (!res.ok) {
       let errText = `Failed to update team member (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
+      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
       throw new Error(errText);
     }
 
@@ -159,18 +152,94 @@ export default function TeamManagement() {
   };
 
   const apiDeleteTeamMember = async (token: string | undefined, id: string) => {
-    const res = await fetch(`${API_BASE}/api/team-members/${id}`, {
+    const res = await fetch(`${API_BASE}/api/team/members/${id}`, {
       method: "DELETE",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     if (!res.ok) {
       let errText = `Failed to delete team member (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
+      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
       throw new Error(errText);
     }
 
     return await res.json();
+  };
+
+
+  const apiImportTeamMembers = async (token: string | undefined, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/team/members/import`, {
+      method: "POST",
+      headers: headers, // Don't set Content-Type, let browser set it for FormData
+      body: formData,
+    });
+
+    if (!res.ok) {
+      let errText = `Failed to import team members (status ${res.status})`;
+      try {
+        const body = await res.json();
+        errText = body.detail || body.message || JSON.stringify(body);
+      } catch (e) { }
+      throw new Error(errText);
+    }
+
+    return await res.json();
+  };
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const apiExportTeamMembers = async (token: string | undefined, format: 'csv' | 'excel' | 'pdf') => {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/team/members/export?format=${format}`, {
+      method: "GET",
+      headers: headers,
+    });
+
+    if (!res.ok) {
+      // Handle 204 No Content (no data to export)
+      if (res.status === 204) {
+        throw new Error("No team members found to export");
+      }
+
+      let errText = `Failed to export team members (status ${res.status})`;
+      try {
+        const body = await res.json();
+        errText = body.detail || body.message || JSON.stringify(body);
+      } catch (e) { }
+      throw new Error(errText);
+    }
+
+    return res; // Return the response object for blob handling
+  };
+
+  const getExportFilename = (format: 'csv' | 'excel' | 'pdf') => {
+    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    switch (format) {
+      case 'csv':
+        return `team_members_${timestamp}.csv`;
+      case 'excel':
+        return `team_members_${timestamp}.xlsx`;
+      case 'pdf':
+        return `team_members_${timestamp}.pdf`;
+      default:
+        return `team_members_${timestamp}.${format}`;
+    }
   };
 
   // Fetch team members on component mount and when filters change
@@ -335,27 +404,121 @@ export default function TeamManagement() {
   // Handle import
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      try {
-        setLoading(true);
-        toast({ title: "Info", description: "Import functionality will be implemented soon." });
-      } catch (error) {
-        console.error('Error importing team members:', error);
-        toast({ title: "Error", description: "Failed to import team members. Please try again.", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['.csv', '.xlsx', '.xls'];
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+
+    if (!validTypes.includes(fileExtension)) {
+      toast({
+        title: "Error",
+        description: "Only CSV and Excel files (.csv, .xlsx, .xls) are supported",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (optional - e.g., 10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = Cookies.get("authToken") || undefined;
+
+      toast({
+        title: "Importing...",
+        description: "Please wait while we import your team members",
+      });
+
+      const response = await apiImportTeamMembers(token, file);
+
+      toast({
+        title: "Success",
+        description: response.message || "Team members imported successfully!",
+      });
+
+      // Refresh the team members list
+      await fetchTeamMembers();
+
+      // Reset the file input
+      event.target.value = '';
+
+    } catch (error) {
+      console.error('Error importing team members:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      toast({
+        title: "Import Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      // Reset the file input even on error
+      event.target.value = '';
+    } finally {
+      setLoading(false);
     }
   };
 
   // Handle export
+
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
     try {
       setLoading(true);
-      toast({ title: "Info", description: `Export functionality for ${format.toUpperCase()} will be implemented soon.` });
+      const token = Cookies.get("authToken") || undefined;
+
+      toast({
+        title: "Exporting...",
+        description: `Preparing ${format.toUpperCase()} export, please wait...`,
+      });
+
+      const response = await apiExportTeamMembers(token, format);
+
+      // Convert response to blob
+      const blob = await response.blob();
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('content-disposition') || '';
+      let filename = getExportFilename(format);
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Download the file
+      downloadBlob(blob, filename);
+
+      toast({
+        title: "Export Successful",
+        description: `Team members exported as ${format.toUpperCase()} successfully!`,
+      });
+
     } catch (error) {
       console.error('Error exporting team members:', error);
-      toast({ title: "Error", description: "Failed to export team members. Please try again.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      let userMessage = errorMessage;
+      if (errorMessage.includes("No team members found")) {
+        userMessage = "No team members available to export. Add some team members first.";
+      }
+
+      toast({
+        title: "Export Failed",
+        description: userMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -371,6 +534,7 @@ export default function TeamManagement() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
@@ -397,43 +561,71 @@ export default function TeamManagement() {
 
                     {/* Desktop/Tablet Actions */}
                     <div className="hidden sm:flex gap-2 flex-wrap">
-                      <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-4">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Date</span>
-                      </Button>
-
+                      <div>
+                        <div className="hidden sm:block">
+                          <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} />
+                        </div>
+                        <div className="sm:hidden">
+                          <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} iconOnly />
+                        </div>
+                      </div>
                       {/* Export Dropdown */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-4">
+                        <DropdownMenuTrigger>
+                          <Button
+                            variant="outline"
+                            className={`border-slate-200 text-slate-600 h-10 px-4 hover:bg-slate-50 hover:text-black`}
+                            disabled={loading}
+                          >
                             <Download className="h-4 w-4 mr-2" />
-                            Export
+                            {'Export'}
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleExport('csv')}>CSV</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('excel')}>Excel</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF</DropdownMenuItem>
+                        <DropdownMenuContent className="hover:bg-slate-50 hover:text-black bg-white text-black">
+                          <DropdownMenuItem
+                            onClick={() => handleExport('csv')}
+                            disabled={loading}
+                            className={loading ? 'opacity-50 cursor-not-allowed' : ''}
+                          >
+                            Export as CSV
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport('excel')}
+                            disabled={loading}
+                            className={loading ? 'opacity-50 cursor-not-allowed' : ''}
+                          >
+                            Export as Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport('pdf')}
+                            disabled={loading}
+                            className={loading ? 'opacity-50 cursor-not-allowed' : ''}
+                          >
+                            Export as PDF
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      {/* Import */}
                       <div className="relative">
-                        <input
-                          type="file"
-                          accept=".csv,.xlsx"
-                          onChange={handleImport}
-                          className="hidden"
-                          id="import-file"
-                        />
-                        <label htmlFor="import-file">
-                          <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-4 cursor-pointer">
-                            <Upload className="h-4 w-4 mr-2" />
-                            Import
+                        <label>
+                          <input
+                            type="file"
+                            accept=".csv,.xlsx"
+                            onChange={handleImport}
+                            className="hidden"
+                          />
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-black h-10 px-4 cursor-pointer"
+                          >
+                            <span className="flex items-center">
+                              <Upload className="h-4 w-4 mr-2" />
+                              Import
+                            </span>
                           </Button>
                         </label>
                       </div>
-
                       <Button
                         className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
                         onClick={() => setShowAddForm(true)}
@@ -451,14 +643,34 @@ export default function TeamManagement() {
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="icon" className="shrink-0">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className={`shrink-0`}
+                            disabled={loading}
+                          >
                             <Download className="h-5 w-5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleExport('csv')}>CSV</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('excel')}>Excel</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport('csv')}
+                            disabled={loading}
+                          >
+                            CSV
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport('excel')}
+                            disabled={loading}
+                          >
+                            Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport('pdf')}
+                            disabled={loading}
+                          >
+                            PDF
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
 
@@ -497,13 +709,13 @@ export default function TeamManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50">
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Name ↓</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Role ↓</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden sm:table-cell">Email ↓</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden md:table-cell">Phone No. ↓</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden lg:table-cell">Date Joined ↓</TableHead>
+                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Name</TableHead>
+                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Role</TableHead>
+                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden sm:table-cell">Email</TableHead>
+                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden md:table-cell">Phone No.</TableHead>
+                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden lg:table-cell">Date Joined</TableHead>
                         <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden lg:table-cell">Last Active</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Status ↓</TableHead>
+                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Status</TableHead>
                         <TableHead className="font-semibold text-slate-700 py-4 px-6">Action</TableHead>
                       </TableRow>
                     </TableHeader>

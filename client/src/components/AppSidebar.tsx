@@ -11,7 +11,6 @@ import {
     FileText,
     Boxes,
     BarChart2,
-    ShoppingCart,
     Receipt,
     UserCog,
     WalletMinimal,
@@ -43,10 +42,10 @@ const menuItems = [
     { label: "Inventory", icon: Boxes },
     { label: "Sales", icon: BarChart2 },
     { label: "Expenses", icon: WalletMinimal },
-    { label: "Purchases", icon: ShoppingCart },
+    // { label: "Purchases", icon: ShoppingCart },
     { label: "Tax Summary", icon: Receipt },
     // { label: "Accounts", icon: CreditCard },
-    { label: "Team/Employees", icon: UserCog },
+    { label: "Team", icon: UserCog },
     { label: "Settings", icon: Settings },
 ]
 

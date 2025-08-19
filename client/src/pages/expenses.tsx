@@ -1,22 +1,15 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/Input";
-import { Search, Download, Upload, Plus, Filter } from "lucide-react";
 import { ExpenseMetricCard } from "@/components/ExpenseMetricCard";
 import { ExpenseTable } from "@/components/ExpenseTable";
-
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parse } from "date-fns";
-import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
-import ExpenseForm from "@/components/expense-form/ExpenseForm";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ExpenseForm from "@/components/expense-form/ExpenseForm";;
 import Cookies from "js-cookie";
+
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+
 interface Expense {
   id: string;
   expenseId: string;
@@ -64,26 +57,14 @@ export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  //@ts-ignore
   const [searchTerm, setSearchTerm] = useState("");
-  //@ts-expect-error - might use later
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  //@ts-expect-error - might use later
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  //@ts-expect-error - might use later
-  const [showImportDialog, setShowImportDialog] = useState(false);
+  //@ts-ignore
   const [filters, setFilters] = useState({
     dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
     status: "all",
     month: "all",
     minAmount: ""
-  });
-  const [newExpense, setNewExpense] = useState({
-    title: "",
-    vendorName: "",
-    paymentMethod: "",
-    amount: "",
-    status: "Unpaid" as "Paid" | "Unpaid" | "Overdue",
-    date: ""
   });
 
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
@@ -96,6 +77,7 @@ export default function Expenses() {
     return `EX-${year}/${count.toString().padStart(3, '0')}`;
   };
 
+  //@ts-ignore
   const downloadCSV = (data: Expense[], filename: string) => {
     const headers = ['Date', 'Expense ID', 'Expense Title', 'Vendor Name', 'Payment Method', 'Amount', 'Status'];
     const csvContent = [
@@ -170,10 +152,7 @@ export default function Expenses() {
   // call fetch on mount
   useEffect(() => {
     fetchExpenses();
-
-    // Listen for expense created event (dispatched by ExpenseForm after successful create)
     const handler = () => {
-      // optionally use e.detail to show created data
       fetchExpenses();
       toast({ title: "Expense Created", description: "New expense added" });
     };
@@ -182,7 +161,6 @@ export default function Expenses() {
     return () => {
       window.removeEventListener("expense:created", handler as EventListener);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const parseCSV = (csvText: string): Expense[] => {
@@ -205,7 +183,7 @@ export default function Expenses() {
       };
     });
   };
-
+  //@ts-ignore
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -232,52 +210,13 @@ export default function Expenses() {
     }
   };
 
-  //@ts-expect-error - might use later
-  const handleAddExpense = () => {
-    if (!newExpense.title || !newExpense.vendorName || !newExpense.amount || !newExpense.date) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const expense: Expense = {
-      id: `expense-${Date.now()}`,
-      expenseId: generateExpenseId(),
-      title: newExpense.title,
-      vendorName: newExpense.vendorName,
-      vendorAvatar: newExpense.vendorName[0]?.toUpperCase() || 'V',
-      paymentMethod: newExpense.paymentMethod,
-      amount: parseInt(newExpense.amount),
-      status: newExpense.status,
-      date: format(new Date(newExpense.date), 'dd MMMM yyyy'),
-    };
-
-    setExpenses(prev => [expense, ...prev]);
-    toast({
-      title: "Expense Added",
-      description: "New expense has been added successfully"
-    });
-
-    setNewExpense({
-      title: "",
-      vendorName: "",
-      paymentMethod: "",
-      amount: "",
-      status: "Unpaid",
-      date: ""
-    });
-  }
-
   // Delete expense => hit backend, then update local list
   const handleDeleteExpense = async (expenseId: string) => {
     try {
       const token = Cookies.get("authToken");
       if (!token) throw new Error("Auth token not found");
 
-      const res = await fetch(`/api/expenses/${expenseId}`, {
+      const res = await fetch(`${API_BASE}/api/expenses/${expenseId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`
@@ -341,13 +280,12 @@ export default function Expenses() {
     return (
       <div className="px-2 sm:px-4">
         <Card className="w-full p-4 sm:p-6 bg-white">
-          <p className="font-semibold text-2xl">Create Purchase Form</p>
+          <p className="font-semibold text-2xl">Create Expense Form</p>
           <CardContent className="mt-2">
             <ExpenseForm onCancel={() => setIsExpenseFormOpen(false)} />
           </CardContent>
         </Card>
       </div>
-
     );
   }
 
@@ -386,267 +324,6 @@ export default function Expenses() {
           />
         </div>
 
-        {/* Expenses Table */}
-        <div className="bg-white rounded-lg border border-border p-3 sm:p-4 lg:p-6 w-full overflow-hidden">
-          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground truncate">Total Expenses</h2>
-            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:gap-3 sm:space-y-0">
-              {/* Search Bar */}
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search"
-                  className="pl-10 w-full sm:w-48 lg:w-56 bg-background border-border"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Filter Expenses</h4>
-
-                    <div className="space-y-2">
-                      <Label>Date</Label>
-                      <DateRangePicker
-                      // date={filters.dateRange.from}
-                      // onDateChange={(date) => setFilters({...filters, dateRange: { from: date, to: date }})} // TODO: Uncomment when DateRangePicker is implemented
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Unpaid">Unpaid</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Month</Label>
-                      <Select value={filters.month} onValueChange={(value) => setFilters({ ...filters, month: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All months" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Months</SelectItem>
-                          <SelectItem value="January">January</SelectItem>
-                          <SelectItem value="February">February</SelectItem>
-                          <SelectItem value="March">March</SelectItem>
-                          <SelectItem value="April">April</SelectItem>
-                          <SelectItem value="May">May</SelectItem>
-                          <SelectItem value="June">June</SelectItem>
-                          <SelectItem value="July">July</SelectItem>
-                          <SelectItem value="August">August</SelectItem>
-                          <SelectItem value="September">September</SelectItem>
-                          <SelectItem value="October">October</SelectItem>
-                          <SelectItem value="November">November</SelectItem>
-                          <SelectItem value="December">December</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Minimum Amount</Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter minimum amount"
-                        value={filters.minAmount}
-                        onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Minimum Amount</Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter minimum amount"
-                        value={filters.minAmount}
-                        onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
-                      />
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => setFilters({
-                        dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
-                        status: "all",
-                        month: "all",
-                        minAmount: ""
-                      })}
-                      className="w-full"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              {/* </DropdownMenuContent>
-              </DropdownMenu> */}
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsExpenseFormOpen(true)}>
-                <Plus className="h-4 w-4" />
-                <span className="ml-2">Add New Expenses</span>
-              </Button>
-            </div>
-
-            {/* Mobile Actions - Icon Only */}
-            <div className="sm:hidden flex items-center gap-2">
-              {/* Filter Icon Button */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="outline">
-                    <Filter className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-80 p-4 bg-white text-black">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Filter Expenses</h4>
-
-                    <div className="space-y-2">
-                      <Label>Date</Label>
-                      <SingleDatePicker
-                        date={filters.dateRange.from}
-                        onDateChange={(date) => {
-                          setFilters({ ...filters, dateRange: { from: date, to: date } });
-                        }}
-                        iconOnly={true}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select value={filters.status} onValueChange={(value) => {
-                        setFilters({ ...filters, status: value });
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Unpaid">Unpaid</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Month</Label>
-                      <Select value={filters.month} onValueChange={(value) => {
-                        setFilters({ ...filters, month: value });
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All months" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Months</SelectItem>
-                          <SelectItem value="January">January</SelectItem>
-                          <SelectItem value="February">February</SelectItem>
-                          <SelectItem value="March">March</SelectItem>
-                          <SelectItem value="April">April</SelectItem>
-                          <SelectItem value="May">May</SelectItem>
-                          <SelectItem value="June">June</SelectItem>
-                          <SelectItem value="July">July</SelectItem>
-                          <SelectItem value="August">August</SelectItem>
-                          <SelectItem value="September">September</SelectItem>
-                          <SelectItem value="October">October</SelectItem>
-                          <SelectItem value="November">November</SelectItem>
-                          <SelectItem value="December">December</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Minimum Amount</Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter minimum amount"
-                        value={filters.minAmount}
-                        onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
-                      />
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setFilters({
-                          dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
-                          status: "all",
-                          month: "all",
-                          minAmount: ""
-                        });
-                      }}
-                      className="w-full"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Export Icon Button */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="outline">
-                    <Download className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-white text-black">
-                  <DropdownMenuItem onClick={() => downloadCSV(filteredExpenses, `expenses_${format(new Date(), 'yyyy-MM-dd')}.csv`)}>
-                    Export All Records
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => downloadCSV(filteredExpenses, `expenses_filtered_${format(new Date(), 'yyyy-MM-dd')}.csv`)}>
-                    Export Filtered Records
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Import Icon Button */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="outline">
-                    <Upload className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-80 p-4 bg-white text-black">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Import Expenses</h4>
-                    <div>
-                      <Label htmlFor="file-upload">Select CSV File</Label>
-                      <Input
-                        id="file-upload"
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleImport}
-                        className="mt-2"
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Missing columns will be filled with "-". Supported formats: CSV, Excel
-                    </p>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
         {/* Loading and Error States */}
         {loading && (
           <div className="bg-white rounded-lg border border-border p-6 w-full">
@@ -675,14 +352,15 @@ export default function Expenses() {
           </div>
         )}
 
+        {/* Enhanced ExpenseTable with all features */}
         {!loading && !error && (
           <ExpenseTable
             expenses={filteredExpenses}
             searchTerm={searchTerm}
             onDeleteExpense={handleDeleteExpense}
+            setIsExpenseFormOpen={setIsExpenseFormOpen}
           />
         )}
-
       </div>
     </div>
   );
