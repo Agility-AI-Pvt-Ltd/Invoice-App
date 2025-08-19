@@ -1,4 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+// File: client/src/components/SalesTable.tsx
+
+import { useState, useCallback, useEffect, useRef } from "react";
+// import Cookies from "js-cookie"; // ✅ Added
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/badge";
@@ -35,11 +38,19 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { getSalesData, type SalesRecord } from "@/services/api/sales";
+
+import {
+  getSalesData,
+  deleteSale,
+  sendSale,
+  getSalePDF,
+  exportSalesCSV,
+  createSalesBulk,
+  type SalesRecord
+} from "@/services/api/sales";
+
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useRef } from "react";
-import Cookies from "js-cookie";
 
 export const SalesTable = ({
   setIsSalesFormOn
@@ -64,24 +75,44 @@ export const SalesTable = ({
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = Cookies.get("authToken") || "";
-        const data = await getSalesData(token);
-        setAllData(data);
-        setFilteredData(data);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load sales data.",
-          variant: "destructive",
-        });
-      }
-    };
-    fetchData();
-  }, [toast]);
 
+  // 🔄 Refresh data with filters applied
+  const refreshData = useCallback(async () => {
+    try {
+ // ✅ token from cookies
+      const data = await getSalesData();       // ✅ pass token
+      setAllData(data);
+
+      let filtered = [...data];
+
+      if (searchTerm) {
+        filtered = filtered.filter(item =>
+          item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.product.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      if (selectedDate) {
+        const filterDate = format(selectedDate, "dd MMMM yyyy");
+        filtered = filtered.filter(item => item.dateOfSale === filterDate);
+      }
+
+      setFilteredData(filtered);
+    } catch (error) {
+      console.log(error);
+      toast({
+        title: "Error",
+        description: "Failed to load sales data.",
+        variant: "destructive",
+      });
+    }
+  }, [searchTerm, selectedDate, toast]);
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+  
 
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
@@ -148,25 +179,37 @@ export const SalesTable = ({
     setFilteredData(sorted);
   };
 
-  const handleImportData = (importedData: SalesRecord[]) => {
-    const updatedData = [...allData, ...importedData];
-    setAllData(updatedData);
-    setFilteredData(updatedData);
-    toast({
-      title: "Data Imported",
-      description: `${importedData.length} records have been imported successfully.`,
-    });
+  const handleImportData = async (importedData: SalesRecord[]) => {
+    try {
+      await createSalesBulk(importedData);
+      await refreshData();
+      toast({
+        title: "Data Imported",
+        description: `${importedData.length} records have been imported successfully.`,
+      });
+    } catch {
+      toast({
+        title: "Import Failed",
+        description: "Server rejected the imported data.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleActionClick = (action: string, record: SalesRecord) => {
+  const handleActionClick = async (action: string, record: SalesRecord) => {
     switch (action) {
-      case 'edit':
+      case 'edit': {
+        // hand-off to your form without changing UI
+        sessionStorage.setItem("editSale", JSON.stringify(record));
+        setIsSalesFormOn(true);
         toast({
           title: "Edit Record",
           description: `Editing record for ${record.customerName}`,
         });
         break;
+      }
       case 'download': {
+        // single-row CSV client-side (kept as-is)
         const csvContent = [
           ["Invoice Number", "Customer Name", "Product", "Quantity", "Unit Price", "Total Amount", "Date of Sale", "Payment Status"],
           [record.invoiceNumber, record.customerName, record.product, record.quantity, record.unitPrice, record.totalAmount, record.dateOfSale, record.paymentStatus]
@@ -181,55 +224,103 @@ export const SalesTable = ({
         URL.revokeObjectURL(url);
         break;
       }
-      case 'print':
-        toast({
-          title: "Print Record",
-          description: `Printing record for ${record.customerName}`,
-        });
+      case 'print': {
+        try {
+          const pdfBlob = await getSalePDF(record.id);
+          const url = URL.createObjectURL(pdfBlob);
+          // open print dialog in a new tab
+          const win = window.open(url);
+          if (!win) {
+            // fallback: trigger download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${record.invoiceNumber}.pdf`;
+            a.click();
+          }
+          toast({
+            title: "Print",
+            description: `Opened PDF for ${record.invoiceNumber}`,
+          });
+        } catch {
+          toast({
+            title: "Error",
+            description: "Failed to generate PDF.",
+            variant: "destructive",
+          });
+        }
         break;
-      case 'send':
-        toast({
-          title: "Send Record",
-          description: `Sending record for ${record.customerName}`,
-        });
+      }
+      case 'send': {
+        try {
+          await sendSale(record.id);
+          toast({
+            title: "Sent",
+            description: `Record for ${record.customerName} has been sent.`,
+          });
+        } catch {
+          toast({
+            title: "Error",
+            description: "Failed to send record.",
+            variant: "destructive",
+          });
+        }
         break;
+      }
       case 'delete': {
-        const updatedData = allData.filter(item => item.id !== record.id);
-        setAllData(updatedData);
-        setFilteredData(filteredData.filter(item => item.id !== record.id));
-        toast({
-          title: "Record Deleted",
-          description: `Record for ${record.customerName} has been deleted.`,
-        });
+        // optimistic UI
+        const prevAll = [...allData];
+        const prevFiltered = [...filteredData];
+        const nextAll = allData.filter(item => item.id !== record.id);
+        const nextFiltered = filteredData.filter(item => item.id !== record.id);
+        setAllData(nextAll);
+        setFilteredData(nextFiltered);
+
+        try {
+          await deleteSale(record.id);
+          toast({
+            title: "Record Deleted",
+            description: `Record for ${record.customerName} has been deleted.`,
+          });
+        } catch {
+          // rollback on failure
+          setAllData(prevAll);
+          setFilteredData(prevFiltered);
+          toast({
+            title: "Error",
+            description: "Failed to delete record.",
+            variant: "destructive",
+          });
+        }
         break;
       }
     }
   };
 
-  const exportToCSV = (filtered = false) => {
-    const dataToExport = filtered ? filteredData : allData;
-    const headers = ["Invoice Number", "Customer Name", "Product", "Quantity", "Unit Price", "Total Amount", "Date of Sale", "Payment Status"];
-    const csvContent = [
-      headers.join(","),
-      ...dataToExport.map(row => [
-        row.invoiceNumber,
-        row.customerName,
-        row.product,
-        row.quantity,
-        row.unitPrice,
-        row.totalAmount,
-        row.dateOfSale,
-        row.paymentStatus
-      ].join(","))
-    ].join("\n");
+  const exportToCSV = async (filtered = false) => {
+    try {
+      // use server-side export to preserve parity
+      const payload = filtered
+        ? {
+            searchTerm,
+            selectedDate: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined,
+            filters
+          }
+        : { all: true };
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales-data-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const csvBlob = await exportSalesCSV(payload);
+      const url = URL.createObjectURL(csvBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sales-data-${new Date().toISOString().split('T')[0]}${filtered ? "-filtered" : ""}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({
+        title: "Export Failed",
+        description: "Could not export CSV from server.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,19 +333,19 @@ export const SalesTable = ({
     if (!selectedFile) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       if (event.target?.result) {
         try {
           const csvData = event.target.result as string;
-          const lines = csvData.split('\n');
-          const headers = lines[0].split(',');
+          const lines = csvData.split('\n').filter(l => l.trim().length);
+          const headers = lines[0].split(',').map(h => h.trim());
           const data: SalesRecord[] = [];
 
           for (let i = 1; i < lines.length; i++) {
-            const row = lines[i].split(',');
+            const row = lines[i].split(',').map(c => c.trim());
             if (row.length === headers.length) {
               const record: SalesRecord = {
-                id: Date.now().toString(), // Temporary ID
+                id: "", // let backend generate id
                 invoiceNumber: row[0] || "",
                 customerName: row[1] || "",
                 product: row[2] || "",
@@ -267,11 +358,8 @@ export const SalesTable = ({
               data.push(record);
             }
           }
-          handleImportData(data);
-          toast({
-            title: "Data Imported",
-            description: `${data.length} records imported successfully.`,
-          });
+
+          await handleImportData(data);
         } catch {
           toast({
             title: "Import Failed",
@@ -524,8 +612,6 @@ export const SalesTable = ({
               <Plus className="w-4 h-4 mr-2" />
               Add New Sales
             </Button>
-
-
           </div>
 
           {/* Mobile Actions - Icon Only */}
@@ -545,8 +631,7 @@ export const SalesTable = ({
                     <Label htmlFor="paymentStatus">Payment Status</Label>
                     <Select
                       value={filters.paymentStatus}
-                      onValueChange={(value) => setFilters(prev => ({ ...prev, paymentStatus: value }))}
-                    >
+                      onValueChange={(value) => setFilters(prev => ({ ...prev, paymentStatus: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="All statuses" />
                       </SelectTrigger>
@@ -562,8 +647,7 @@ export const SalesTable = ({
                     <Label htmlFor="monthBefore">Month</Label>
                     <Select
                       value={filters.monthBefore}
-                      onValueChange={(value) => setFilters(prev => ({ ...prev, monthBefore: value }))}
-                    >
+                      onValueChange={(value) => setFilters(prev => ({ ...prev, monthBefore: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="All months" />
                       </SelectTrigger>
@@ -592,8 +676,7 @@ export const SalesTable = ({
                       type="number"
                       placeholder="Enter minimum quantity"
                       value={filters.minQuantity}
-                      onChange={(e) => setFilters(prev => ({ ...prev, minQuantity: e.target.value }))}
-                    />
+                      onChange={(e) => setFilters(prev => ({ ...prev, minQuantity: e.target.value }))} />
                   </div>
 
                   <div className="space-y-2">
@@ -603,8 +686,7 @@ export const SalesTable = ({
                       type="number"
                       placeholder="Enter minimum amount"
                       value={filters.minAmount}
-                      onChange={(e) => setFilters(prev => ({ ...prev, minAmount: e.target.value }))}
-                    />
+                      onChange={(e) => setFilters(prev => ({ ...prev, minAmount: e.target.value }))} />
                   </div>
 
                   <div className="flex justify-end gap-2 pt-4">
@@ -705,7 +787,7 @@ export const SalesTable = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsSalesFormOn(true)}>
               <Plus className="h-5 w-5" />
             </Button>
           </div>

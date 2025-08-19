@@ -1,3 +1,6 @@
+  //File: client/src/components/SalesPerformanceChart.tsx
+
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +21,7 @@ import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 endOfMonth
 import { cn } from "@/lib/utils";
 import { getSalesPerformance } from "@/services/api/sales";
-import Cookies from "js-cookie";
+// import Cookies from "js-cookie";
 
 type ChartPoint = { month: string; value: number };
 
@@ -42,7 +45,7 @@ export const SalesPerformanceChart = () => {
   const fetchChart = async (d?: Date) => {
     setLoading(true);
     try {
-      const token = Cookies.get("authToken") || "";
+      // const token = Cookies.get("authToken") || "";
 
       // const from = (d ? startOfMonth(d) : startOfMonth(new Date())).toISOString();
       // const to = (d ? endOfMonth(d) : endOfMonth(new Date())).toISOString();
@@ -50,7 +53,7 @@ export const SalesPerformanceChart = () => {
       // const res = await getSalesPerformance(token, from, to, "day");
       //TODO : Remove
       startOfMonth(d || new Date());
-      const res = await getSalesPerformance(token, "day");
+      const res = await getSalesPerformance("day");
 
       const series = Array.isArray(res) ? res : [];
 

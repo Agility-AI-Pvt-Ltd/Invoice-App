@@ -1,5 +1,6 @@
-// app/(routes)/sales/page.tsx  (or wherever this component lives)
-import { useEffect, useState } from "react";
+//File: client/src/pages/sales-revenue.tsx
+
+import { useEffect, useState, useCallback } from "react";
 import { SalesStatsCard } from "@/components/SalesStatsCard";
 import { SalesPerformanceChart } from "@/components/SalesPerformanceChart";
 import { RegionalSalesChart } from "@/components/RegionalSalesCard";
@@ -32,37 +33,47 @@ const Sales = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSalesFormOn, setIsSalesFormOn] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const token = Cookies.get('authToken') || "";
+  // ✅ Wrap stats fetching into a function so we can re-use it
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = Cookies.get("authToken") || "";
 
-        // call the real API
-        const apiData = await getSalesStats(token);
+      const apiData = await getSalesStats(token);
 
-        // Map API → UI. If your backend later returns change fields,
-        // we’ll use them; otherwise default to 0 to keep UI stable.
-        setStats({
-          totalSales: apiData.totalSales ?? 0,
-          totalSalesChange:
-            // @ts-ignore - in case backend adds this later
-            apiData.totalSalesChange ?? 0,
-          currentMonthSales: apiData.currentMonthSales ?? 0,
-          // @ts-ignore
-          currentMonthChange: apiData.currentMonthChange ?? 0,
-          averageOrderValue: apiData.averageOrderValue ?? 0,
-          // @ts-ignore
-          averageOrderChange: apiData.averageOrderChange ?? 0,
-        });
-      } catch (e: any) {
-        setError(e?.message || "Failed to load sales stats");
-      } finally {
-        setLoading(false);
-      }
-    })();
+      setStats({
+        totalSales: apiData.totalSales ?? 0,
+        // @ts-ignore
+        totalSalesChange: apiData.totalSalesChange ?? 0,
+        currentMonthSales: apiData.currentMonthSales ?? 0,
+        // @ts-ignore
+        currentMonthChange: apiData.currentMonthChange ?? 0,
+        averageOrderValue: apiData.averageOrderValue ?? 0,
+        // @ts-ignore
+        averageOrderChange: apiData.averageOrderChange ?? 0,
+      });
+    } catch (e: any) {
+      setError(e?.message || "Failed to load sales stats");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // ✅ Listen for invoice creation event
+  useEffect(() => {
+    const handler = () => {
+      fetchStats(); // refresh stats when a new invoice is created
+    };
+
+    window.addEventListener("sales:created", handler);
+    return () => window.removeEventListener("sales:created", handler);
+  }, [fetchStats]);
 
   if (isSalesFormOn) {
     return (
