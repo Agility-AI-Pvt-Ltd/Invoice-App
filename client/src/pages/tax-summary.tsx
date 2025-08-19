@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import { MetricCard } from "@/components/MetricCard";
 import { TaxChart } from "@/components/TaxChart";
 import { TaxCollectedChart } from "@/components/TaxCollection";
 import { TaxSummaryTable } from "@/components/TaxSummaryTable";
-import { Download } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getTaxMetrics, exportTaxSummary } from "@/services/api/tax";
 import { useToast } from "@/hooks/use-toast";
 import Cookies from "js-cookie";
@@ -44,6 +41,7 @@ const TaxSummary = () => {
     fetchTaxMetrics();
   }, [selectedDate, toast]);
 
+  //@ts-ignore
   const handleExport = async (type: 'all' | 'filtered') => {
     try {
       const token = Cookies.get('authToken') || "";
@@ -64,17 +62,17 @@ const TaxSummary = () => {
       a.click();
       window.URL.revokeObjectURL(url);
 
-      toast({
-        title: "Success",
-        description: "Tax summary exported successfully",
-      });
+      // toast({
+      //   title: "Success",
+      //   description: "Tax summary exported successfully",
+      // });
     } catch (error) {
       console.error('Error exporting tax summary:', error);
-      toast({
-        title: "Error",
-        description: "Failed to export tax summary",
-        variant: "destructive",
-      });
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to export tax summary",
+      //   variant: "destructive",
+      // });
     }
   };
 
@@ -92,19 +90,19 @@ const TaxSummary = () => {
               <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} iconOnly />
             </div>
 
-            {/* Export Dropdown: full button on sm+, icon-only on mobile */}
+            {/* Export Dropdown: full button on sm+, icon-only on mobile
             <DropdownMenu>
-              {/* Desktop/tablet trigger */}
+              {/* Desktop/tablet trigger 
               <DropdownMenuTrigger className="hidden sm:inline-flex">
                 <Button
                   variant="outline"
-                  className="items-center gap-2 w-full sm:w-auto"
+                  className="items-center gap-2 w-full sm:w-auto hover:bg-slate-50 hover:text-black cursor-pointer"
                 >
                   <Download className="h-4 w-4" />
                   <span>Export</span>
                 </Button>
               </DropdownMenuTrigger>
-              {/* Mobile trigger */}
+              {/* Mobile trigger 
               <DropdownMenuTrigger className="inline-flex sm:hidden">
                 <Button
                   variant="outline"
@@ -122,10 +120,10 @@ const TaxSummary = () => {
                   Export Filtered Records
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> */}
           </div>
         </div>
-
+        {/* {JSON.stringify(taxMetrics)} */}
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <MetricCard
