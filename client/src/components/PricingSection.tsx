@@ -24,7 +24,7 @@ const plans: PricingPlan[] = [
     description: "Perfect plan to get started",
     monthlyPrice: 0,
     yearlyPrice: 0,
-    explain:"A free plan grants you access to some cool features of Invoice App",
+    explain:"A free plan grants you access to some cool features of Invoicely",
     features: [
       { name: "Sync across device", included: true },
       { name: "5 workspace", included: true },

@@ -61,7 +61,7 @@
 //                 className="w-full h-full object-cover"
 //               />
 //             </div>
-//             <span className="text-xl font-semibold text-foreground">Invoice App</span>
+//             <span className="text-xl font-semibold text-foreground">Invoicely</span>
 //             <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
 //               Powered by AgilityAI
 //             </span>
@@ -222,7 +222,7 @@
 //                   className="w-full h-full object-cover"
 //                 />
 //               </div>
-//               <span className="text-xl font-semibold text-white">Invoice App</span>
+//               <span className="text-xl font-semibold text-white">Invoicely</span>
 //               <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
 //                 Powered by AgilityAI
 //               </span>
@@ -348,7 +348,7 @@
 //                   className="w-full h-full object-cover"
 //                 />
 //               </div>
-//               <span className="text-xl font-semibold text-white">Invoice App</span>
+//               <span className="text-xl font-semibold text-white">Invoicely</span>
 //               <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
 //                 Powered by AgilityAI
 //               </span>
@@ -524,6 +524,10 @@ const NavbarUpdated = () => {
   }, []);
 
   const scrollTo = (id: string) => {
+    if (id === "top") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -539,7 +543,7 @@ const NavbarUpdated = () => {
       <Navbar>
         {/* Desktop View */}
         <NavBody>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" onClick={() => scrollTo("top")}>
             <div className="w-12 h-10 rounded-lg overflow-hidden">
               <img
                 src="/agility.jpg"
@@ -548,7 +552,7 @@ const NavbarUpdated = () => {
               />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Invoice App</h3>
+              <h3 className="text-xl font-bold">Invoicely</h3>
               <p className="text-sm text-slate-400">Powered by AgilityAI</p>
             </div>
           </div>
