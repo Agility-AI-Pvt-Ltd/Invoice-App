@@ -10,7 +10,7 @@ import {
     Users,
     FileText,
     Boxes,
-    BarChart2,
+    // BarChart2,
     Receipt,
     UserCog,
     WalletMinimal,
