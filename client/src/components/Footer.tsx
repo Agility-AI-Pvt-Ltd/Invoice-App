@@ -76,7 +76,7 @@ const Footer = () => {
               />
              </div>
                 <div>
-                  <h3 className="text-xl font-bold">Invoice App</h3>
+                  <h3 className="text-xl font-bold">Invoicely</h3>
                   <p className="text-sm text-gray-500 ">Powered by AgilityAI</p>
                 </div>
               </div>
@@ -91,15 +91,16 @@ const Footer = () => {
               <div className="space-y-3 text-gray-500 ">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-purple-500 mt-1" />
-                  <p>Ghaziabad, Uttar Pradesh, India</p>
+                  <p>Abhay Khand-3, Indirapuram, Suraksha Apartment
+                  Ghaziabad, Uttar Pradesh 201010, IN</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Phone className="w-4 h-4 text-purple-500 mt-1" />
-                  <p>+91-XXXXXXXXXX</p>
+                  <p>+91-7042149608</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Mail className="w-4 h-4 text-purple-500 mt-1" />
-                  <p>support@agilityai.co.in</p>
+                  <p>service@agilityai.in</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Globe className="w-4 h-4 text-purple-500 mt-1" />

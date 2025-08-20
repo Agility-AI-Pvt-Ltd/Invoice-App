@@ -1,4 +1,10 @@
+
+// FILE: client/src/components/product-form/productForm.tsx
+
+import React, { useEffect, useRef, useState } from "react";
+
 import React, { useEffect, useState } from "react";
+
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,6 +12,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
+
+// added Select imports (uses your existing UI Select component)
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface FormSectionProps {
   title: string;
@@ -62,9 +77,9 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [taxRate, setTaxRate] = useState<string | number>(initial?.taxRate ?? "");
 
   // Stock/payment-related (UI labels were payment oriented; we keep them but also track general values)
-  const [paymentStatus, setPaymentStatus] = useState<string>(initial?.paymentStatus || "");
+  const [paymentStatus, setPaymentStatus] = useState<string>(initial?.paymentStatus || "Unpaid");
   const [amountReceived, setAmountReceived] = useState<string | number>(initial?.amountReceived ?? "");
-  const [paymentMethod, setPaymentMethod] = useState<string>(initial?.paymentMethod || "");
+  const [paymentMethod, setPaymentMethod] = useState<string>(initial?.paymentMethod || "Online");
   const [dueAmount, setDueAmount] = useState<string | number>(initial?.dueAmount ?? "");
 
   // Supplier/vendor
@@ -72,7 +87,11 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [vendorProductCode, setVendorProductCode] = useState<string>(initial?.vendorProductCode || "");
 
   // Images/attachments
+  // productImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
   const [productImage, setProductImage] = useState<string>(initial?.productImage || "");
+  const [productImageName, setProductImageName] = useState<string>(initial?.productImageName || (initial?.imageName ?? ""));
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [remark, setRemark] = useState<string>(initial?.remark || "");
 
   // UI state
@@ -116,13 +135,14 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       setSellingPrice(initial.sellingPrice ?? initial.selling_price ?? "");
       setDiscount(initial.discount ?? 0);
       setTaxRate(initial.taxRate ?? "");
-      setPaymentStatus(initial.paymentStatus || "");
+      setPaymentStatus(initial.paymentStatus || "Unpaid");
       setAmountReceived(initial.amountReceived ?? "");
-      setPaymentMethod(initial.paymentMethod || "");
+      setPaymentMethod(initial.paymentMethod || "Online");
       setDueAmount(initial.dueAmount ?? "");
       setVendorName(initial.vendorName || "");
       setVendorProductCode(initial.vendorProductCode || "");
       setProductImage(initial.productImage || initial.image || "");
+      setProductImageName(initial.productImageName || initial.imageName || "");
       setRemark(initial.remark || initial.note || "");
       setError(null);
     }
@@ -161,14 +181,16 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         unitPrice: resolveUnitPrice(),
         inStock: resolveInStock(),
         discount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0,
-        image: productImage || undefined,
-        // Extra fields will be ignored by backend Pydantic model if not supported.
-        // We still include vendor info as optional metadata; backend may ignore it.
+        image: productImage || undefined, // base64 or URL
+        // include payment metadata if needed
+        paymentStatus: paymentStatus || undefined,
+        paymentMethod: paymentMethod || undefined,
+        amountReceived: amountReceived !== "" ? Number(amountReceived) : undefined,
+        dueAmount: dueAmount !== "" ? Number(dueAmount) : undefined,
         vendor: vendorName || undefined,
         vendorProductCode: vendorProductCode || undefined,
         note: remark || undefined,
       };
-
 
       console.log("Saving product with payload:", payload);
 
@@ -217,6 +239,27 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     } finally {
       setLoading(false);
     }
+  };
+
+  // File handling: read chosen image as base64 and set name
+  const handleFileSelect = (file?: File | null) => {
+    if (!file) return;
+    setProductImageName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setProductImage(result); // base64 data URL
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    handleFileSelect(f);
+  };
+
+  const triggerFilePicker = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   // Attach handlers to UI inputs while leaving markup intact
@@ -308,16 +351,40 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         <FormSection title="Stock and Quantity Details">
           <div className="grid gap-2">
             <Label htmlFor="payment-status">Payment Status</Label>
-            <Input id="payment-status" value={paymentStatus} onChange={(e: any) => setPaymentStatus(e.target.value)} />
+
+            {/* Payment Status Select (Paid / Unpaid) */}
+            <Select onValueChange={(v) => setPaymentStatus(v)} defaultValue={paymentStatus || "Unpaid"}>
+              <SelectTrigger aria-label="Payment Status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Paid">Paid</SelectItem>
+                <SelectItem value="Unpaid">Unpaid</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="amount-received">Amount Received</Label>
             <Input id="amount-received" value={amountReceived as any} onChange={(e: any) => setAmountReceived(e.target.value)} />
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="payment-method">Payment Method</Label>
-            <Input id="payment-method" value={paymentMethod} onChange={(e: any) => setPaymentMethod(e.target.value)} />
+
+            {/* Payment Method Select (Online / POS / Cash) */}
+            <Select onValueChange={(v) => setPaymentMethod(v)} defaultValue={paymentMethod || "Online"}>
+              <SelectTrigger aria-label="Payment Method">
+                <SelectValue placeholder="Select method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Online">Online</SelectItem>
+                <SelectItem value="POS">POS</SelectItem>
+                <SelectItem value="Cash">Cash</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="due-amount">Due Amount</Label>
             <Input id="due-amount" value={dueAmount as any} onChange={(e: any) => setDueAmount(e.target.value)} />
@@ -340,8 +407,33 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         <FormSection title="Images and Attachments">
           <div className="grid gap-2 md:col-span-2">
             <Label htmlFor="product-image">Product Image</Label>
-            <Input id="product-image" value={productImage} onChange={(e: any) => setProductImage(e.target.value)} />
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={onFileInputChange}
+            />
+
+            {/* Display a readonly Input showing filename (click opens file dialog) */}
+            <Input
+              id="product-image"
+              value={productImageName || (productImage ? "Image selected" : "")}
+              placeholder="Choose image"
+              readOnly
+              onClick={triggerFilePicker}
+            />
+
+            {/* optional: small preview below (keeps layout, minimal visual change) */}
+            {productImage ? (
+              <div className="mt-2">
+                <img src={productImage} alt="product preview" className="max-h-28 object-contain rounded-md" />
+              </div>
+            ) : null}
           </div>
+
           <div className="grid gap-2 md:col-span-2">
             <Label htmlFor="remark">Remark</Label>
             <Textarea id="remark" placeholder="Remark" className="min-h-[100px]" value={remark} onChange={(e: any) => setRemark(e.target.value)} />

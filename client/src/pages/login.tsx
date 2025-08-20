@@ -25,7 +25,7 @@ export default function LoginPage() {
                     <div className="mb-8 flex items-center space-x-3">
                         <img src="/agility.jpg" alt="Logo" width={60} height={60} />
                         <div>
-                            <h1 className="font-bold text-lg">Invoice App</h1>
+                            <h1 className="font-bold text-lg">Invoicely</h1>
                             <p className="text-xs text-gray-500">Powered by AgilityAI</p>
                         </div>
                     </div>

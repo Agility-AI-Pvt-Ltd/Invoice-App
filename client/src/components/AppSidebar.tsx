@@ -75,7 +75,7 @@ export function AppSidebar() {
                 <div className="flex">
                     <img src="/agility.jpg" alt="Logo" className="h-18 m-2" />
                     <div className="flex flex-col items-center py-4">
-                        <div className="text-xl font-bold text-white">Invoice App</div>
+                        <div className="text-xl font-bold text-white">Invoicely</div>
                         <div className="text-xs text-muted-foreground">Powered by AgilityAI</div>
                     </div>
                 </div>

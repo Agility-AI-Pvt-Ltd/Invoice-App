@@ -78,7 +78,7 @@ const Hero = () => {
           </h1>
 
           <p className="text-lg md:text-xl text-black/64 max-w-2xl mx-auto mb-8 leading-relaxed">
-            Create, manage, and track invoices effortlessly—
+            Create, manage, and track invoices effortlessly
             <span className="block">whether you're a freelancer, startup, or enterprise.</span>
           </p>
 
