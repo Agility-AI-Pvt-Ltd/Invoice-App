@@ -298,29 +298,29 @@ export default function Expenses() {
             title="Total Expenses"
             amount={`₹${filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
             trend="up"
-            trendPercentage="3.46%"
-            subtitle="Since last month"
+            // trendPercentage="3.46%"
+            // subtitle="Since last month"
           />
           <ExpenseMetricCard
             title="Paid Expenses"
             amount={`₹${filteredExpenses.filter(exp => exp.status === 'Paid').reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
             trend="down"
-            trendPercentage="3.46%"
-            subtitle="Since last month"
+            // trendPercentage="3.46%"
+            // subtitle="Since last month"
           />
           <ExpenseMetricCard
             title="Pending Expenses"
             amount={`₹${filteredExpenses.filter(exp => exp.status === 'Unpaid').reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
             trend="up"
-            trendPercentage="3.46%"
-            subtitle="Since last month"
+            // trendPercentage="3.46%"
+            // subtitle="Since last month"
           />
           <ExpenseMetricCard
             title="Overdue Expenses"
             amount={`₹${filteredExpenses.filter(exp => exp.status === 'Overdue').reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
             trend="up"
-            trendPercentage="3.46%"
-            subtitle="Since last month"
+            // trendPercentage="3.46%"
+            // subtitle="Since last month"
           />
         </div>
 

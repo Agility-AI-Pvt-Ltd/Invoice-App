@@ -127,33 +127,34 @@ const TaxSummary = () => {
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <MetricCard
+            title="Taxable Sales"
+            amount={`₹ ${loading ? '...' : taxMetrics.taxableSales.toLocaleString()}`}
+            trend="up"
+          // trendPercentage="3.48%"
+          // subtitle="Since last month"
+          />
+          <MetricCard
             title="Tax Collected"
             amount={`₹ ${loading ? '...' : taxMetrics.taxCollected.toLocaleString()}`}
             trend="up"
-            trendPercentage="3.48%"
-            subtitle="Since last month"
+          // trendPercentage="3.48%"
+          // subtitle="Since last month"
           />
           <MetricCard
             title="Tax Paid"
             amount={`₹ ${loading ? '...' : taxMetrics.taxPaid.toLocaleString()}`}
-            trend="down"
-            trendPercentage="3.48%"
-            subtitle="Since last month"
+            trend="up"
+          // trendPercentage="3.48%"
+          // subtitle="Since last month"
           />
           <MetricCard
             title="Net Tax Liability"
             amount={`₹ ${loading ? '...' : taxMetrics.netTaxLiability.toLocaleString()}`}
             trend="up"
-            trendPercentage="3.48%"
-            subtitle="Since last month"
+          // trendPercentage="3.48%"
+          // subtitle="Since last month"
           />
-          <MetricCard
-            title="Taxable Sales"
-            amount={`₹ ${loading ? '...' : taxMetrics.taxableSales.toLocaleString()}`}
-            trend="up"
-            trendPercentage="3.48%"
-            subtitle="Since last month"
-          />
+
         </div>
 
         {/* Charts Section */}
