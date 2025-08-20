@@ -14,50 +14,32 @@ type Step3FormProps = {
 };
 
 export default function Step3Form({ formData, setFormData }: Step3FormProps) {
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024); // max 10MB
-    setFormData((prev: any) => ({
-      ...prev,
-      documents: validFiles.slice(0, 3), // max 3 files
-    }));
-  };
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = Array.from(e.target.files || []);
+  //   const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024); // max 10MB
+  //   setFormData((prev: any) => ({
+  //     ...prev,
+  //     documents: validFiles.slice(0, 3), // max 3 files
+  //   }));
+  // };
 
   return (
-    <div className="grid grid-cols-2 gap-x-6 gap-y-6 ">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 w-full">
       {/* PAN Number */}
-      <div className="space-y-2">
+      <div className="space-y-2 w-full">
         <Label htmlFor="pan">PAN Number</Label>
         <Input
           id="pan"
+          className="w-full"
           value={formData.pan || ""}
-          onChange={(e) => setFormData((prev: any) => ({ ...prev, pan: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev: any) => ({ ...prev, pan: e.target.value }))
+          }
         />
       </div>
 
-      {/* Documents */}
-      <div className="space-y-2">
-        <Label>Documents</Label>
-        <div className="relative">
-          <input
-            id="documents"
-            type="file"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileChange}
-          />
-          <div className="h-20 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100">
-            <span className="text-sm font-medium text-blue-600">Upload Documents</span>
-            <span className="text-xs text-gray-500 mt-1">
-              Max 3 files, 10 MB each
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Is GST Registered? */}
-      <div className="space-y-2">
+      <div className="space-y-2 w-full">
         <Label htmlFor="gstRegistered">Is GST Registered?</Label>
         <Select
           value={formData.gstRegistered || ""}
@@ -65,7 +47,7 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
             setFormData((prev: any) => ({ ...prev, gstRegistered: value }))
           }
         >
-          <SelectTrigger id="gstRegistered">
+          <SelectTrigger id="gstRegistered" className="w-full">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
@@ -76,10 +58,11 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
       </div>
 
       {/* GST Number */}
-      <div className="space-y-2">
+      <div className="space-y-2 w-full">
         <Label htmlFor="gstNumber">GST Number</Label>
         <Input
           id="gstNumber"
+          className="w-full"
           value={formData.gstNumber || ""}
           onChange={(e) =>
             setFormData((prev: any) => ({ ...prev, gstNumber: e.target.value }))
@@ -88,7 +71,7 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
       </div>
 
       {/* Place of Supply */}
-      <div className="space-y-2">
+      <div className="space-y-2 w-full">
         <Label htmlFor="supplyPlace">Place of Supply</Label>
         <Select
           value={formData.supplyPlace || ""}
@@ -96,7 +79,7 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
             setFormData((prev: any) => ({ ...prev, supplyPlace: value }))
           }
         >
-          <SelectTrigger id="supplyPlace">
+          <SelectTrigger id="supplyPlace" className="w-full">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
@@ -108,7 +91,7 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
       </div>
 
       {/* Currency */}
-      <div className="space-y-2">
+      <div className="space-y-2 w-full">
         <Label htmlFor="currency">Currency</Label>
         <Select
           value={formData.currency || "INR"}
@@ -116,19 +99,18 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
             setFormData((prev: any) => ({ ...prev, currency: value }))
           }
         >
-          <SelectTrigger id="currency">
+          <SelectTrigger id="currency" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="INR">INR</SelectItem>
             <SelectItem value="USD">USD</SelectItem>
-            <SelectItem value="EUR">EUR</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Payment Terms */}
-      <div className="space-y-2">
+      <div className="space-y-2 w-full">
         <Label htmlFor="paymentTerms">Payment Terms</Label>
         <Select
           value={formData.paymentTerms || ""}
@@ -136,7 +118,7 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
             setFormData((prev: any) => ({ ...prev, paymentTerms: value }))
           }
         >
-          <SelectTrigger id="paymentTerms">
+          <SelectTrigger id="paymentTerms" className="w-full">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
