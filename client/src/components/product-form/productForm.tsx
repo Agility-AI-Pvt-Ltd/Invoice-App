@@ -32,6 +32,7 @@ function FormSection({ title, children }: FormSectionProps) {
   );
 }
 
+
 /**
  * Props:
  * - initial: optional object to prefill form for edit (may contain id or _id and existing fields)
@@ -79,6 +80,28 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
+  // calculate profit/loss
+  const calculateProfitLoss = () => {
+    const pp = Number(purchasePrice) || 0;
+    const sp = Number(sellingPrice) || 0;
+    const disc = Number(discount) || 0;
+
+    // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
+    let effectiveSP = sp;
+    if (disc > 0) {
+      // assuming % discount for now
+      effectiveSP = sp - (sp * disc) / 100;
+    }
+
+    const diff = effectiveSP - pp;
+
+    return {
+      effectiveSP,
+      diff,
+      type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
+    };
+  };
+
 
   useEffect(() => {
     // If initial changes after mount, populate fields
@@ -247,12 +270,37 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="discount">Discount (if applicable) (% or amount)</Label>
+            <Label htmlFor="discount">Discount % (if applicable)</Label>
             <Input id="discount" value={discount as any} onChange={(e: any) => setDiscount(e.target.value)} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="tax-rate">Tax Rate</Label>
             <Input id="tax-rate" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} />
+          </div>
+          {/* Profit / Loss Result */}
+          <div className="col-span-2 mt-2 p-3 ">
+            {(() => {
+              const { diff, type, effectiveSP } = calculateProfitLoss();
+              if (type === "profit") {
+                return (
+                  <p className="text-green-600 font-semibold">
+                    Profit: ₹{diff.toFixed(2)} (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
+                  </p>
+                );
+              } else if (type === "loss") {
+                return (
+                  <p className="text-red-600 font-semibold">
+                    Loss: ₹{Math.abs(diff).toFixed(2)} (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
+                  </p>
+                );
+              } else {
+                return (
+                  <p className="text-gray-600 font-medium">
+                    No Profit / No Loss (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
+                  </p>
+                );
+              }
+            })()}
           </div>
         </FormSection>
 

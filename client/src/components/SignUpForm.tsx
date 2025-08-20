@@ -13,6 +13,7 @@ import { routes } from '@/lib/routes/route';
 
 interface SignUpFormData {
     name: string;
+    businessEmail: string;   // ✅ Added business email
     email: string;
     phonenumber: string;
     password: string;
@@ -29,6 +30,7 @@ interface SignUpFormData {
 const SignupForm: React.FC = () => {
     const [form, setForm] = useState<SignUpFormData>({
         name: '',
+        businessEmail: '',   // ✅ init
         email: '',
         phonenumber: '',
         password: '',
@@ -74,23 +76,21 @@ const SignupForm: React.FC = () => {
         }
 
         if (!form.name) newErrors.name = "Name is required";
-        // if (!form.email) newErrors.email = "Email is required";
+        if (!form.businessEmail) newErrors.businessEmail = "Business email is required"; // ✅ validation
         if (!form.phonenumber) newErrors.phonenumber = "Phone number is required";
         if (!form.password) newErrors.password = "Password is required";
         if (!form.confirmPassword) newErrors.confirmPassword = "Confirm your password";
-        if (!form.website) newErrors.website = "Website is required";
+        // if (!form.website) newErrors.website = "Website is required";
 
         setErrors(newErrors);
-        console.log(errors)
-        // 🚫 Stop if errors exist
         if (Object.keys(newErrors).length > 0) return;
 
         try {
             setIsSubmitting(true);
             const payload = {
                 name: form.name,
-                phonenumber: form.phonenumber,
-                // email: "",
+                email: form.businessEmail, // ✅ send in payload
+                phone: form.phonenumber,
                 password: form.password,
                 website: form.website,
             };
@@ -114,7 +114,6 @@ const SignupForm: React.FC = () => {
         }
     };
 
-
     return (
         <form className="space-y-4 w-full" onSubmit={handleSubmit}>
             <ToastContainer position="top-right" autoClose={5000} hideProgressBar closeOnClick pauseOnHover draggable pauseOnFocusLoss theme="light" />
@@ -129,6 +128,7 @@ const SignupForm: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Sign up</h2>
             <p className="text-sm text-gray-500 mb-4">Your invoicing process is about to be effortless.</p>
 
+            {/* Name */}
             <FloatingInput
                 id="name"
                 label="Name"
@@ -139,6 +139,18 @@ const SignupForm: React.FC = () => {
             />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
 
+            {/* Business Email */}
+            <FloatingInput
+                id="businessEmail"
+                label="Business Email"
+                type="email"
+                value={form.businessEmail}
+                onChange={handleChange}
+                isImportant
+            />
+            {errors.businessEmail && <p className="text-red-500 text-xs mt-1">{errors.businessEmail}</p>}
+
+            {/* Phone */}
             <FloatingInput
                 id="phonenumber"
                 label="Phone Number"
@@ -149,6 +161,7 @@ const SignupForm: React.FC = () => {
             />
             {errors.phonenumber && <p className="text-red-500 text-xs mt-1">{errors.phonenumber}</p>}
 
+            {/* Password */}
             <FloatingInput
                 id="password"
                 label="Password"
@@ -159,6 +172,7 @@ const SignupForm: React.FC = () => {
             />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
 
+            {/* Confirm Password */}
             <FloatingInput
                 id="confirmPassword"
                 label="Confirm Password"
@@ -169,6 +183,7 @@ const SignupForm: React.FC = () => {
             />
             {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
 
+            {/* Website */}
             <FloatingInput
                 id="website"
                 label="Website"
@@ -179,6 +194,7 @@ const SignupForm: React.FC = () => {
             />
             {errors.website && <p className="text-red-500 text-xs mt-1">{errors.website}</p>}
 
+            {/* Checkbox */}
             <div className="flex items-start gap-2">
                 <Checkbox
                     label="I agree to all the Terms and Privacy Policies"
@@ -192,8 +208,12 @@ const SignupForm: React.FC = () => {
             {/* General API error */}
             {errors.general && <p className="text-red-500 text-sm text-center mt-2">{errors.general}</p>}
 
-
-            <Button type="submit" className="w-full mt-2 bg-black text-white hover:bg-slate-900 cursor-pointer" disabled={isSubmitting} >
+            {/* Submit */}
+            <Button
+                type="submit"
+                className="w-full mt-2 bg-black text-white hover:bg-slate-900 cursor-pointer"
+                disabled={isSubmitting}
+            >
                 {isSubmitting ? 'Verifying Details...' : 'Create account'}
             </Button>
 
@@ -201,6 +221,7 @@ const SignupForm: React.FC = () => {
                 Already have an account? <a href="/login" className="text-blue-600 underline">Login</a>
             </p>
 
+            {/* Social Logins */}
             <div className="flex justify-center gap-4 mt-4">
                 <SocialButton icon={<BsGoogle />} label="Sign up with Google" />
                 <SocialButton icon={<AiFillApple />} label="Sign up with Apple" />
