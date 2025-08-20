@@ -74,7 +74,7 @@ export function SingleDatePicker({
         <Button
           variant="outline"
           className={cn(
-            iconOnly ? "p-2 w-9 h-9" : "w-[240px] justify-start text-left font-normal bg-white",
+            iconOnly ? "p-2 w-9 h-9" : "w-[240px] justify-start text-left font-normal bg-white hover:bg-slate-200 cursor-pointer hover:text-black",
             !currentDate && "text-muted-foreground"
           )}
         >

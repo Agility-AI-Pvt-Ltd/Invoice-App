@@ -9,19 +9,16 @@ import {
     Home,
     Users,
     FileText,
-    Package,
     Boxes,
     BarChart2,
-    ShoppingCart,
     Receipt,
-    CreditCard,
     UserCog,
     WalletMinimal,
     Settings,
     LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useProfile } from "@/contexts/ProfileContext"
 
@@ -41,14 +38,14 @@ const menuItems = [
     { label: "Dashboard", icon: Home },
     { label: "My Customers", icon: Users },
     { label: "Invoices", icon: FileText },
-    { label: "Products/Services", icon: Package },
+    // { label: "Products/Services", icon: Package },
     { label: "Inventory", icon: Boxes },
-    { label: "Sales", icon: BarChart2 }, //Sales & Revenue phle tha
-    { label: "Expenses", icon: WalletMinimal }, //Expenses/ Purchases --> Expenses & Purchases 2 pages
-    { label: "Purchases", icon: ShoppingCart }, //Expenses/ Purchases --> Expenses & Purchases 2 pages
+    { label: "Sales", icon: BarChart2 },
+    { label: "Expenses", icon: WalletMinimal },
+    // { label: "Purchases", icon: ShoppingCart },
     { label: "Tax Summary", icon: Receipt },
-    { label: "Accounts", icon: CreditCard },
-    { label: "Team/Employees", icon: UserCog },
+    // { label: "Accounts", icon: CreditCard },
+    { label: "Team", icon: UserCog },
     { label: "Settings", icon: Settings },
 ]
 
@@ -63,6 +60,14 @@ export function AppSidebar() {
         logout();
         navigate('/login');
     };
+
+    useEffect(() => {
+        if (param.menuItems) {
+            const titleCaseLabel = toTitleCase(param.menuItems);
+            console.log("Title Case Label:", titleCaseLabel);
+            setSelected(titleCaseLabel);
+        }
+    }, [param.menuItems]);
 
     return (
         <Sidebar className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
@@ -79,6 +84,7 @@ export function AppSidebar() {
                 <SidebarGroup className="overflow-auto scrollbar-hide">
                     {menuItems.map(({ label, icon: Icon }) => {
                         const isSelected = selected === label
+                        console.log(label)
                         return (
                             <button
                                 key={label}
@@ -89,7 +95,7 @@ export function AppSidebar() {
                                         : "hover:bg-[#2b2b2b] text-white pl-4"
                                 )}
                                 onClick={() => {
-                                    setSelected(label);
+                                    setSelected(label)
                                     navigate(`/app/${slugify(label)}`)
                                 }}
                             >

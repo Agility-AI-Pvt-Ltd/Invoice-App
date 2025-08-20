@@ -17,7 +17,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const token = Cookies.get("authToken");
-
         if (!token) {
             navigate("/login");
         } else {

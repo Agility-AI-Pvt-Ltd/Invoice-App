@@ -10,11 +10,10 @@ const ActionToolbar = () => {
   const navigate = useNavigate();
 
   const handleAddClient = () => {
-    // ✅ Navigate to my-customer page and trigger Add Customer form
     navigate("/app/my-customers");
   };
+
   const handleANewInvoice = () => {
-    // ✅ Navigate to my-customer page and trigger Add Customer form
     navigate("/app/invoices");
   };
 
@@ -22,8 +21,18 @@ const ActionToolbar = () => {
     <div className="flex gap-3">
       {/* Full buttons for medium+ screens */}
       <div className="hidden sm:flex flex-wrap gap-3">
-        <ActionButton label="New Invoice" onClick={handleANewInvoice} className="bg-white-500 text-black hover:bg-black-600 hover:text-white" />
-        <ActionButton label="Add Client" onClick={handleAddClient} className="bg-white-500 text-black hover:bg-black-600 hover:text-white" />
+        <ActionButton
+          label="New Invoice"
+          onClick={handleANewInvoice}
+          className="bg-white-500 text-black hover:bg-black-600 hover:text-white"
+        />
+        <ActionButton
+          label="Add Client"
+          onClick={handleAddClient}
+          className="bg-white-500 text-black hover:bg-black-600 hover:text-white"
+        />
+        <ActionButton label="Add Payment" />
+        <ActionButton label="Generate Report" />
       </div>
 
       {/* For mobile (popover) */}
@@ -35,10 +44,7 @@ const ActionToolbar = () => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="flex flex-col gap-2 w-48">
-            <ActionButton
-              label="New Invoice"
-              iconOnly={false}
-            />
+            <ActionButton label="New Invoice" iconOnly={false} />
             <ActionButton
               label="Add Client"
               iconOnly={false}
