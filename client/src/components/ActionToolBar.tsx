@@ -7,13 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useNavigate } from "react-router-dom";
 
 
-import { useState } from 'react';
-import ActionButton from './ui/ActionButton';
-import { Plus } from 'lucide-react';
-import { Button } from './ui/button'; // Assuming you're using shadcn/ui or similar
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { useNavigate } from 'react-router-dom';
-
 const ActionToolbar = () => {
   //@ts-ignore
   const [open, setOpen] = useState(false);
@@ -53,8 +46,8 @@ const ActionToolbar = () => {
           onClick={handleAddClient}
           className="bg-white-500 text-black hover:bg-black-600 hover:text-white"
         />
-        <ActionButton label="Add Payment" />
-        <ActionButton label="Generate Report" />
+        {/* <ActionButton label="Add Payment" />
+        <ActionButton label="Generate Report" /> */}
       </div>
 
       {/* For mobile (popover) */}
@@ -66,12 +59,19 @@ const ActionToolbar = () => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="flex flex-col gap-2 w-48">
-            <ActionButton label="New Invoice" iconOnly={false} />
+            <ActionButton
+              label="New Invoice"
+              iconOnly={false}
+              onClick={() => {
+                setOpen(false); // close popover
+                handleANewInvoice();
+              }}
+            />
             <ActionButton
               label="Add Client"
               iconOnly={false}
               onClick={() => {
-                setOpen(false);
+                setOpen(false); // close popover
                 handleAddClient();
               }}
             />
