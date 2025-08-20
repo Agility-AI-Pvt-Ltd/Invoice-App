@@ -40,7 +40,7 @@ const menuItems = [
     { label: "Invoices", icon: FileText },
     // { label: "Products/Services", icon: Package },
     { label: "Inventory", icon: Boxes },
-    { label: "Sales", icon: BarChart2 },
+    // { label: "Sales", icon: BarChart2 },
     { label: "Expenses", icon: WalletMinimal },
     // { label: "Purchases", icon: ShoppingCart },
     { label: "Tax Summary", icon: Receipt },
