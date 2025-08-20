@@ -1,3 +1,4 @@
+// FILE: client/src/pages/team-employees.tsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
@@ -18,10 +19,10 @@ interface TeamMember {
   role: string;
   email: string;
   phone: string;
-  dateJoined: string;
-  lastActive: string;
+  dateJoined: string | null;
+  lastActive: string | null;
   status: "Active" | "Inactive";
-  avatar?: string;
+  avatar?: string | null;
 }
 
 interface TeamMemberCreate {
@@ -41,18 +42,51 @@ interface TeamMemberUpdate {
   status?: "Active" | "Inactive";
 }
 
-const Cookies = {
-  get: (name: string): string | undefined => {
-    // Mock implementation - in real app, this would get actual cookies
-    if (name === 'authToken') {
-      return undefined; // Return undefined to use mock data
+// API base (change via Vite env: VITE_API_URL)
+const API_BASE = (import.meta.env?.VITE_API_URL as string) || "https://invoice-backend-604217703209.asia-south1.run.app";
+
+/**
+ * Try to fetch auth token from multiple common locations:
+ *  - localStorage: 'authToken' or 'token'
+ *  - sessionStorage: 'authToken' or 'token'
+ *  - cookies: 'authToken' or 'token'
+ *  - window.__AUTH_TOKEN__ (rare)
+ */
+const getAuthToken = (): string | undefined => {
+  try {
+    const ls = typeof window !== "undefined" ? window.localStorage : null;
+    const ss = typeof window !== "undefined" ? window.sessionStorage : null;
+
+    const candidates = [
+      ls?.getItem("authToken"),
+      ls?.getItem("token"),
+      ss?.getItem("authToken"),
+      ss?.getItem("token"),
+      // check cookies
+      (typeof document !== "undefined" && document.cookie) ? (() => {
+        const match = document.cookie.match(/(?:^|;\s*)(?:authToken|token)=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : undefined;
+      })() : undefined,
+      // fallback
+      // @ts-ignore
+      (typeof window !== "undefined" && (window.__AUTH_TOKEN__ || window.__TOKEN__)) || undefined,
+    ];
+
+    for (const c of candidates) {
+      if (c && c !== "undefined") return c;
     }
-    return undefined;
+  } catch (e) {
+    // ignore
   }
+  return undefined;
 };
 
-// API base (change via Vite env: VITE_API_URL)
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+const buildAuthHeaders = (token?: string, isJson = true): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  if (isJson) headers["Content-Type"] = "application/json";
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+};
 
 export default function TeamManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,17 +114,66 @@ export default function TeamManagement() {
 
   // Helper function to check if user is authenticated
   const isAuthenticated = () => {
-    const token = Cookies.get('authToken');
+    const token = getAuthToken();
     return !!token;
   };
 
-  // --- API helper functions (direct fetch) ---
-  const buildAuthHeaders = (token?: string) => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    return headers;
+  // --- Auth helpers ---
+  const clearAuthTokens = () => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("authToken");
+        window.localStorage.removeItem("token");
+        window.sessionStorage.removeItem("authToken");
+        window.sessionStorage.removeItem("token");
+        // clear cookies named authToken or token
+        document.cookie = "authToken=; Max-Age=0; path=/; sameSite=Lax";
+        document.cookie = "token=; Max-Age=0; path=/; sameSite=Lax";
+      }
+    } catch (e) {
+      // ignore
+    }
   };
 
+  const handleAuthError = async (res: Response | { status?: number; json?: () => Promise<any>; data?: any; statusText?: string }) => {
+    // Parse message if possible
+    let msg = "Session expired. Please log in again.";
+    try {
+      // if it's a Fetch Response object
+      // @ts-ignore
+      if (res && typeof (res as Response).json === "function") {
+        try {
+          // @ts-ignore
+          const body = await (res as Response).json();
+          msg = body?.detail || body?.message || JSON.stringify(body);
+        } catch (_) {
+          // fallback: try text
+          try {
+            // @ts-ignore
+            const text = await (res as Response).text();
+            if (text) msg = text;
+          } catch (_) {}
+        }
+      } else if ((res as any).data) {
+        // axios error shape
+        const data = (res as any).data;
+        msg = data?.detail || data?.message || JSON.stringify(data);
+      } else if ((res as any).statusText) {
+        msg = (res as any).statusText;
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+
+    clearAuthTokens();
+    toast({
+      title: "Session expired",
+      description: msg || "Session expired. Please log in again.",
+      variant: "destructive",
+    });
+  };
+
+  // --- API helper functions (direct fetch) ---
   const apiGetTeamMembers = async (token: string | undefined, page = 1, limit = 10, params: { search?: string } = {}) => {
     const q = new URLSearchParams();
     q.append("page", String(page));
@@ -98,9 +181,11 @@ export default function TeamManagement() {
     if (params.search) q.append("search", params.search);
 
     const url = `${API_BASE}/api/team-members?${q.toString()}`;
-    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+    const res = await fetch(url, { headers: buildAuthHeaders(token, false) }); // GET, no content-type necessary
     if (!res.ok) {
-      // try to parse error body
+      if (res.status === 401) {
+        await handleAuthError(res);
+      }
       let errText = `Failed to fetch team members (status ${res.status})`;
       try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
       throw new Error(errText);
@@ -110,24 +195,42 @@ export default function TeamManagement() {
     return json;
   };
 
+  const generateRandomPassword = (len = 10) => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~";
+    let p = "";
+    for (let i = 0; i < len; i++) p += chars[Math.floor(Math.random() * chars.length)];
+    return p;
+  };
+
   const apiCreateTeamMember = async (token: string | undefined, member: TeamMemberCreate) => {
-    // backend expects JSON (joiningDate as YYYY-MM-DD); it creates avatar itself
+    const username = (member.email && member.email.split("@")[0]) || member.name.replace(/\s+/g, "").toLowerCase() || `user${Date.now()}`;
+    const password = generateRandomPassword(12);
+
     const payload: any = {
       name: member.name,
-      role: member.role,
+      role: (member.role || "").toLowerCase(),
       email: member.email,
       phone: member.phone,
       status: (member.status || "active").toLowerCase(),
+      joiningDate: member.joiningDate || undefined,
+      credentials: {
+        username,
+        password
+      }
     };
-    if (member.joiningDate) payload.joiningDate = member.joiningDate;
+    // helpful debug during dev; remove in production
+    // console.log("Creating team member payload:", payload);
 
     const res = await fetch(`${API_BASE}/api/team-members`, {
       method: "POST",
-      headers: buildAuthHeaders(token),
+      headers: buildAuthHeaders(token, true),
       body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
+      if (res.status === 401) {
+        await handleAuthError(res);
+      }
       let errText = `Failed to create team member (status ${res.status})`;
       try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
       throw new Error(errText);
@@ -145,11 +248,14 @@ export default function TeamManagement() {
 
     const res = await fetch(`${API_BASE}/api/team-members/${id}`, {
       method: "PUT",
-      headers: buildAuthHeaders(token),
+      headers: buildAuthHeaders(token, true),
       body: JSON.stringify(cleaned),
     });
 
     if (!res.ok) {
+      if (res.status === 401) {
+        await handleAuthError(res);
+      }
       let errText = `Failed to update team member (status ${res.status})`;
       try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
       throw new Error(errText);
@@ -161,10 +267,13 @@ export default function TeamManagement() {
   const apiDeleteTeamMember = async (token: string | undefined, id: string) => {
     const res = await fetch(`${API_BASE}/api/team-members/${id}`, {
       method: "DELETE",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: buildAuthHeaders(token, false),
     });
 
     if (!res.ok) {
+      if (res.status === 401) {
+        await handleAuthError(res);
+      }
       let errText = `Failed to delete team member (status ${res.status})`;
       try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
       throw new Error(errText);
@@ -173,44 +282,87 @@ export default function TeamManagement() {
     return await res.json();
   };
 
+  const apiImportTeamMembers = async (token: string | undefined, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${API_BASE}/api/team-members/import`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        await handleAuthError(res);
+      }
+      let errText = `Import failed (status ${res.status})`;
+      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
+      throw new Error(errText);
+    }
+
+    return await res.json();
+  };
+
+  const apiExportTeamMembers = async (token: string | undefined, format: 'csv' | 'excel' | 'pdf') => {
+    const url = `${API_BASE}/api/team-members/export?format=${encodeURIComponent(format)}`;
+    const res = await fetch(url, {
+      headers: buildAuthHeaders(token, false),
+    });
+    if (res.status === 204) {
+      return { empty: true };
+    }
+    if (!res.ok) {
+      if (res.status === 401) {
+        await handleAuthError(res);
+      }
+      let errText = `Export failed (status ${res.status})`;
+      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) {}
+      throw new Error(errText);
+    }
+    const blob = await res.blob();
+    return { blob };
+  };
+
   // Fetch team members on component mount and when filters change
   useEffect(() => {
     if (isAuthenticated()) {
       fetchTeamMembers();
     } else {
-      return;
+      // If unauthenticated, show empty list but do not throw UI errors
+      setTeamMembers([]);
+      setPagination({ currentPage: 1, totalPages: 1, totalItems: 0 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchTerm]);
 
   const fetchTeamMembers = async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      const token = getAuthToken();
       const response = await apiGetTeamMembers(token, currentPage, 10, { search: searchTerm || undefined });
 
-      // Backend might return different shapes. Normalize below.
-      // Possible shapes:
-      // 1) { data: [...], page: x, totalPages: y, total: z }
-      // 2) { data: [...] , pagination: { page, totalPages, total } }
-      // 3) array directly
-
+      // Normalize possible response shapes:
       let data: any[] = [];
-      let page = 1;
+      let page = currentPage;
       let totalPages = 1;
       let total = 0;
 
       if (Array.isArray(response)) {
         data = response;
+      } else if (response.success && Array.isArray(response.data)) {
+        data = response.data;
+        const p = response.pagination || response.page || {};
+        page = p.currentPage || response.page || currentPage;
+        totalPages = (response.pagination && response.pagination.totalPages) || response.totalPages || 1;
+        total = (response.pagination && response.pagination.totalItems) || response.total || data.length;
       } else if (response.data && Array.isArray(response.data)) {
         data = response.data;
-        page = response.page || response.pagination?.page || currentPage;
+        page = response.page || response.pagination?.currentPage || currentPage;
         totalPages = response.totalPages || response.pagination?.totalPages || 1;
-        total = response.total || response.pagination?.total || data.length;
+        total = response.total || response.pagination?.totalItems || data.length;
       } else if (response.members && Array.isArray(response.members)) {
-        // fallback: sometimes API returns "members"
         data = response.members;
       } else {
-        // try to find array in response
         for (const k of Object.keys(response)) {
           if (Array.isArray((response as any)[k])) {
             data = (response as any)[k];
@@ -219,30 +371,34 @@ export default function TeamManagement() {
         }
       }
 
-      // map server fields to our TeamMember shape if needed
-      const mapped = data.map((m: any) => ({
-        id: m.id || m._id || m.memberId || String(m._id || m.id || ""),
-        name: m.name || m.fullName || "",
-        role: (m.role || "").charAt(0).toUpperCase() + (m.role || "").slice(1) || "",
-        email: m.email || "",
-        phone: m.phone || m.phonenumber || "",
-        dateJoined: m.dateJoined || m.joiningDate || (m.joiningDate ? new Date(m.joiningDate).toISOString().split('T')[0] : ""),
-        lastActive: m.lastActive || null,
-        status: (m.status || "active") === "active" ? "Active" : "Inactive",
-        avatar: m.avatar || undefined,
-      }));
+      const mapped = data.map((m: any) => {
+        const rawRole = (m.role || "").toString();
+        const roleCapitalized = rawRole ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1) : "";
+        const rawStatus = (m.status || "active").toString().toLowerCase();
+        const status = rawStatus === "active" ? "Active" : "Inactive";
+        const joining = m.dateJoined || m.joiningDate || (m.joiningDate ? new Date(m.joiningDate).toISOString().split("T")[0] : null);
+        return {
+          id: m.id || m._id || m.memberId || String(m._id || m.id || ""),
+          name: m.name || m.fullName || "",
+          role: roleCapitalized,
+          email: m.email || "",
+          phone: m.phone || m.phonenumber || "",
+          dateJoined: joining || null,
+          lastActive: m.lastActive || null,
+          status,
+          avatar: m.avatar || m.profilePicture || null,
+        } as TeamMember;
+      });
 
-      setTeamMembers(mapped as TeamMember[]);
-      setPagination({ currentPage: page, totalPages, totalItems: total });
+      setTeamMembers(mapped);
+      setPagination({ currentPage: page, totalPages: totalPages || 1, totalItems: total || mapped.length });
     } catch (error: unknown) {
-      console.error('Error fetching team members:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Error fetching team members:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
       toast({
         title: "Error",
-        description: errorMessage.includes('Authentication') ?
-          "Please log in again to access team members." :
-          "Failed to fetch team members",
+        description: errorMessage.includes("Authentication") ? "Please log in again to access team members." : "Failed to fetch team members",
         variant: "destructive",
       });
     } finally {
@@ -256,15 +412,25 @@ export default function TeamManagement() {
 
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      const token = getAuthToken();
+
+      if (!token) {
+        toast({
+          title: "Not signed in",
+          description: "Please log in before adding or updating a team member.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       if (editingMember) {
         // Update existing member
         const updateData: TeamMemberUpdate = {
-          name: formData.name,
-          role: formData.role,
-          phone: formData.phone,
-          status: formData.status === "active" || formData.status === "Active" ? "Active" : "Inactive"
+          name: formData.name || undefined,
+          role: formData.role ? formData.role.toLowerCase() : undefined,
+          phone: formData.phone || undefined,
+          status: formData.status === "active" || formData.status === "Active" ? "Active" : "Inactive",
         };
         await apiUpdateTeamMember(token, editingMember.id, updateData);
         toast({ title: "Success", description: "Team member updated successfully!" });
@@ -289,8 +455,8 @@ export default function TeamManagement() {
       fetchTeamMembers();
 
     } catch (error: unknown) {
-      console.error('Error saving team member:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Error saving team member:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
       toast({
         title: "Error",
@@ -302,6 +468,8 @@ export default function TeamManagement() {
     }
   };
 
+  // ... rest of the component (unchanged UI rendering) ...
+
   // Handle edit member
   const handleEdit = (member: TeamMember) => {
     setEditingMember(member);
@@ -310,7 +478,7 @@ export default function TeamManagement() {
       role: member.role.toLowerCase(),
       email: member.email,
       phone: member.phone,
-      joiningDate: member.dateJoined,
+      joiningDate: member.dateJoined || "",
       status: member.status.toLowerCase(),
       profilePicture: null,
     });
@@ -319,15 +487,19 @@ export default function TeamManagement() {
 
   // Handle delete member
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this team member?')) {
+    if (window.confirm("Are you sure you want to delete this team member?")) {
       try {
-        const token = Cookies.get("authToken") || undefined;
+        setLoading(true);
+        const token = getAuthToken();
         await apiDeleteTeamMember(token, id);
         toast({ title: "Success", description: "Team member deleted successfully!" });
         fetchTeamMembers();
       } catch (error) {
-        console.error('Error deleting team member:', error);
-        toast({ title: "Error", description: "Failed to delete team member. Please try again.", variant: "destructive" });
+        console.error("Error deleting team member:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete team member.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -338,24 +510,51 @@ export default function TeamManagement() {
     if (file) {
       try {
         setLoading(true);
-        toast({ title: "Info", description: "Import functionality will be implemented soon." });
+        const token = getAuthToken();
+        const result = await apiImportTeamMembers(token, file);
+        if (result && (result.success || result.message)) {
+          toast({ title: "Success", description: result.message || "Imported successfully" });
+        } else {
+          toast({ title: "Success", description: "Imported successfully" });
+        }
+        fetchTeamMembers();
       } catch (error) {
-        console.error('Error importing team members:', error);
-        toast({ title: "Error", description: "Failed to import team members. Please try again.", variant: "destructive" });
+        console.error("Error importing team members:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to import team members";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
       } finally {
         setLoading(false);
+        if (event.target) event.target.value = "";
       }
     }
   };
 
   // Handle export
-  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
+  const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
       setLoading(true);
-      toast({ title: "Info", description: `Export functionality for ${format.toUpperCase()} will be implemented soon.` });
+      const token = getAuthToken();
+      const result = await apiExportTeamMembers(token, format);
+      if (result && (result as any).empty) {
+        toast({ title: "Info", description: "No team members to export." });
+        return;
+      }
+      const blob = (result as any).blob as Blob;
+      const filename = `team_members_${new Date().toISOString().slice(0, 10)}.${format === "excel" ? "xlsx" : format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Success", description: `Exported ${format.toUpperCase()} file.` });
     } catch (error) {
-      console.error('Error exporting team members:', error);
-      toast({ title: "Error", description: "Failed to export team members. Please try again.", variant: "destructive" });
+      console.error("Error exporting team members:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to export team members";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -411,9 +610,9 @@ export default function TeamManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleExport('csv')}>CSV</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('excel')}>Excel</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("csv")}>CSV</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("excel")}>Excel</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("pdf")}>PDF</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
 
@@ -456,9 +655,9 @@ export default function TeamManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleExport('csv')}>CSV</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('excel')}>Excel</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("csv")}>CSV</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("excel")}>Excel</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("pdf")}>PDF</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
 
@@ -489,7 +688,8 @@ export default function TeamManagement() {
                 </div>
               </div>
 
-              {/* Table */}
+              {/* Table */} 
+              {/* ... table rendering unchanged ... */}
               <div className="overflow-x-auto">
                 {loading ? (
                   <div className="p-8 text-center text-slate-500">Loading team members...</div>
@@ -520,9 +720,9 @@ export default function TeamManagement() {
                             <TableCell className="py-4 px-6">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
-                                  <AvatarImage src={member.avatar} alt={member.name} />
+                                  <AvatarImage src={member.avatar || undefined} alt={member.name} />
                                   <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
-                                    {member.name.split(' ').map(n => n[0]).join('')}
+                                    {member.name.split(" ").map(n => n[0]).join("")}
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="font-medium text-slate-800">{member.name}</span>
@@ -573,7 +773,7 @@ export default function TeamManagement() {
                 )}
               </div>
 
-              {/* Pagination */}
+              {/* Pagination */} 
               {pagination.totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 lg:p-6 border-t border-slate-200">
                   <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -607,7 +807,7 @@ export default function TeamManagement() {
               {/* Add/Edit Member Form */}
               <div className="p-6 lg:p-8">
                 <h2 className="text-xl font-semibold text-slate-800 mb-8">
-                  {editingMember ? 'Edit Team Member' : 'Add New Member'}
+                  {editingMember ? "Edit Team Member" : "Add New Member"}
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -738,7 +938,7 @@ export default function TeamManagement() {
                       disabled={loading}
                       className="flex-1 h-12 bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
                     >
-                      {loading ? 'Saving...' : (editingMember ? 'Update' : 'Save')}
+                      {loading ? "Saving..." : (editingMember ? "Update" : "Save")}
                     </Button>
                   </div>
                 </form>

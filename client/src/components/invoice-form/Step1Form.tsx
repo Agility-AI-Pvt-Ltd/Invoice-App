@@ -84,6 +84,7 @@ export default function Step1Form() {
             placeholder="Pick the Date"
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
             value={invoice.dueDate ?? ""}
+            min={invoice.date || ""}  // ✅ Prevent selecting before invoiceDate
             onChange={(e) => setField("dueDate", e.target.value)}
           />
         </div>
