@@ -8,11 +8,16 @@ import {
 import LoginPage from './pages/login.tsx'
 import Index from './pages/index.tsx'
 import SignUpPage from './pages/signup.tsx'
+import TermsOfService from "./pages/TandC.tsx";
+import Aboutus from "./pages/Aboutus.tsx";
 import { ProfileProvider } from './contexts/ProfileContext'
 import { Suspense } from 'react';
 import { menuComponentMap } from './lib/menuComponents';
 import Layout from '@/layouts/dashboard-layout';
 import OTP from './pages/otp.tsx'
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import UserGuide from './pages/UserGuide.tsx'
+import Support from './pages/Support.tsx'
 // import LoginPage from './pages/login.tsx'
 function App() {
 
@@ -21,6 +26,12 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<Index/>}/>
+          <Route path='/T&C' element={<TermsOfService />} />
+          <Route path='/about' element={<Aboutus/>} />
+          <Route path='/privacy-policy' element={<PrivacyPolicy/>}/>
+          <Route path='/userguide' element={<UserGuide/>}/>
+          <Route path='/support' element={<Support/>}/>
+
           <Route path='/login' element={<LoginPage/>}/>
           <Route path='/signup' element={<SignUpPage/>}/>
           <Route path='/signup/verify/otp' element={<OTP/>}/>

@@ -61,7 +61,7 @@
 //                 className="w-full h-full object-cover"
 //               />
 //             </div>
-//             <span className="text-xl font-semibold text-foreground">Invoicely</span>
+//             <span className="text-xl font-semibold text-foreground">Agility AI Invoicely</span>
 //             <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
 //               Powered by AgilityAI
 //             </span>
@@ -222,7 +222,7 @@
 //                   className="w-full h-full object-cover"
 //                 />
 //               </div>
-//               <span className="text-xl font-semibold text-white">Invoicely</span>
+//               <span className="text-xl font-semibold text-white">Agility AI Invoicely</span>
 //               <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
 //                 Powered by AgilityAI
 //               </span>
@@ -348,7 +348,7 @@
 //                   className="w-full h-full object-cover"
 //                 />
 //               </div>
-//               <span className="text-xl font-semibold text-white">Invoicely</span>
+//               <span className="text-xl font-semibold text-white">Agility AI Invoicely</span>
 //               <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full">
 //                 Powered by AgilityAI
 //               </span>
@@ -512,7 +512,7 @@ const NavbarUpdated = () => {
     { name: "Pricing", link: "#pricing-section" },
     { name: "FAQs", link: "#FAQsection" },
     { name: "Testimonials", link: "#tesimonialsection" },
-    { name: "About Us", link: "#about" },
+    { name: "Contact Us", link: "#contact" },
   ];
 
   useEffect(() => {
@@ -552,7 +552,7 @@ const NavbarUpdated = () => {
               />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Invoicely</h3>
+              <h3 className="text-xl font-bold">Agility AI Invoicely</h3>
               <p className="text-sm text-slate-400">Powered by AgilityAI</p>
             </div>
           </div>

@@ -1,19 +1,76 @@
+
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { MapPin, Phone, Mail, Globe } from "lucide-react";
-import { Input } from "./ui/Input";
+import { Input } from "@/components/ui/Input";
+import BackgroundEffects from '@/components/BackgroundEffects';
 
-const Footer = () => {
-  const [email, setEmail] = useState("");
+const PrivacyPolicy = () => {
+    const [email, setEmail] = useState("");
 
-  const handleSignUp = () => {
-    // Handle newsletter signup
-    console.log("Newsletter signup:", email);
-    setEmail("");
-  };
-
+    const handleSignUp = () => {
+      // Handle newsletter signup
+      console.log("Newsletter signup:", email);
+      setEmail("");
+    };
   return (
-    <footer id="contact" className="bg-transparent text-black">
+    <div className="min-h-screen">
+      <BackgroundEffects />
+      
+      <section className="py-20 bg-gradient-subtle mt-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <Link to="/">
+              <Button variant="outline" className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="text-center mb-16">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+              <span className="bg-gradient-hero bg-clip-text text-black">
+                Privacy Policy
+              </span>
+            </h1>
+          </div>
+
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardContent className="p-8 space-y-6">
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Data Collection</h3>
+                <p className="text-muted-foreground">We collect only the necessary information to provide you with the best possible service. This includes account information, usage data, and communication preferences.</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Data Usage</h3>
+                <p className="text-muted-foreground">Your data is used solely to improve our services and provide you with personalized experiences. We never sell or share your personal information with third parties.</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Data Security</h3>
+                <p className="text-muted-foreground">We employ industry-standard security measures to protect your data, including encryption, secure servers, and regular security audits.</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Cookies and Tracking</h3>
+                <p className="text-muted-foreground">We use cookies to enhance your browsing experience and analyze website traffic. You can control cookie settings through your browser preferences.</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Third-Party Services</h3>
+                <p className="text-muted-foreground">We may use third-party services for analytics and functionality. These services have their own privacy policies that govern the use of your information.</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Contact Us</h3>
+                <p className="text-muted-foreground">If you have any questions about this Privacy Policy, please contact us at privacy@yourbrand.com.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+      
+      <footer id="contact" className="bg-transparent text-black">
       {/* Newsletter Subscription Section */}
       <div className="border-b border-slate-700">
         <div className="max-w-6xl mx-auto px-6 py-16">
@@ -119,14 +176,14 @@ const Footer = () => {
               <h4 className="text-lg font-semibold mb-4">Company</h4>
               <ul className="space-y-3 text-gray-500 ">
                 <li><a href="/about" className="hover:text-black transition-colors">About Us</a></li>
-                {/* <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-black transition-colors">Contact</a></li> */}
+                <li><a href="#" className="hover:text-black transition-colors">Contact</a></li>
               </ul>
             </div>
 
             {/* Product Links */}
-            <div>
+            {/* <div>
               <h4 className="text-lg font-semibold mb-4">Product</h4>
               <ul className="space-y-3 text-gray-500 ">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
@@ -134,7 +191,7 @@ const Footer = () => {
                 <li><a href="#FAQsection" className="hover:text-black transition-colors">FAQs</a></li>
                 <li><a href="/signup" className="hover:text-black transition-colors">Get Started</a></li>
               </ul>
-            </div>
+            </div> */}
 
             {/* Resources Links */}
             <div>
@@ -142,8 +199,8 @@ const Footer = () => {
               <ul className="space-y-3 text-gray-500 ">
                 <li><a href="/privacy-policy" className="hover:text-black transition-colors">Privacy Policy</a></li>
                 <li><a href="/T&C" className="hover:text-black transition-colors">Terms of Service</a></li>
-                <li><a href="/support" className="hover:text-black transition-colors">Support</a></li>
-                <li><a href="/userguide" className="hover:text-black transition-colors">User Guide</a></li>
+                <li><a href="/" className="hover:text-black transition-colors">Support</a></li>
+                <li><a href="/" className="hover:text-black transition-colors">User Guide</a></li>
               </ul>
             </div>
           </div>
@@ -157,7 +214,8 @@ const Footer = () => {
         </div>
       </div>
     </footer>
+    </div>
   );
 };
 
-export default Footer;
+export default PrivacyPolicy;
