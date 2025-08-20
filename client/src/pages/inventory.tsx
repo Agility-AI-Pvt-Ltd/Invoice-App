@@ -62,19 +62,30 @@ const Inventory = () => {
                 <span className="text-lg sm:text-xl font-bold text-gray-800">
                     Inventory Summary
                 </span>
-                {/* TODO : phone responsive */}
-                <NavbarButton className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg" onClick={openAddForm}>
-                    Add Products
-                </NavbarButton>
+
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <NavbarButton className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg">
+                        Add Service
+                    </NavbarButton>
+                    <NavbarButton
+                        className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
+                        onClick={openAddForm}
+                    >
+                        Add Products
+                    </NavbarButton>
+                </div>
             </div>
 
-            {/* Pass refreshSignal so summary re-fetches when it changes */}
             <InventorySummary refreshSignal={refreshSignal} />
 
-            {/* Pass handlers + refreshSignal to table: onEdit opens form, onDeleteSuccess triggers refresh */}
-            <InventoryTable refreshSignal={refreshSignal} onEdit={openEditForm} onDeleteSuccess={handleDeleteSuccess} />
+            <InventoryTable
+                refreshSignal={refreshSignal}
+                onEdit={openEditForm}
+                onDeleteSuccess={handleDeleteSuccess}
+            />
         </div>
-    )
+    );
+
 }
 
 export default Inventory

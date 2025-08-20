@@ -1,41 +1,41 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API_BASE = import.meta.env.DEV ? "" : BACKEND_URL;
+// const BACKEND_URL = import.meta.env.DEV ? "" : BACKEND_URL;
 
 export const routes = {
     auth: {
-        sendOtpRegister: `${API_BASE}/api/send-otp-register`,
-        verifyOtpAndRegister: `${API_BASE}/api/verify-otp-register`,
+        sendOtpRegister: `${BACKEND_URL}/api/send-otp-register`,
+        verifyOtpAndRegister: `${BACKEND_URL}/api/verify-otp-register`,
         login: `${BACKEND_URL}/api/login`,
         getProfile: `${BACKEND_URL}/api/profile`,
         updateProfile: `${BACKEND_URL}/api/profile/update`,
     },
     tax: {
-        metrics: `${API_BASE}/api/tax/metrics`,
-        collectedTimeseries: `${API_BASE}/api/tax/collected-timeseries`,
-        summary: `${API_BASE}/api/tax/summary`,
-        exportSummary: `${API_BASE}/api/tax/summary/export`,
+        metrics: `${BACKEND_URL}/api/tax/metrics`,
+        collectedTimeseries: `${BACKEND_URL}/api/tax/collected-timeseries`,
+        summary: `${BACKEND_URL}/api/tax/summary`,
+        exportSummary: `${BACKEND_URL}/api/tax/summary/export`,
     },
     users: {
-        getUserProfile: `${API_BASE}/api/users/profile`,
+        getUserProfile: `${BACKEND_URL}/api/users/profile`,
     },
     invoices: {
-        getAll: `${API_BASE}/api/invoices`,
-        create: `${API_BASE}/api/invoices`,
-        update: (id: string) => `${API_BASE}/api/invoices/${id}`,
-        getById: (id: string) => `${API_BASE}/api/invoices/${id}`,
-        delete: (id: string) => `${API_BASE}/api/invoices/${id}`,
-        duplicate: (id: string) => `${API_BASE}/api/invoices/${id}/duplicate`,
-        getClients: `${API_BASE}/api/invoices/clients`,
-        getClientDetails: (name: string) => `${API_BASE}/api/invoices/clients/${encodeURIComponent(name)}`,
+        getAll: `${BACKEND_URL}/api/invoices`,
+        create: `${BACKEND_URL}/api/invoices`,
+        update: (id: string) => `${BACKEND_URL}/api/invoices/${id}`,
+        getById: (id: string) => `${BACKEND_URL}/api/invoices/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/invoices/${id}`,
+        duplicate: (id: string) => `${BACKEND_URL}/api/invoices/${id}/duplicate`,
+        getClients: `${BACKEND_URL}/api/invoices/clients`,
+        getClientDetails: (name: string) => `${BACKEND_URL}/api/invoices/clients/${encodeURIComponent(name)}`,
     },
     expenseInvoices: {
-        getAll: `${API_BASE}/api/expense-invoices`,
-        create: `${API_BASE}/api/expense-invoices`,
-        update: (id: string) => `${API_BASE}/api/expense-invoices/${id}`,
-        getById: (id: string) => `${API_BASE}/api/expense-invoices/${id}`,
-        delete: (id: string) => `${API_BASE}/api/expense-invoices/${id}`,
-        duplicate: (id: string) => `${API_BASE}/api/expense-invoices/${id}/duplicate`,
-        getLast: `${API_BASE}/api/expense-invoices/last`,
+        getAll: `${BACKEND_URL}/api/expense-invoices`,
+        create: `${BACKEND_URL}/api/expense-invoices`,
+        update: (id: string) => `${BACKEND_URL}/api/expense-invoices/${id}`,
+        getById: (id: string) => `${BACKEND_URL}/api/expense-invoices/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/expense-invoices/${id}`,
+        duplicate: (id: string) => `${BACKEND_URL}/api/expense-invoices/${id}/duplicate`,
+        getLast: `${BACKEND_URL}/api/expense-invoices/last`,
     },
     inventory: {
         getAll: `${BACKEND_URL}/api/inventory`,
@@ -44,7 +44,7 @@ export const routes = {
         delete: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
     },
     scan: {
-        invoice: `${API_BASE}/api/scan-invoice`,
+        invoice: `${BACKEND_URL}/api/scan-invoice`,
     },
     customers: {
         getAll: `${BACKEND_URL}/api/customers`,
