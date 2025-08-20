@@ -95,6 +95,7 @@ export default function ExpenseForm({ onCancel }: Props) {
     const handleSaveAndSend = async () => {
       try {
         const payload = { ...formData };
+        console.log("Frontend payload sending to Backend:", payload);
     
         // ✅ Normalize date values to ISO strings safely
         if (payload.step1?.expenseDate) {
@@ -106,7 +107,7 @@ export default function ExpenseForm({ onCancel }: Props) {
     
         const token = localStorage.getItem("token") || "";
     
-        const res = await axios.post("/api/expenses", payload, {
+        const res = await axios.post("https://invoice-backend-604217703209.asia-south1.run.app/api/expenses", payload, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "application/json",

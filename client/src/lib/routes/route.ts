@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const BACKEND_URL = "https://invoice-backend-604217703209.asia-south1.run.app";
 // const BACKEND_URL = import.meta.env.DEV ? "" : BACKEND_URL;
 
 export const routes = {

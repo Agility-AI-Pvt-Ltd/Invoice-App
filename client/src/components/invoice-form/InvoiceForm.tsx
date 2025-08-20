@@ -1,4 +1,3 @@
-// client/src/components/invoice-form/InvoiceForm.tsx
 import React, { createContext, useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";
@@ -7,8 +6,6 @@ import Step3Form from "./Step3Form";
 import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
-
-
 
 type Props = {
   onCancel: () => void;
@@ -62,7 +59,7 @@ type InvoiceContextType = {
   setInvoice: React.Dispatch<React.SetStateAction<InvoiceModel>>;
   recalcTotals: () => void;
 };
-
+/* eslint-disable react-refresh/only-export-components */
 export const InvoiceContext = createContext<InvoiceContextType | undefined>(
   undefined
 );
@@ -106,7 +103,7 @@ export default function InvoiceForm({ onCancel }: Props) {
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // Recalculate subtotal/taxes/total
+  // Recalculate subtotal/taxes/total (keeps UI in sync)
   const recalcTotals = () => {
     setInvoice((prev) => {
       const items = prev.items || [];
@@ -122,7 +119,6 @@ export default function InvoiceForm({ onCancel }: Props) {
         subtotal += base - disc;
         totalGst += gstAmt;
       });
-      // split GST half-half for CGST/SGST by default (adjust if IGST rule needed)
       const cgst = +(totalGst / 2).toFixed(2);
       const sgst = +(totalGst / 2).toFixed(2);
       const igst = 0;
@@ -137,6 +133,35 @@ export default function InvoiceForm({ onCancel }: Props) {
         total,
       };
     });
+  };
+
+  // Synchronous totals computation used for sending payload so we don't rely on async setState
+  const computeTotalsSync = (inv: InvoiceModel) => {
+    const items = inv.items || [];
+    let subtotal = 0;
+    let totalGst = 0;
+    items.forEach((it) => {
+      const q = Number(it.quantity || 0);
+      const up = Number(it.unitPrice || 0);
+      const gst = Number(it.gst || 0);
+      const disc = Number(it.discount || 0);
+      const base = q * up;
+      const gstAmt = (base * gst) / 100;
+      subtotal += base - disc;
+      totalGst += gstAmt;
+    });
+    const cgst = +(totalGst / 2).toFixed(2);
+    const sgst = +(totalGst / 2).toFixed(2);
+    const igst = 0;
+    const total = +(subtotal + totalGst).toFixed(2);
+
+    return {
+      subtotal: +subtotal.toFixed(2),
+      cgst,
+      sgst,
+      igst,
+      total,
+    };
   };
 
   // helpers to convert item values to numbers before sending
@@ -162,27 +187,67 @@ export default function InvoiceForm({ onCancel }: Props) {
 
   // Save (common) -> status can be "draft" or "sent"
   const handleSave = async (status: "draft" | "sent") => {
+    if (saving) return; // prevent double submits
     setSaving(true);
     try {
-      // Ensure totals are up to date
+      // Keep UI totals updated but compute payload totals synchronously so we send exact numbers
       recalcTotals();
+      const totals = computeTotalsSync(invoice);
 
-      const payload = sanitizePayload({
+      const prepared = {
         ...invoice,
+        ...totals,
         status,
         // backend expects ISO datetimes for datetime fields; convert if date present
         date: invoice.date ? new Date(invoice.date).toISOString() : new Date().toISOString(),
         dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString() : undefined,
-      });
+      } as InvoiceModel;
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Auth token not found. Please login.");
+      const payload = sanitizePayload(prepared);
+
+      // ---- Console debugging: show exactly what we will send ----
+      console.groupCollapsed("Invoice payload -> sending to backend");
+      try {
+        console.log("payload (object):", payload);
+        console.log("payload (json):", JSON.stringify(payload, null, 2));
+      } catch (e) {
+        console.log("payload (inspection error)", e);
       }
 
-      const res = await axios.post(`${API_BASE}/api/invoices`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // try multiple common storage keys for token
+      const token =
+        localStorage.getItem("token") ||
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("access_token") ||
+        null;
+
+      console.log("localStorage token (raw):", token);
+
+      // detect if cookie-based auth may exist (httpOnly cookies can't be read, but presence of certain cookie names can hint)
+      const cookieHint = typeof document !== "undefined" && document.cookie ? document.cookie : "";
+      const hasCookieAuthHint = /token|session|jwt|auth/i.test(cookieHint);
+      console.log("document.cookie hint:", hasCookieAuthHint ? cookieHint : "(no obvious auth cookie)");
+
+      const axiosConfig: any = { timeout: 20000 };
+      if (token) {
+        axiosConfig.headers = { Authorization: `Bearer ${token}` };
+        axiosConfig.withCredentials = false;
+        console.log("Using Authorization: Bearer <token> header for request.");
+      } else if (hasCookieAuthHint) {
+        // fallback to cookies if there is a likely auth cookie present
+        axiosConfig.withCredentials = true;
+        console.log("No token in localStorage — falling back to cookie-based request (withCredentials: true). Ensure backend accepts cookie auth.");
+      } else {
+        console.error("Auth token not found and no auth cookie detected. Please login.");
+        alert("You are not logged in or your session expired. Please login and try again.");
+        setSaving(false);
+        console.groupEnd();
+        return;
+      }
+
+      console.groupEnd();
+
+      const res = await axios.post(`${API_BASE}/api/invoices`, payload, axiosConfig);
 
       const createdInvoice = res.data;
       // notify other parts of app to refresh lists (no UI changes here)
@@ -191,11 +256,13 @@ export default function InvoiceForm({ onCancel }: Props) {
       alert("Invoice saved successfully.");
       // close modal / panel if parent expects that behavior
       onCancel();
+      return createdInvoice;
     } catch (err: any) {
       console.error("Save invoice error:", err);
       const msg =
         err?.response?.data?.detail || err?.response?.data || err.message || "Save failed";
       alert("Failed to save invoice: " + msg);
+      return null;
     } finally {
       setSaving(false);
     }

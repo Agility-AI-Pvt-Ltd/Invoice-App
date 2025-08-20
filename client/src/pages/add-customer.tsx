@@ -74,6 +74,13 @@ export default function MultiStepForm({ onCancel }: Props) {
           }
         });
 
+        // ✅ Debugging Logs
+        console.log("Raw Payload (JS Object):", formData);
+        console.log("Payload sent to backend (FormData):");
+        for (let pair of data.entries()) {
+          console.log(`${pair[0]}:`, pair[1]);
+        }
+
         const res = await axios.post(
           "https://invoice-backend-604217703209.asia-south1.run.app/api/customers",
           data,
@@ -86,13 +93,13 @@ export default function MultiStepForm({ onCancel }: Props) {
           }
         );
 
-        console.log("Customer added:", res.data);
+        console.log("✅ Customer added:", res.data);
         alert(" Customer added successfully!");
         onCancel(); // go back to customer list
       } catch (err: any) {
         console.error("Error adding customer:", err.response || err);
         alert(
-          `❌ Failed to add customer: ${
+          `Failed to add customer: ${
             err.response?.data?.message || err.message
           }`
         );
