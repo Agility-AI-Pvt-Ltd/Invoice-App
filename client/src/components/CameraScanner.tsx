@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { X, Camera, RotateCcw, Check } from 'lucide-react';
+import { X, Camera, RotateCcw, Check, Upload, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CameraScannerProps {
@@ -11,11 +11,14 @@ interface CameraScannerProps {
 export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'camera' | 'gallery'>('camera');
   //@ts-ignore
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
@@ -165,6 +168,58 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
+  // Handle file selection from gallery
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select a valid image file');
+        return;
+      }
+
+      // Validate file size (e.g., max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+      if (file.size > maxSize) {
+        setError('Image size too large. Please select an image under 10MB');
+        return;
+      }
+
+      setSelectedFile(file);
+      setError(null);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setCapturedImage(e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Open file picker
+  const openGallery = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Switch between camera and gallery modes
+  const switchMode = (newMode: 'camera' | 'gallery') => {
+    setMode(newMode);
+    setCapturedImage(null);
+    setSelectedFile(null);
+    setError(null);
+
+    if (newMode === 'camera') {
+      setIsLoading(true);
+      startCamera();
+    } else {
+      stopCamera();
+      setIsLoading(false);
+    }
+  };
+
   // Capture image from video
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -188,44 +243,73 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
         // Create data URL for preview
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedImage(dataUrl);
+
+        // Create file for later use
+        const file = new File([blob], `invoice-scan-${Date.now()}.jpg`, {
+          type: 'image/jpeg',
+        });
+        setSelectedFile(file);
       }
     }, 'image/jpeg', 0.8);
   };
 
-  // Confirm and send captured image
+  // Confirm and send captured/selected image
   const confirmCapture = () => {
-    if (!canvasRef.current) return;
-
-    canvasRef.current.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], `invoice-scan-${Date.now()}.jpg`, {
-          type: 'image/jpeg',
-        });
-        onImageCapture(file);
-        handleClose();
-      }
-    }, 'image/jpeg', 0.8);
+    if (selectedFile) {
+      onImageCapture(selectedFile);
+      handleClose();
+    } else if (mode === 'camera' && canvasRef.current) {
+      // Fallback for camera mode
+      canvasRef.current.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `invoice-scan-${Date.now()}.jpg`, {
+            type: 'image/jpeg',
+          });
+          onImageCapture(file);
+          handleClose();
+        }
+      }, 'image/jpeg', 0.8);
+    }
   };
 
   // Retake photo
   const retakePhoto = () => {
     setCapturedImage(null);
+    setSelectedFile(null);
+    setError(null);
+
+    if (mode === 'camera') {
+      // Don't need to restart camera, it's still running
+    } else {
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   // Handle modal close
   const handleClose = () => {
     stopCamera();
     setCapturedImage(null);
+    setSelectedFile(null);
     setError(null);
     setIsLoading(true);
+    setMode('camera');
+
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
     onClose();
   };
 
   // Effect to start camera when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && mode === 'camera') {
       startCamera();
-    } else {
+    } else if (!isOpen) {
       stopCamera();
     }
 
@@ -243,7 +327,9 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
       <div className="relative w-full h-full max-w-md mx-auto bg-black">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
-          <h2 className="text-white text-lg font-semibold">Scan Invoice</h2>
+          <h2 className="text-white text-lg font-semibold">
+            {mode === 'camera' ? 'Scan Invoice' : 'Select Invoice'}
+          </h2>
           <Button
             variant="ghost"
             size="sm"
@@ -254,10 +340,38 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
           </Button>
         </div>
 
-        {/* Camera View */}
+        {/* Mode Toggle */}
+        <div className="absolute top-16 left-4 right-4 z-10 flex bg-black/50 rounded-lg p-1">
+          <Button
+            variant={mode === 'camera' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => switchMode('camera')}
+            className={`flex-1 ${mode === 'camera'
+              ? 'bg-white text-black hover:bg-gray-200'
+              : 'text-white hover:bg-white/20'
+              }`}
+          >
+            <Camera className="h-4 w-4 mr-2" />
+            Camera
+          </Button>
+          <Button
+            variant={mode === 'gallery' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => switchMode('gallery')}
+            className={`flex-1 ${mode === 'gallery'
+              ? 'bg-white text-black hover:bg-gray-200'
+              : 'text-white hover:bg-white/20'
+              }`}
+          >
+            <Image className="h-4 w-4 mr-2" />
+            Gallery
+          </Button>
+        </div>
+
+        {/* Main Content */}
         <div className="relative w-full h-full">
           {/* Loading State */}
-          {isLoading && (
+          {isLoading && mode === 'camera' && (
             <div className="absolute inset-0 flex items-center justify-center bg-black">
               <div className="text-white text-center">
                 <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -268,30 +382,50 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
 
           {/* Error State */}
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black p-6">
+            <div className="absolute inset-0 flex items-center justify-center bg-black p-6 mt-20">
               <div className="text-white text-center">
                 <Camera className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <p className="mb-4">{error}</p>
-                <Button onClick={startCamera} className="bg-white text-black hover:bg-gray-200">
-                  Try Again
-                </Button>
+                {mode === 'camera' && (
+                  <Button onClick={startCamera} className="bg-white text-black hover:bg-gray-200">
+                    Try Again
+                  </Button>
+                )}
               </div>
             </div>
           )}
 
-          {/* Captured Image Preview */}
+          {/* Captured/Selected Image Preview */}
           {capturedImage && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <div className="absolute inset-0 flex items-center justify-center bg-black mt-20">
               <img
                 src={capturedImage}
-                alt="Captured invoice"
+                alt="Selected invoice"
                 className="max-w-full max-h-full object-contain"
               />
             </div>
           )}
 
-          {/* Live Video Feed */}
-          {!capturedImage && !error && (
+          {/* Gallery Mode - No Image Selected */}
+          {mode === 'gallery' && !capturedImage && !error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black mt-20">
+              <div className="text-white text-center">
+                <Upload className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                <p className="mb-4 text-lg">Select an invoice image</p>
+                <p className="text-sm text-gray-300 mb-6">Choose an image from your device gallery</p>
+                <Button
+                  onClick={openGallery}
+                  className="bg-white text-black hover:bg-gray-200"
+                >
+                  <Upload className="h-5 w-5 mr-2" />
+                  Choose Image
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Camera Mode - Live Video Feed */}
+          {mode === 'camera' && !capturedImage && !error && (
             <>
               <video
                 ref={videoRef}
@@ -319,18 +453,9 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
                 }}
               />
 
-              {/* Show loading overlay while video loads */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black">
-                  <div className="text-white text-center">
-                    <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p>Loading camera...</p>
-                  </div>
-                </div>
-              )}
               {/* Overlay guidelines */}
               {!isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-20">
                   <div className="border-2 border-white border-dashed rounded-lg w-4/5 h-3/5 flex items-center justify-center">
                     <p className="text-white text-sm text-center bg-black/50 px-3 py-1 rounded">
                       Position invoice within frame
@@ -343,6 +468,15 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
 
           {/* Hidden canvas for image capture */}
           <canvas ref={canvasRef} className="hidden" />
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
         </div>
 
         {/* Bottom Controls */}
@@ -357,7 +491,7 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
                 className="bg-white/20 border-white/30 text-white hover:bg-white/30"
               >
                 <RotateCcw className="h-5 w-5 mr-2" />
-                Retake
+                {mode === 'camera' ? 'Retake' : 'Choose Again'}
               </Button>
               <Button
                 onClick={confirmCapture}
@@ -365,10 +499,10 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <Check className="h-5 w-5 mr-2" />
-                Use Photo
+                Use Image
               </Button>
             </div>
-          ) : (
+          ) : mode === 'camera' ? (
             // Camera controls
             <div className="flex items-center justify-between">
               {/* Switch camera button */}
@@ -395,12 +529,25 @@ export function CameraScanner({ isOpen, onClose, onImageCapture }: CameraScanner
               {/* Placeholder for symmetry */}
               <div className="w-8"></div>
             </div>
+          ) : (
+            // Gallery controls
+            <div className="flex items-center justify-center">
+              <Button
+                onClick={openGallery}
+                size="lg"
+                className="bg-white hover:bg-gray-200 text-black"
+                disabled={!!error}
+              >
+                <Upload className="h-5 w-5 mr-2" />
+                Select Image
+              </Button>
+            </div>
           )}
         </div>
 
         {/* Camera facing indicator */}
-        {!capturedImage && !isLoading && !error && (
-          <div className="absolute top-16 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded">
+        {mode === 'camera' && !capturedImage && !isLoading && !error && (
+          <div className="absolute top-28 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded">
             {facingMode === 'user' ? 'Front Camera' : 'Back Camera'}
           </div>
         )}

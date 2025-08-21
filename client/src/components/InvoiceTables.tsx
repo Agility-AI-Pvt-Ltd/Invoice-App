@@ -111,27 +111,80 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     }
   };
 
-
   useEffect(() => {
     fetchInvoices();
-    // 👇 whenever refreshFlag changes -> re-fetch
-  }, [selectedDate, currentPage, activeStatusFilter, refreshFlag]);
+  }, [selectedDate, refreshFlag]);
 
-  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  // Map backend payment statuses to filter categories
+  const mapStatusToFilter = (paymentStatus: string): string => {
+    if (!paymentStatus) return "pending";
+
+    const statusLower = paymentStatus.toLowerCase();
+
+    switch (statusLower) {
+      case "paid":
+      case "completed":
+      case "success":
+        return "paid";
+      case "sent":
+      case "pending":
+      case "processing":
+        return "pending";
+      case "draft":
+      case "created":
+      case "new":
+        return "pending";
+      case "overdue":
+      case "expired":
+      case "late":
+        return "overdue";
+      case "cancelled":
+      case "canceled":
+      case "failed":
+        return "overdue";
+      default:
+        return "pending"; // Default fallback
+    }
+  };
+
+  // Filter invoices based on active filter
+  const getFilteredInvoices = () => {
+    if (!Array.isArray(invoices)) return [];
+
+    if (activeStatusFilter === "all") {
+      return invoices;
+    }
+
+    return invoices.filter(invoice =>
+      mapStatusToFilter(invoice.paymentStatus || "") === activeStatusFilter
+    );
+  };
+
+  const filteredInvoices = getFilteredInvoices();
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentInvoices = Array.isArray(invoices) ? invoices.slice(startIndex, endIndex) : [];
+  const currentInvoices = filteredInvoices.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeStatusFilter]);
 
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
 
   const getStatusBadge = (status?: string) => {
-    switch (status) {
+    if (!status) return <Badge variant="secondary">Unknown</Badge>;
+
+    const filterCategory = mapStatusToFilter(status);
+
+    switch (filterCategory) {
       case "paid":
         return <Badge className="bg-green-50 text-green-600 border-green-200">Paid</Badge>;
       case "pending":
-        return <Badge className="bg-yellow-50 text-yellow-600 border-yellow-200">Due in 5 days</Badge>;
+        return <Badge className="bg-yellow-50 text-yellow-600 border-yellow-200">Pending</Badge>;
       case "overdue":
-        return <Badge className="bg-red-50 text-red-600 border-red-200">Waiting for Funds</Badge>;
+        return <Badge className="bg-red-50 text-red-600 border-red-200">Overdue</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -173,7 +226,6 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     document.body.removeChild(link);
   };
 
-
   const handleDelete = async (invoiceId: string) => {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
     try {
@@ -183,21 +235,6 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
       alert(err.message || "Failed to delete invoice");
     }
   };
-
-  // const handleDownload = async (invoiceId: string, invoiceNumber: string) => {
-  //   try {
-  //     const blob = await invoicesAPI.download(invoiceId);
-  //     const url = URL.createObjectURL(blob);
-  //     const link = document.createElement("a");
-  //     link.href = url;
-  //     link.setAttribute("download", `${invoiceNumber}.pdf`);
-  //     document.body.appendChild(link);
-  //     link.click();
-  //     document.body.removeChild(link);
-  //   } catch (err: any) {
-  //     alert(err.message || "Failed to download invoice");
-  //   }
-  // };
 
   const handleDownload = (invoice: SalesRecord) => {
     try {
@@ -240,16 +277,25 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     }
   };
 
+  // Static filter buttons with counts
+  const getFilterButtonsWithCounts = () => {
+    const filterButtons: { label: string; value: "all" | "pending" | "paid" | "overdue" }[] = [
+      { label: "All", value: "all" },
+      { label: "Pending", value: "pending" },
+      { label: "Paid", value: "paid" },
+      { label: "Overdue", value: "overdue" },
+    ];
+
+    return filterButtons.map(btn => ({
+      ...btn,
+      count: btn.value === "all"
+        ? invoices.length
+        : invoices.filter(inv => mapStatusToFilter(inv.paymentStatus || "") === btn.value).length
+    }));
+  };
 
   if (loading) return <Card className="p-6">Loading invoices...</Card>;
   if (error) return <Card className="p-6 text-red-500">Error: {error}</Card>;
-
-  const filterButtons: { label: string; value: "all" | "pending" | "paid" | "overdue" }[] = [
-    { label: "All", value: "all" },
-    { label: "Pending", value: "pending" },
-    { label: "Paid", value: "paid" },
-    { label: "Overdue", value: "overdue" },
-  ];
 
   return (
     <>
@@ -262,17 +308,17 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
             </h3>
 
             <div className="flex items-center flex-wrap gap-2">
-              {filterButtons.map(btn => (
+              {getFilterButtonsWithCounts().map(btn => (
                 <Button
                   key={btn.value}
                   variant={activeStatusFilter === btn.value ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => {
-                    setActiveStatusFilter(btn.value);
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => setActiveStatusFilter(btn.value)}
                 >
                   {btn.label}
+                  <span className="ml-1 text-xs opacity-70">
+                    ({btn.count})
+                  </span>
                 </Button>
               ))}
 
@@ -293,7 +339,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                 variant="ghost"
                 onClick={() => {
                   const filename = `invoices-${activeStatusFilter}-${format(selectedDate, "MMM-yyyy")}.csv`;
-                  downloadCSV(invoices, filename);
+                  downloadCSV(filteredInvoices, filename);
                 }}
               >
                 <DownloadCloud className="h-4 w-4 mr-2" /> Export CSV
@@ -338,8 +384,8 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                     <td className="py-3 px-2">{invoice.customerName}</td>
                     <td className="py-3 px-2">{invoice.product}</td>
                     <td className="py-3 px-2">{invoice.quantity}</td>
-                    <td className="py-3 px-2">₹{invoice.unitPrice}</td>
-                    <td className="py-3 px-2">₹{invoice.totalAmount}</td>
+                    <td className="py-3 px-2">₹{invoice.unitPrice?.toLocaleString()}</td>
+                    <td className="py-3 px-2">₹{invoice.totalAmount?.toLocaleString()}</td>
                     <td className="py-3 px-2">{invoice.dateOfSale}</td>
                     <td className="py-3 px-2">{getStatusBadge(invoice.paymentStatus)}</td>
                     <td className="py-3 px-2 flex items-center space-x-2">
@@ -363,11 +409,10 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                       </DropdownMenu>
                     </td>
                   </tr>
-
                 ))}
                 {currentInvoices && currentInvoices.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-4 text-center text-muted-foreground">
+                    <td colSpan={9} className="py-4 text-center text-muted-foreground">
                       No invoices found for selected filter.
                     </td>
                   </tr>
@@ -379,7 +424,8 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
           {/* Pagination */}
           <div className="flex items-center justify-between pt-4">
             <p className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, invoices.length)} of {invoices.length} results
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
+              {activeStatusFilter !== "all" && ` (filtered from ${invoices.length} total)`}
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
