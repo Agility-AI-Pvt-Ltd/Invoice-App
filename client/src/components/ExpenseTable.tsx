@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react"
-import { Search, Calendar, Download, Upload, Plus, Edit, MoreVertical, ChevronDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// client/src/components/ExpenseTable.tsx
+
+import { useState, useEffect, useMemo } from "react";
+import type { RefObject } from "react";
+import { Search, Calendar, Download, Upload, Plus, Edit, MoreVertical, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -14,21 +17,21 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/Input"
-import { NavbarButton } from "./ui/resizable-navbar"
+} from "@/components/ui/pagination";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/Input";
+import { NavbarButton } from "./ui/resizable-navbar";
 
 interface Expense {
   id: string;
   expenseId: string;
   title: string;
   vendorName: string;
-  vendorAvatar: string;
+  vendorAvatar?: string;
   paymentMethod: string;
   amount: number;
   status: "Paid" | "Unpaid" | "Overdue";
-  date: string;
+  date: string; // ISO or display string
 }
 
 interface ExpenseTableFilters {
@@ -40,17 +43,17 @@ interface ExpenseTableFilters {
 }
 
 const PaymentStatusBadge = ({ status }: { status: Expense["status"] }) => {
-  const variants = {
+  const variants: Record<string, string> = {
     Paid: "bg-green-100 text-green-800 border-green-200",
     Overdue: "bg-red-100 text-red-800 border-red-200",
     Unpaid: "bg-orange-100 text-orange-800 border-orange-200",
-  }
+  };
   return (
-    <Badge variant="outline" className={variants[status]}>
+    <Badge variant="outline" className={variants[status] || ""}>
       {status}
     </Badge>
-  )
-}
+  );
+};
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -58,93 +61,155 @@ const formatCurrency = (amount: number) => {
     currency: "INR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount)
-}
+  }).format(amount);
+};
 
 interface ExpenseTableProps {
-  expenses: Expense[];
-  searchTerm: string;
+  expenses?: Expense[]; // made optional for safety
+  searchTerm?: string;
   onDeleteExpense: (id: string) => void;
   setIsExpenseFormOpen?: (val: boolean) => void;
+  // Accept both nullable and non-nullable RefObject shapes so parent refs fit both patterns
+  fileInputRef?: RefObject<HTMLInputElement> | RefObject<HTMLInputElement | null>;
+  onExport?: () => void;
 }
 
 export function ExpenseTable({
-  expenses,
-  searchTerm,
+  expenses = [],
+  searchTerm = "",
   onDeleteExpense,
-  setIsExpenseFormOpen
+  setIsExpenseFormOpen,
+  fileInputRef,
+  onExport,
 }: ExpenseTableProps) {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [filters, setFilters] = useState<ExpenseTableFilters>({})
-  const [sortedExpenses, setSortedExpenses] = useState<Expense[]>([])
-
-  // Apply sorting and filtering
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [filters, setFilters] = useState<ExpenseTableFilters>({});
+  // keep local search input synced with filter (controlled)
   useEffect(() => {
-    let filtered = [...expenses];
+    setFilters((prev) => ({ ...prev, search: searchTerm || prev.search }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
-    // Apply search filter
-    if (filters.search || searchTerm) {
-      const search = (filters.search || searchTerm).toLowerCase();
-      filtered = filtered.filter(expense =>
-        expense.title.toLowerCase().includes(search) ||
-        expense.vendorName.toLowerCase().includes(search) ||
-        expense.expenseId.toLowerCase().includes(search) ||
-        expense.paymentMethod.toLowerCase().includes(search)
+  // Comparator that handles numbers, strings and dates (if column === 'date')
+  const compareValues = (aVal: any, bVal: any, column?: string) => {
+    if (column === "date") {
+      const aTime = aVal ? new Date(aVal).getTime() : 0;
+      const bTime = bVal ? new Date(bVal).getTime() : 0;
+      if (aTime < bTime) return -1;
+      if (aTime > bTime) return 1;
+      return 0;
+    }
+
+    // If both are numbers
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      return aVal - bVal;
+    }
+
+    // string compare (case-insensitive)
+    const aStr = aVal !== undefined && aVal !== null ? String(aVal).toLowerCase() : "";
+    const bStr = bVal !== undefined && bVal !== null ? String(bVal).toLowerCase() : "";
+    if (aStr < bStr) return -1;
+    if (aStr > bStr) return 1;
+    return 0;
+  };
+
+  // Memoized filtered + sorted expenses
+  const sortedExpenses = useMemo(() => {
+    let filtered = Array.isArray(expenses) ? [...expenses] : [];
+
+    // apply search from filter or prop
+    const search = (filters.search || "").trim().toLowerCase();
+    if (search) {
+      filtered = filtered.filter((expense) =>
+        (expense.title || "").toLowerCase().includes(search) ||
+        (expense.vendorName || "").toLowerCase().includes(search) ||
+        (expense.expenseId || "").toLowerCase().includes(search) ||
+        (expense.paymentMethod || "").toLowerCase().includes(search)
       );
     }
 
-    // Apply sorting
-    if (filters.sortBy && filters.sortOrder) {
-      filtered.sort((a, b) => {
-        const aVal = a[filters.sortBy as keyof Expense];
-        const bVal = b[filters.sortBy as keyof Expense];
+    // apply status filter if any
+    if (filters.status) {
+      filtered = filtered.filter((e) => e.status === filters.status);
+    }
 
-        let comparison = 0;
-        if (aVal < bVal) comparison = -1;
-        if (aVal > bVal) comparison = 1;
-
-        return filters.sortOrder === 'desc' ? -comparison : comparison;
+    // apply dateRange filter if present
+    if (filters.dateRange?.from || filters.dateRange?.to) {
+      const fromTime = filters.dateRange?.from ? filters.dateRange.from.getTime() : -Infinity;
+      const toTime = filters.dateRange?.to ? filters.dateRange.to.getTime() : Infinity;
+      filtered = filtered.filter((e) => {
+        const t = e.date ? new Date(e.date).getTime() : 0;
+        return t >= fromTime && t <= toTime;
       });
     }
 
-    setSortedExpenses(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [expenses, filters, searchTerm]);
+    // apply sorting
+    if (filters.sortBy) {
+      const sortBy = filters.sortBy;
+      const sortOrder = filters.sortOrder === "desc" ? -1 : 1;
+      filtered.sort((a, b) => {
+        const aVal = (a as any)[sortBy];
+        const bVal = (b as any)[sortBy];
+        const cmp = compareValues(aVal, bVal, sortBy);
+        return cmp * sortOrder;
+      });
+    }
 
-  // Calculate pagination
-  const totalPages = Math.ceil(sortedExpenses.length / itemsPerPage);
+    return filtered;
+  }, [expenses, filters]);
+
+  // pagination calculations (derived)
+  const totalPages = Math.max(1, Math.ceil(sortedExpenses.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentExpenses = sortedExpenses.slice(startIndex, endIndex);
 
+  // clamp currentPage if itemsPerPage or sortedExpenses length change
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   const handleSearch = (search: string) => {
-    setFilters((prev) => ({ ...prev, search }))
-    setCurrentPage(1)
-  }
+    setFilters((prev) => ({ ...prev, search }));
+    setCurrentPage(1);
+  };
 
   const handleSort = (column: string) => {
     setFilters((prev) => ({
       ...prev,
       sortBy: column,
       sortOrder: prev.sortBy === column && prev.sortOrder === "asc" ? "desc" : "asc",
-    }))
-  }
+    }));
+  };
+
+  // CSV escaping: wrap fields in quotes and escape internal quotes
+  const escapeCsvCell = (value: any) => {
+    if (value === null || value === undefined) return '""';
+    const str = String(value);
+    const escaped = str.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
 
   const downloadCSV = (data: Expense[], filename: string) => {
     const headers = ['Date', 'Expense ID', 'Expense Title', 'Vendor Name', 'Payment Method', 'Amount', 'Status'];
-    const csvContent = [
-      headers.join(','),
-      ...data.map(expense => [
-        expense.date,
-        expense.expenseId,
-        expense.title,
-        expense.vendorName,
-        expense.paymentMethod,
-        expense.amount,
-        expense.status
-      ].join(','))
-    ].join('\n');
+    const csvRows = [
+      headers.map(escapeCsvCell).join(','),
+      ...data.map(expense =>
+        [
+          escapeCsvCell(expense.date),
+          escapeCsvCell(expense.expenseId),
+          escapeCsvCell(expense.title),
+          escapeCsvCell(expense.vendorName),
+          escapeCsvCell(expense.paymentMethod),
+          escapeCsvCell(expense.amount),
+          escapeCsvCell(expense.status),
+        ].join(',')
+      )
+    ];
+    const csvContent = csvRows.join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -155,27 +220,11 @@ export function ExpenseTable({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const csvText = e.target?.result as string;
-          console.log('Imported CSV:', csvText);
-          // Handle CSV parsing logic here
-        } catch (error) {
-          console.error('Import failed:', error);
-        }
-      };
-      reader.readAsText(file);
-    }
+    URL.revokeObjectURL(url);
   };
 
   const renderPaginationItems = () => {
-    const items = []
+    const items: React.ReactNode[] = [];
 
     // Previous button
     items.push(
@@ -184,12 +233,12 @@ export function ExpenseTable({
           onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
           className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
         />
-      </PaginationItem>,
-    )
+      </PaginationItem>
+    );
 
-    // Page numbers
-    const startPage = Math.max(1, currentPage - 2)
-    const endPage = Math.min(totalPages, currentPage + 2)
+    // Page numbers (compact around current)
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
 
     if (startPage > 1) {
       items.push(
@@ -197,14 +246,14 @@ export function ExpenseTable({
           <PaginationLink onClick={() => setCurrentPage(1)} className="cursor-pointer">
             1
           </PaginationLink>
-        </PaginationItem>,
-      )
+        </PaginationItem>
+      );
       if (startPage > 2) {
         items.push(
           <PaginationItem key="ellipsis-start">
             <PaginationEllipsis />
-          </PaginationItem>,
-        )
+          </PaginationItem>
+        );
       }
     }
 
@@ -218,8 +267,8 @@ export function ExpenseTable({
           >
             {i}
           </PaginationLink>
-        </PaginationItem>,
-      )
+        </PaginationItem>
+      );
     }
 
     if (endPage < totalPages) {
@@ -227,16 +276,16 @@ export function ExpenseTable({
         items.push(
           <PaginationItem key="ellipsis-end">
             <PaginationEllipsis />
-          </PaginationItem>,
-        )
+          </PaginationItem>
+        );
       }
       items.push(
         <PaginationItem key={totalPages}>
           <PaginationLink onClick={() => setCurrentPage(totalPages)} className="cursor-pointer">
             {totalPages}
           </PaginationLink>
-        </PaginationItem>,
-      )
+        </PaginationItem>
+      );
     }
 
     // Next button
@@ -246,11 +295,11 @@ export function ExpenseTable({
           onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
           className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
         />
-      </PaginationItem>,
-    )
+      </PaginationItem>
+    );
 
-    return items
-  }
+    return items;
+  };
 
   return (
     <Card className="w-full shadow-sm bg-white">
@@ -290,13 +339,19 @@ export function ExpenseTable({
                 >
                   <DropdownMenuItem
                     className="hover:bg-gray-100 cursor-pointer"
-                    onClick={() => downloadCSV(sortedExpenses, `expenses_all_${new Date().toISOString().split('T')[0]}.csv`)}
+                    onClick={() => {
+                      if (onExport) return onExport();
+                      return downloadCSV(sortedExpenses, `expenses_all_${new Date().toISOString().split('T')[0]}.csv`);
+                    }}
                   >
                     Export as CSV
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="hover:bg-gray-100 cursor-pointer"
-                    onClick={() => downloadCSV(currentExpenses, `expenses_current_page_${new Date().toISOString().split('T')[0]}.csv`)}
+                    onClick={() => {
+                      if (onExport) return onExport();
+                      return downloadCSV(currentExpenses, `expenses_current_page_${new Date().toISOString().split('T')[0]}.csv`);
+                    }}
                   >
                     Export Current Page
                   </DropdownMenuItem>
@@ -304,18 +359,61 @@ export function ExpenseTable({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleImport}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <Button variant="outline" size="sm" className="flex-shrink-0 bg-transparent">
+              {/* IMPORT BUTTON:
+                  If parent provided fileInputRef, clicking the button will trigger that hidden input.
+                  Otherwise, fall back to having an invisible input overlay (original behavior).
+              */}
+              {fileInputRef ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-shrink-0 bg-transparent"
+                  onClick={() => {
+                    // safe nullable access: fileInputRef may be either RefObject<HTMLInputElement> or RefObject<HTMLInputElement | null>
+                    try {
+                      (fileInputRef as RefObject<HTMLInputElement | null>)?.current?.click();
+                    } catch {
+                      // fallback safe attempt
+                      if ((fileInputRef as RefObject<HTMLInputElement>)?.current) {
+                        (fileInputRef as RefObject<HTMLInputElement>).current!.click();
+                      }
+                    }
+                  }}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Import
                 </Button>
-              </div>
+              ) : (
+                <div className="relative">
+                  {/* local fallback input (only if parent didn't provide fileInputRef) */}
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => {
+                      // minimal local fallback: read file & log length (parsing handled by parent normally)
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        try {
+                          const txt = ev.target?.result;
+                          if (typeof txt === "string") {
+                            console.log('Imported CSV raw text length:', txt.length);
+                          }
+                        } catch (error) {
+                          console.error('Import failed:', error);
+                        }
+                      };
+                      reader.readAsText(file);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Button variant="outline" size="sm" className="flex-shrink-0 bg-transparent" >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import
+                  </Button>
+                </div>
+              )}
 
               {setIsExpenseFormOpen && (
                 <NavbarButton
@@ -387,8 +485,11 @@ export function ExpenseTable({
                 <TableRow key={expense.id} className="hover:bg-gray-50">
                   <TableCell>
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={expense.vendorAvatar} alt={expense.vendorName} />
-                      <AvatarFallback>{expense.vendorName.charAt(0)}</AvatarFallback>
+                      {expense.vendorAvatar ? (
+                        <AvatarImage src={expense.vendorAvatar} alt={expense.vendorName || "Vendor"} />
+                      ) : (
+                        <AvatarFallback>{(expense.vendorName && expense.vendorName.charAt(0)) || "?"}</AvatarFallback>
+                      )}
                     </Avatar>
                   </TableCell>
                   <TableCell className="font-medium text-gray-900">{expense.expenseId}</TableCell>
@@ -416,9 +517,7 @@ export function ExpenseTable({
                           sideOffset={4}
                           className="z-50 bg-white border border-gray-200 shadow-lg text-black"
                         >
-                          <DropdownMenuItem className="hover:bg-gray-100 cursor-pointer">
-                            View Details
-                          </DropdownMenuItem>
+                          <DropdownMenuItem className="hover:bg-gray-100 cursor-pointer">View Details</DropdownMenuItem>
                           <DropdownMenuItem
                             className="hover:bg-gray-100 cursor-pointer"
                             onClick={() => onDeleteExpense(expense.id)}
@@ -439,7 +538,7 @@ export function ExpenseTable({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-gray-200">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span>Items per page:</span>
-            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }}>
               <SelectTrigger className="w-20 h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -465,5 +564,5 @@ export function ExpenseTable({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
