@@ -44,17 +44,6 @@ interface TeamMemberUpdate {
   status?: "Active" | "Inactive";
 }
 
-
-
-
-
-
-
-
-
-
-
-
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
 export default function TeamManagement() {
@@ -916,7 +905,7 @@ export default function TeamManagement() {
                     <div className="space-y-2">
                       <Label htmlFor="role" className="text-sm font-medium text-slate-700">Role</Label>
                       <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                        <SelectTrigger className="h-12 border-slate-200 text-slate-600">
+                        <SelectTrigger className="h-12 border-slate-200 text-slate-600 w-full">
                           <SelectValue placeholder="Select Admin/ Manager/ Accountant/ Viewer" />
                         </SelectTrigger>
                         <SelectContent>
@@ -972,7 +961,7 @@ export default function TeamManagement() {
                     <div className="space-y-2">
                       <Label htmlFor="status" className="text-sm font-medium text-slate-700">Status</Label>
                       <Select value={formData.status || ""} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                        <SelectTrigger className="h-12 border-slate-200 text-slate-600">
+                        <SelectTrigger className="h-12 border-slate-200 text-slate-600 w-full">
                           <SelectValue placeholder="Active / Inactive" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1018,14 +1007,14 @@ export default function TeamManagement() {
                           profilePicture: null,
                         });
                       }}
-                      className="flex-1 h-12 border-slate-200 text-slate-600 hover:bg-slate-50"
+                      className="flex-1 h-12 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-gray-800 cursor-pointer"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 h-12 bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
+                      className="flex-1 h-12 bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 cursor-pointer"
                     >
                       {loading ? 'Saving...' : (editingMember ? 'Update' : 'Save')}
                     </Button>
