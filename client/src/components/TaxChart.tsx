@@ -50,12 +50,12 @@ export function TaxChart({ selectedDate }: TaxChartProps) {
   }, [selectedDate]);
 
   return (
-    <Card className="p-6 bg-white">
-      <div className="flex items-center justify-between mb-6">
+    <Card className="p-6 bg-white h-fit">
+      <div className="flex items-center justify-between mb-6 ">
         <h3 className="text-lg font-semibold">Cash Flow v. Tax Paid</h3>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-4 text-sm ">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#FF0000]"></div>
+            <div className="w-3 h-3 rounded-full bg-[#FF0000] "></div>
             <span>Cash Flow</span>
           </div>
           <div className="flex items-center gap-2">

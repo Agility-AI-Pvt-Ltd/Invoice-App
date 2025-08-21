@@ -3,6 +3,8 @@ import { invoicesAPI } from "@/services/api/dashboard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/label";
 import {
   Download,
   Trash,
@@ -14,8 +16,13 @@ import {
   ScanLine,
   Filter,
   DownloadCloud,
+  X,
+  Search,
+  Calendar,
+  DollarSign,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { CameraScanner } from "./CameraScanner";
 import Cookies from "js-cookie";
@@ -29,12 +36,34 @@ interface InvoiceTableProps {
   refreshFlag?: number;
 }
 
+interface FilterState {
+  searchTerm: string;
+  dateFrom: string;
+  dateTo: string;
+  amountMin: string;
+  amountMax: string;
+  customerName: string;
+  invoiceNumber: string;
+}
+
 export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag = 0 }: InvoiceTableProps) {
   const [invoices, setInvoices] = useState<SalesRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeStatusFilter, setActiveStatusFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    searchTerm: "",
+    dateFrom: "",
+    dateTo: "",
+    amountMin: "",
+    amountMax: "",
+    customerName: "",
+    invoiceNumber: "",
+  });
 
   // Camera scanner states
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
@@ -111,27 +140,135 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     }
   };
 
-
   useEffect(() => {
     fetchInvoices();
-    // 👇 whenever refreshFlag changes -> re-fetch
-  }, [selectedDate, currentPage, activeStatusFilter, refreshFlag]);
+  }, [selectedDate, refreshFlag]);
 
-  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  // Map backend payment statuses to filter categories
+  const mapStatusToFilter = (paymentStatus: string): string => {
+    if (!paymentStatus) return "pending";
+
+    const statusLower = paymentStatus.toLowerCase();
+
+    switch (statusLower) {
+      case "paid":
+      case "completed":
+      case "success":
+        return "paid";
+      case "sent":
+      case "pending":
+      case "processing":
+        return "pending";
+      case "draft":
+      case "created":
+      case "new":
+        return "pending";
+      case "overdue":
+      case "expired":
+      case "late":
+        return "overdue";
+      case "cancelled":
+      case "canceled":
+      case "failed":
+        return "overdue";
+      default:
+        return "pending"; // Default fallback
+    }
+  };
+
+  // Apply all filters to invoices
+  const getFilteredInvoices = () => {
+    if (!Array.isArray(invoices)) return [];
+
+    let filtered = invoices;
+
+    // Status filter
+    if (activeStatusFilter !== "all") {
+      filtered = filtered.filter(invoice =>
+        mapStatusToFilter(invoice.paymentStatus || "") === activeStatusFilter
+      );
+    }
+
+    // Search term (searches across multiple fields)
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(invoice =>
+        invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        invoice.customerName?.toLowerCase().includes(searchLower) ||
+        invoice.product?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Customer name filter
+    if (filters.customerName) {
+      const customerLower = filters.customerName.toLowerCase();
+      filtered = filtered.filter(invoice =>
+        invoice.customerName?.toLowerCase().includes(customerLower)
+      );
+    }
+
+    // Invoice number filter
+    if (filters.invoiceNumber) {
+      const invoiceNumberLower = filters.invoiceNumber.toLowerCase();
+      filtered = filtered.filter(invoice =>
+        invoice.invoiceNumber?.toLowerCase().includes(invoiceNumberLower)
+      );
+    }
+
+    // Date range filter
+    if (filters.dateFrom || filters.dateTo) {
+      filtered = filtered.filter(invoice => {
+        const invoiceDate = new Date(invoice.dateOfSale);
+        const fromDate = filters.dateFrom ? new Date(filters.dateFrom) : null;
+        const toDate = filters.dateTo ? new Date(filters.dateTo) : null;
+
+        if (fromDate && invoiceDate < fromDate) return false;
+        if (toDate && invoiceDate > toDate) return false;
+        return true;
+      });
+    }
+
+    // Amount range filter
+    if (filters.amountMin || filters.amountMax) {
+      filtered = filtered.filter(invoice => {
+        const amount = invoice.totalAmount || 0;
+        const minAmount = filters.amountMin ? parseFloat(filters.amountMin) : null;
+        const maxAmount = filters.amountMax ? parseFloat(filters.amountMax) : null;
+
+        if (minAmount !== null && amount < minAmount) return false;
+        if (maxAmount !== null && amount > maxAmount) return false;
+        return true;
+      });
+    }
+
+    return filtered;
+  };
+
+  const filteredInvoices = getFilteredInvoices();
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentInvoices = Array.isArray(invoices) ? invoices.slice(startIndex, endIndex) : [];
+  const currentInvoices = filteredInvoices.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeStatusFilter, filters]);
 
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
 
   const getStatusBadge = (status?: string) => {
-    switch (status) {
+    if (!status) return <Badge variant="secondary">Unknown</Badge>;
+
+    const filterCategory = mapStatusToFilter(status);
+
+    switch (filterCategory) {
       case "paid":
         return <Badge className="bg-green-50 text-green-600 border-green-200">Paid</Badge>;
       case "pending":
-        return <Badge className="bg-yellow-50 text-yellow-600 border-yellow-200">Due in 5 days</Badge>;
+        return <Badge className="bg-yellow-50 text-yellow-600 border-yellow-200">Pending</Badge>;
       case "overdue":
-        return <Badge className="bg-red-50 text-red-600 border-red-200">Waiting for Funds</Badge>;
+        return <Badge className="bg-red-50 text-red-600 border-red-200">Overdue</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -173,7 +310,6 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     document.body.removeChild(link);
   };
 
-
   const handleDelete = async (invoiceId: string) => {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
     try {
@@ -183,21 +319,6 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
       alert(err.message || "Failed to delete invoice");
     }
   };
-
-  // const handleDownload = async (invoiceId: string, invoiceNumber: string) => {
-  //   try {
-  //     const blob = await invoicesAPI.download(invoiceId);
-  //     const url = URL.createObjectURL(blob);
-  //     const link = document.createElement("a");
-  //     link.href = url;
-  //     link.setAttribute("download", `${invoiceNumber}.pdf`);
-  //     document.body.appendChild(link);
-  //     link.click();
-  //     document.body.removeChild(link);
-  //   } catch (err: any) {
-  //     alert(err.message || "Failed to download invoice");
-  //   }
-  // };
 
   const handleDownload = (invoice: SalesRecord) => {
     try {
@@ -240,16 +361,44 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     }
   };
 
+  // Static filter buttons with counts
+  const getFilterButtonsWithCounts = () => {
+    const filterButtons: { label: string; value: "all" | "pending" | "paid" | "overdue" }[] = [
+      { label: "All", value: "all" },
+      { label: "Pending", value: "pending" },
+      { label: "Paid", value: "paid" },
+      { label: "Overdue", value: "overdue" },
+    ];
+
+    return filterButtons.map(btn => ({
+      ...btn,
+      count: btn.value === "all"
+        ? invoices.length
+        : invoices.filter(inv => mapStatusToFilter(inv.paymentStatus || "") === btn.value).length
+    }));
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      searchTerm: "",
+      dateFrom: "",
+      dateTo: "",
+      amountMin: "",
+      amountMax: "",
+      customerName: "",
+      invoiceNumber: "",
+    });
+    setActiveStatusFilter("all");
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(value => value !== "") || activeStatusFilter !== "all";
+  };
 
   if (loading) return <Card className="p-6">Loading invoices...</Card>;
   if (error) return <Card className="p-6 text-red-500">Error: {error}</Card>;
-
-  const filterButtons: { label: string; value: "all" | "pending" | "paid" | "overdue" }[] = [
-    { label: "All", value: "all" },
-    { label: "Pending", value: "pending" },
-    { label: "Paid", value: "paid" },
-    { label: "Overdue", value: "overdue" },
-  ];
 
   return (
     <>
@@ -262,17 +411,17 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
             </h3>
 
             <div className="flex items-center flex-wrap gap-2">
-              {filterButtons.map(btn => (
+              {getFilterButtonsWithCounts().map(btn => (
                 <Button
                   key={btn.value}
                   variant={activeStatusFilter === btn.value ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => {
-                    setActiveStatusFilter(btn.value);
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => setActiveStatusFilter(btn.value)}
                 >
                   {btn.label}
+                  <span className="ml-1 text-xs opacity-70">
+                    ({btn.count})
+                  </span>
                 </Button>
               ))}
 
@@ -293,16 +442,201 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                 variant="ghost"
                 onClick={() => {
                   const filename = `invoices-${activeStatusFilter}-${format(selectedDate, "MMM-yyyy")}.csv`;
-                  downloadCSV(invoices, filename);
+                  downloadCSV(filteredInvoices, filename);
                 }}
               >
                 <DownloadCloud className="h-4 w-4 mr-2" /> Export CSV
               </Button>
-              <Button size="sm" variant="ghost">
-                <Filter className="h-4 w-4 mr-2" /> Filter
-              </Button>
+
+              {/* Enhanced Filter Button */}
+              <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant={hasActiveFilters() ? "default" : "ghost"}
+                    className={hasActiveFilters() ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filter
+                    {hasActiveFilters() && (
+                      <span className="ml-1 bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs font-medium">
+                        Active
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 p-4" align="end">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-sm">Filter Invoices</h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsFilterOpen(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* General Search */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        General Search
+                      </Label>
+                      <Input
+                        placeholder="Search invoices, customers, products..."
+                        value={filters.searchTerm}
+                        onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+                      />
+                    </div>
+
+                    {/* Customer Name */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Customer Name</Label>
+                      <Input
+                        placeholder="Filter by customer name"
+                        value={filters.customerName}
+                        onChange={(e) => setFilters(prev => ({ ...prev, customerName: e.target.value }))}
+                      />
+                    </div>
+
+                    {/* Invoice Number */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Invoice Number</Label>
+                      <Input
+                        placeholder="Filter by invoice number"
+                        value={filters.invoiceNumber}
+                        onChange={(e) => setFilters(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                      />
+                    </div>
+
+                    {/* Date Range */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Date Range
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">From</Label>
+                          <Input
+                            type="date"
+                            value={filters.dateFrom}
+                            onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">To</Label>
+                          <Input
+                            type="date"
+                            value={filters.dateTo}
+                            onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Amount Range */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Amount Range (₹)
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Min Amount</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={filters.amountMin}
+                            onChange={(e) => setFilters(prev => ({ ...prev, amountMin: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Max Amount</Label>
+                          <Input
+                            type="number"
+                            placeholder="No limit"
+                            value={filters.amountMax}
+                            onChange={(e) => setFilters(prev => ({ ...prev, amountMax: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearAllFilters}
+                        className="flex-1"
+                      >
+                        Clear All
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsFilterOpen(false)}
+                        className="flex-1"
+                      >
+                        Apply Filters
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
+
+          {/* Active Filters Display */}
+          {hasActiveFilters() && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-blue-800">Active Filters:</span>
+                  {activeStatusFilter !== "all" && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Status: {activeStatusFilter}
+                    </Badge>
+                  )}
+                  {filters.searchTerm && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Search: {filters.searchTerm}
+                    </Badge>
+                  )}
+                  {filters.customerName && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Customer: {filters.customerName}
+                    </Badge>
+                  )}
+                  {filters.invoiceNumber && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Invoice: {filters.invoiceNumber}
+                    </Badge>
+                  )}
+                  {(filters.dateFrom || filters.dateTo) && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Date: {filters.dateFrom || "Start"} - {filters.dateTo || "End"}
+                    </Badge>
+                  )}
+                  {(filters.amountMin || filters.amountMax) && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Amount: ₹{filters.amountMin || "0"} - ₹{filters.amountMax || "∞"}
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  Clear All
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Processing Banner */}
           {isProcessingScannedImage && (
@@ -338,8 +672,8 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                     <td className="py-3 px-2">{invoice.customerName}</td>
                     <td className="py-3 px-2">{invoice.product}</td>
                     <td className="py-3 px-2">{invoice.quantity}</td>
-                    <td className="py-3 px-2">₹{invoice.unitPrice}</td>
-                    <td className="py-3 px-2">₹{invoice.totalAmount}</td>
+                    <td className="py-3 px-2">₹{invoice.unitPrice?.toLocaleString()}</td>
+                    <td className="py-3 px-2">₹{invoice.totalAmount?.toLocaleString()}</td>
                     <td className="py-3 px-2">{invoice.dateOfSale}</td>
                     <td className="py-3 px-2">{getStatusBadge(invoice.paymentStatus)}</td>
                     <td className="py-3 px-2 flex items-center space-x-2">
@@ -363,12 +697,14 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                       </DropdownMenu>
                     </td>
                   </tr>
-
                 ))}
                 {currentInvoices && currentInvoices.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-4 text-center text-muted-foreground">
-                      No invoices found for selected filter.
+                    <td colSpan={9} className="py-4 text-center text-muted-foreground">
+                      {hasActiveFilters()
+                        ? "No invoices match the selected filters."
+                        : "No invoices found for selected filter."
+                      }
                     </td>
                   </tr>
                 )}
@@ -379,7 +715,10 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
           {/* Pagination */}
           <div className="flex items-center justify-between pt-4">
             <p className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, invoices.length)} of {invoices.length} results
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
+              {(hasActiveFilters() && filteredInvoices.length !== invoices.length) &&
+                ` (filtered from ${invoices.length} total)`
+              }
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>

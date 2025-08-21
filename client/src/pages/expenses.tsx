@@ -66,6 +66,8 @@ export default function Expenses() {
     month: "all",
     minAmount: ""
   });
+  const [metrics, setMetrics] = useState<any>(null);
+
 
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
 
@@ -149,19 +151,44 @@ export default function Expenses() {
     }
   };
 
+
+
   // call fetch on mount
+  const fetchMetrics = async () => {
+    try {
+      const token = Cookies.get("authToken");
+      if (!token) throw new Error("Auth token not found");
+
+      const res = await fetch(`${API_BASE}/api/expenses/metrics`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || "Failed to fetch metrics");
+      }
+
+      const body = await res.json();
+      setMetrics(body);
+    } catch (err: any) {
+      console.error("Error fetching metrics:", err);
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to fetch metrics",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   useEffect(() => {
     fetchExpenses();
-    const handler = () => {
-      fetchExpenses();
-      toast({ title: "Expense Created", description: "New expense added" });
-    };
-    window.addEventListener("expense:created", handler as EventListener);
-
-    return () => {
-      window.removeEventListener("expense:created", handler as EventListener);
-    };
+    fetchMetrics();
   }, []);
+
 
   const parseCSV = (csvText: string): Expense[] => {
     const lines = csvText.split('\n');
@@ -294,35 +321,40 @@ export default function Expenses() {
       <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-          <ExpenseMetricCard
-            title="Total Expenses"
-            amount={`₹${filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
-            trend="up"
-            // trendPercentage="3.46%"
-            // subtitle="Since last month"
-          />
-          <ExpenseMetricCard
-            title="Paid Expenses"
-            amount={`₹${filteredExpenses.filter(exp => exp.status === 'Paid').reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
-            trend="down"
-            // trendPercentage="3.46%"
-            // subtitle="Since last month"
-          />
-          <ExpenseMetricCard
-            title="Pending Expenses"
-            amount={`₹${filteredExpenses.filter(exp => exp.status === 'Unpaid').reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
-            trend="up"
-            // trendPercentage="3.46%"
-            // subtitle="Since last month"
-          />
-          <ExpenseMetricCard
-            title="Overdue Expenses"
-            amount={`₹${filteredExpenses.filter(exp => exp.status === 'Overdue').reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}`}
-            trend="up"
-            // trendPercentage="3.46%"
-            // subtitle="Since last month"
-          />
+          {metrics && (
+            <>
+              <ExpenseMetricCard
+                title="Total Expenses"
+                amount={`₹${metrics.totalExpenses.amount.toLocaleString()}`}
+                trend={metrics.totalExpenses.trend}
+                trendPercentage={`${metrics.totalExpenses.percentageChange}%`}
+                subtitle="Since last month"
+              />
+              <ExpenseMetricCard
+                title="Paid Expenses"
+                amount={`₹${metrics.paidExpenses.amount.toLocaleString()}`}
+                trend={metrics.paidExpenses.trend}
+                trendPercentage={`${metrics.paidExpenses.percentageChange}%`}
+                subtitle="Since last month"
+              />
+              <ExpenseMetricCard
+                title="Pending Expenses"
+                amount={`₹${metrics.pendingExpenses.amount.toLocaleString()}`}
+                trend={metrics.pendingExpenses.trend}
+                trendPercentage={`${metrics.pendingExpenses.percentageChange}%`}
+                subtitle="Since last month"
+              />
+              <ExpenseMetricCard
+                title="Overdue Expenses"
+                amount={`₹${metrics.overdueExpenses.amount.toLocaleString()}`}
+                trend={metrics.overdueExpenses.trend}
+                trendPercentage={`${metrics.overdueExpenses.percentageChange}%`}
+                subtitle="Since last month"
+              />
+            </>
+          )}
         </div>
+
 
         {/* Loading and Error States */}
         {loading && (

@@ -21,7 +21,7 @@ import {
   PaginationItem,
   PaginationLink,
 } from "@/components/ui/pagination";
-import { MoreVertical, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
+import { Download, MoreVertical, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
 import MultiStepForm from "./add-customer";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -70,8 +70,9 @@ export default function CustomerDashboard() {
             withCredentials: true,
           }
         );
-
-        setCustomers(res.data.data || []);
+        // console.log(res.data)
+        //@ts-ignore
+        setCustomers(res.data.customers || []);
         setTotalPages(res.data.pagination?.totalPages || 1);
       } catch (err) {
         console.error("Failed to fetch customers:", err);
@@ -132,12 +133,84 @@ export default function CustomerDashboard() {
 
   const loadJsPDF = async () => {
     try {
-      const jsPDF = (await import("jspdf")).default;
-      await import("jspdf-autotable");
+      // Import jsPDF first
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF || jsPDFModule;
+
+      // Import autotable plugin - this extends jsPDF prototype
+      const autoTableModule = await import("jspdf-autotable");
+
+      // Return the jsPDF constructor (the plugin automatically extends it)
       return jsPDF;
     } catch (err) {
       console.error("jspdf or jspdf-autotable missing. Install with `npm i jspdf jspdf-autotable`", err);
       throw err;
+    }
+  };
+
+  const handleDownloadCustomerPDF = async (customer) => {
+    try {
+      const jsPDF = await loadJsPDF();
+
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+      });
+
+      // 🔹 Title
+      doc.setFontSize(20);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Customer Report", 40, 50);
+
+      // 🔹 Company Info
+      doc.setFontSize(14);
+      doc.text(`Company: ${customer.company?.name ?? "-"}`, 40, 90);
+      doc.setFontSize(12);
+      doc.text(`Email: ${customer.company?.email ?? "-"}`, 40, 110);
+
+      // 🔹 Customer Info
+      doc.setFontSize(14);
+      doc.text(`Customer: ${customer.customer?.name ?? "-"}`, 40, 150);
+      doc.setFontSize(12);
+      doc.text(`Phone: ${customer.phone ?? "-"}`, 40, 170);
+      doc.text(`Status: ${customer.status ?? "-"}`, 40, 190);
+
+      // 🔹 Details Table
+      const details = [
+        ["Last Invoice Date", customer.lastInvoice ?? "-"],
+        ["Outstanding Balance", customer.balance ?? "-"],
+        // ["Customer ID", customer._id ?? "-"],
+        // ["User ID", customer.userId ?? "-"],
+      ];
+
+      // Check if autoTable is available, if not, fall back to basic PDF
+      if (typeof doc.autoTable === 'function') {
+        doc.autoTable({
+          startY: 220,
+          head: [["Field", "Value"]],
+          body: details,
+          theme: "grid",
+          styles: { fontSize: 12, cellPadding: 6 },
+          headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: "bold" },
+        });
+      } else {
+        // Fallback: add text manually
+        let yPosition = 220;
+        doc.setFontSize(12);
+        details.forEach(([field, value]) => {
+          doc.text(`${field}: ${value}`, 40, yPosition);
+          yPosition += 20;
+        });
+      }
+
+      // Save with safe filename
+      const safeFilename = (customer.customer?.name || "customer").replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`${safeFilename}_report.pdf`);
+
+    } catch (err) {
+      console.error("Customer PDF download failed:", err);
+      alert(`Could not generate PDF: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -198,6 +271,7 @@ export default function CustomerDashboard() {
   const handleExportPDF = async () => {
     try {
       const jsPDF = await loadJsPDF();
+
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "pt",
@@ -222,19 +296,44 @@ export default function CustomerDashboard() {
         c.balance ?? "-",
       ]);
 
-      // @ts-ignore - autotable plugin
-      (doc as any).autoTable({
-        head: [headers],
-        body,
-        startY: 40,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [230, 230, 230] },
-      });
+      // Check if autoTable is available
+      if (typeof doc.autoTable === 'function') {
+        doc.autoTable({
+          head: [headers],
+          body,
+          startY: 40,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [230, 230, 230] },
+        });
+      } else {
+        // Fallback: basic table layout
+        let yPos = 40;
+        doc.setFontSize(8);
+
+        // Headers
+        let xPos = 40;
+        headers.forEach(header => {
+          doc.text(header, xPos, yPos);
+          xPos += 100;
+        });
+
+        yPos += 20;
+
+        // Body rows
+        body.forEach(row => {
+          xPos = 40;
+          row.forEach(cell => {
+            doc.text(String(cell), xPos, yPos);
+            xPos += 100;
+          });
+          yPos += 15;
+        });
+      }
 
       doc.save("customers.pdf");
     } catch (err) {
       console.error("PDF export failed:", err);
-      alert("Table is Empty");
+      alert(`PDF export failed: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -502,11 +601,10 @@ export default function CustomerDashboard() {
                   <TableCell>{c.phone}</TableCell>
                   <TableCell>
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        c.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-300 text-red-800"
-                      }`}
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${c.status === "Active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-300 text-red-800"
+                        }`}
                     >
                       {c.status}
                     </span>
@@ -514,7 +612,7 @@ export default function CustomerDashboard() {
                   <TableCell>{c.lastInvoice}</TableCell>
                   <TableCell className="font-semibold">{c.balance}</TableCell>
                   <TableCell className="flex gap-2">
-                    <Button
+                    {/* <Button
                       size="icon"
                       variant="outline"
                       className="h-8 w-8 p-1"
@@ -527,6 +625,14 @@ export default function CustomerDashboard() {
                       className="h-8 w-8 p-1 "
                     >
                       <Trash2 className="h-4 w-4" />
+                    </Button> */}
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 p-1 hover:text-black cursor-pointer"
+                      onClick={() => handleDownloadCustomerPDF(c)}
+                    >
+                      <Download className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -544,9 +650,8 @@ export default function CustomerDashboard() {
                 href="#"
                 onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                 isActive={false}
-                className={`px-6 sm:px-14 py-2 ${
-                  page === 1 ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`px-6 sm:px-14 py-2 ${page === 1 ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
               >
                 <MoveLeft /> Previous
               </PaginationLink>
@@ -560,11 +665,10 @@ export default function CustomerDashboard() {
                     href="#"
                     isActive={page === pageNum}
                     onClick={() => setPage(pageNum)}
-                    className={`px-4 py-2 ${
-                      page === pageNum
-                        ? "bg-blue-500 text-white rounded"
-                        : ""
-                    } hover:bg-blue-600 hover:text-black`}
+                    className={`px-4 py-2 ${page === pageNum
+                      ? "bg-blue-500 text-white rounded"
+                      : ""
+                      } hover:bg-blue-600 hover:text-black`}
                   >
                     {pageNum}
                   </PaginationLink>
@@ -595,9 +699,8 @@ export default function CustomerDashboard() {
               <PaginationLink
                 href="#"
                 onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-                className={`px-4 sm:px-6 py-2 ${
-                  page === totalPages ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`px-4 sm:px-6 py-2 ${page === totalPages ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
               >
                 Next <MoveRight />
               </PaginationLink>
