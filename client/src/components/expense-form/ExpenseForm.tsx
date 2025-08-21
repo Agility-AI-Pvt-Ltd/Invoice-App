@@ -1,3 +1,6 @@
+// client/src/components/expense-form/ExpenseForm.tsx
+
+
 import { useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";

@@ -1,9 +1,10 @@
+
 import { useContext } from "react";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AddItem } from "./Step3Form";
-import { InvoiceContext } from "./InvoiceForm";
+import { InvoiceContext } from "@/contexts/InvoiceContext";
 
 export default function InvoiceSummaryForm() {
   const ctx = useContext(InvoiceContext) as any | undefined;

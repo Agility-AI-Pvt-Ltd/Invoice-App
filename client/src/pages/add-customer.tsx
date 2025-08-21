@@ -57,52 +57,186 @@ export default function MultiStepForm({ onCancel }: Props) {
     tags: "",
   });
 
+  // Helper: try to extract useful messages from backend validation response
+  const extractValidationMessages = (respData: any) => {
+    try {
+      // Common patterns: { detail: [...] } or { errors: {field: [...] } } or simple message
+      if (!respData) return ["Unprocessable content (422)"];
+      if (Array.isArray(respData.detail)) {
+        return respData.detail.map((d: any) =>
+          typeof d === "string" ? d : JSON.stringify(d)
+        );
+      }
+      if (respData.errors && typeof respData.errors === "object") {
+        const msgs: string[] = [];
+        Object.keys(respData.errors).forEach((k) => {
+          const val = respData.errors[k];
+          if (Array.isArray(val)) msgs.push(`${k}: ${val.join(", ")}`);
+          else msgs.push(`${k}: ${String(val)}`);
+        });
+        return msgs;
+      }
+      if (respData.message) return [respData.message];
+      // fallback: stringify small
+      return [JSON.stringify(respData)];
+    } catch (e) {
+      console.error("Failed to extract validation messages:", e);
+      return ["Unprocessable content (422)"];
+    }
+  };
+
   const nextStep = async () => {
     if (step === 4) {
-      try {
-        const token = Cookies.get("authToken");
+      const token = Cookies.get("authToken");
+      // Build a JSON payload without file binaries first (logo/documents removed or normalized)
+      const buildJsonPayloadNoFiles = (raw: any) => {
+        const payload: any = { ...raw };
 
-        // 🔹 Convert to multipart form-data
-        const data = new FormData();
-        Object.keys(formData).forEach((key) => {
-          if (key === "documents" && Array.isArray(formData.documents)) {
-            formData.documents.forEach((file: File) =>
-              data.append("documents", file)
-            );
-          } else if (formData[key] !== null) {
-            data.append(key, formData[key]);
+        // Remove or normalize file fields so we send pure JSON
+        if (payload.logo instanceof File) {
+          // remove file binary for JSON attempt — backend may handle files separately
+          delete payload.logo;
+        } else {
+          // keep value if it's string/null
+          payload.logo = payload.logo ?? null;
+        }
+
+        if (Array.isArray(payload.documents) && payload.documents.length > 0) {
+          // If documents contain File objects, remove them for JSON attempt
+          const docs = payload.documents.filter((d: any) => !(d instanceof File));
+          payload.documents = docs;
+        } else {
+          payload.documents = [];
+        }
+
+        return payload;
+      };
+
+      // Build multipart formdata (used as fallback) — append everything, files included
+      const buildFormData = (raw: any) => {
+        const fd = new FormData();
+        Object.keys(raw).forEach((key) => {
+          const val = raw[key];
+          if (key === "documents" && Array.isArray(val)) {
+            val.forEach((item: any) => {
+              // append file or metadata
+              if (item instanceof File) fd.append("documents", item);
+              else if (typeof item === "object") fd.append("documents", JSON.stringify(item));
+              else if (item !== undefined && item !== null) fd.append("documents", String(item));
+            });
+            return;
+          }
+
+          if (val instanceof File) {
+            fd.append(key, val);
+            return;
+          }
+
+          // For objects (like nested address objects) stringify them so backend can parse if expecting JSON
+          if (typeof val === "object" && val !== null) {
+            fd.append(key, JSON.stringify(val));
+            return;
+          }
+
+          if (val !== undefined && val !== null) {
+            fd.append(key, String(val));
           }
         });
+        return fd;
+      };
 
-        // ✅ Debugging Logs
-        console.log("Raw Payload (JS Object):", formData);
-        console.log("Payload sent to backend (FormData):");
-        for (let pair of data.entries()) {
-          console.log(`${pair[0]}:`, pair[1]);
-        }
+      // FIRST: try sending JSON (without files) — many backends expect JSON for customer create
+      try {
+        const payloadJson = buildJsonPayloadNoFiles(formData);
+        console.log("Attempting JSON payload (no file binaries):", payloadJson);
 
         const res = await axios.post(
           "https://invoice-backend-604217703209.asia-south1.run.app/api/customers",
-          data,
+          payloadJson,
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
+              "Content-Type": "application/json",
             },
             withCredentials: true,
           }
         );
 
         console.log("✅ Customer added:", res.data);
-        alert(" Customer added successfully!");
+
+// dispatch global event so lists can refresh (no UI change)
+        window.dispatchEvent(new CustomEvent("customer:added", { detail: res.data }));
+
+        alert("Customer added successfully!");
         onCancel(); // go back to customer list
+
+        return;
       } catch (err: any) {
-        console.error("Error adding customer:", err.response || err);
-        alert(
-          `Failed to add customer: ${
-            err.response?.data?.message || err.message
-          }`
-        );
+        // If 422, try fallback; else rethrow / show message
+        const status = err?.response?.status;
+        const respData = err?.response?.data;
+        console.error("Error adding customer (JSON attempt):", err?.response || err);
+
+        if (status !== 422) {
+          // non-validation error — show the server response if available
+          const msgs = extractValidationMessages(respData);
+          alert(`Failed to add customer: ${msgs.join(" | ")}`);
+          return;
+        }
+
+        // status === 422: validation error — inspect messages
+        const validationMsgs = extractValidationMessages(respData);
+        console.warn("Validation errors (JSON attempt):", validationMsgs);
+
+        // Heuristic: if validation mentions files or logo/documents required, fallback to multipart
+        const combinedText = JSON.stringify(respData).toLowerCase();
+        const needsFiles =
+          combinedText.includes("logo") ||
+          combinedText.includes("document") ||
+          combinedText.includes("file") ||
+          combinedText.includes("attachment");
+
+        if (!needsFiles) {
+          // Backend rejected JSON for other reasons (field validation). Show messages so backend can be fixed.
+          alert(
+            `Validation failed: ${validationMsgs.slice(0, 5).join(" | ")}\n(See console for full response)`
+          );
+          return;
+        }
+
+        // FALLBACK: Server likely expects multipart/form-data with files — send FormData
+        try {
+          const fd = buildFormData(formData);
+          console.log("Falling back to multipart/form-data. FormData entries:");
+          for (const pair of fd.entries()) {
+            console.log(pair[0], pair[1]);
+          }
+
+          // IMPORTANT: do NOT set Content-Type header for multipart — let browser set the boundary
+          const res2 = await axios.post(
+            "https://invoice-backend-604217703209.asia-south1.run.app/api/customers",
+            fd,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                // no Content-Type here
+              },
+              withCredentials: true,
+            }
+          );
+
+          console.log("✅ Customer added (multipart fallback):", res2.data);
+          alert("Customer added successfully (with files)!");
+          onCancel();
+          return;
+        } catch (err2: any) {
+          console.error("Multipart fallback failed:", err2?.response || err2);
+          const msgs2 = extractValidationMessages(err2?.response?.data);
+          alert(
+            `Failed to add customer after fallback: ${msgs2.slice(0, 5).join(" | ")}\n(See console for full response)`
+          );
+          return;
+        }
       }
     } else {
       setStep((prev) => Math.min(prev + 1, 4));
