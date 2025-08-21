@@ -1,3 +1,5 @@
+// client/src/components/InvoiceTables.tsx
+
 import { useState, useEffect } from "react";
 import { invoicesAPI } from "@/services/api/dashboard";
 import { Card } from "@/components/ui/card";
@@ -34,6 +36,8 @@ interface InvoiceTableProps {
   selectedDate: Date;
   setIsInvoiceFormOpen: (val: boolean) => void;
   refreshFlag?: number;
+  // optional setter so parent can receive the selected invoice object directly
+  setEditingInvoice?: (inv: any) => void;
 }
 
 interface FilterState {
@@ -46,7 +50,7 @@ interface FilterState {
   invoiceNumber: string;
 }
 
-export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag = 0 }: InvoiceTableProps) {
+export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag = 0, setEditingInvoice }: InvoiceTableProps) {
   const [invoices, setInvoices] = useState<SalesRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,8 +79,8 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     setLoading(true);
     setError(null);
     try {
-      const res = await getSalesData()
-      setInvoices(res);
+      const res = await getSalesData();
+      setInvoices(res || []);
     } catch (err: any) {
       setError(err.message || "Failed to fetch invoices");
     } finally {
@@ -94,23 +98,19 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     setIsCameraScannerOpen(false); // Close the scanner
 
     try {
-      // Create FormData to send the image file
       const formData = new FormData();
-      formData.append('file', imageFile); // Note: parameter name is 'file' not 'image'
+      formData.append('file', imageFile);
 
-      // Get auth token (adjust this based on how you store auth tokens)
       const authToken = Cookies.get('authToken');
 
       if (!authToken) {
         throw new Error('Authentication token not found. Please login again.');
       }
 
-      // Call your scan invoice API
       const response = await fetch('https://invoice-backend-604217703209.asia-south1.run.app/api/scan-invoice', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
-          // Don't set Content-Type for FormData, let browser set it automatically
         },
         body: formData
       });
@@ -123,10 +123,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
       const result = await response.json();
 
       if (result.success) {
-        // Success notification
         alert(`${result.message}\nInvoice ID: ${result.invoiceId}\nType: ${result.invoiceType}`);
-
-        // Refresh the invoice list to show the new invoice
         fetchInvoices();
       } else {
         throw new Error('Failed to process invoice');
@@ -140,9 +137,31 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     }
   };
 
+  // Initial fetch (mount) and re-fetch when selectedDate or external refreshFlag change
   useEffect(() => {
     fetchInvoices();
   }, [selectedDate, refreshFlag]);
+
+  // Listen to global invoice events so updates/creates reflect immediately in table.
+  useEffect(() => {
+    const handleInvoiceEvent = (_e: Event) => {
+      // Re-fetch fresh data from server so table stays consistent with backend
+      fetchInvoices();
+      // ensure user sees newest items: go to first page
+      setCurrentPage(1);
+    };
+
+    window.addEventListener("invoice:created", handleInvoiceEvent);
+    window.addEventListener("invoice:updated", handleInvoiceEvent);
+    window.addEventListener("invoice:deleted", handleInvoiceEvent);
+
+    return () => {
+      window.removeEventListener("invoice:created", handleInvoiceEvent);
+      window.removeEventListener("invoice:updated", handleInvoiceEvent);
+      window.removeEventListener("invoice:deleted", handleInvoiceEvent);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, activeStatusFilter, refreshFlag]);
 
   // Map backend payment statuses to filter categories
   const mapStatusToFilter = (paymentStatus: string): string => {
@@ -180,7 +199,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
   const getFilteredInvoices = () => {
     if (!Array.isArray(invoices)) return [];
 
-    let filtered = invoices;
+    let filtered = invoices.slice(); // copy
 
     // Status filter
     if (activeStatusFilter !== "all") {
@@ -193,9 +212,9 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(invoice =>
-        invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
-        invoice.customerName?.toLowerCase().includes(searchLower) ||
-        invoice.product?.toLowerCase().includes(searchLower)
+        (invoice.invoiceNumber || "").toString().toLowerCase().includes(searchLower) ||
+        (invoice.customerName || "").toLowerCase().includes(searchLower) ||
+        (invoice.product || "").toLowerCase().includes(searchLower)
       );
     }
 
@@ -203,7 +222,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     if (filters.customerName) {
       const customerLower = filters.customerName.toLowerCase();
       filtered = filtered.filter(invoice =>
-        invoice.customerName?.toLowerCase().includes(customerLower)
+        (invoice.customerName || "").toLowerCase().includes(customerLower)
       );
     }
 
@@ -211,14 +230,14 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     if (filters.invoiceNumber) {
       const invoiceNumberLower = filters.invoiceNumber.toLowerCase();
       filtered = filtered.filter(invoice =>
-        invoice.invoiceNumber?.toLowerCase().includes(invoiceNumberLower)
+        (invoice.invoiceNumber || "").toLowerCase().includes(invoiceNumberLower)
       );
     }
 
     // Date range filter
     if (filters.dateFrom || filters.dateTo) {
       filtered = filtered.filter(invoice => {
-        const invoiceDate = new Date(invoice.dateOfSale);
+        const invoiceDate = new Date((invoice as any).dateOfSale || (invoice as any).date || "");
         const fromDate = filters.dateFrom ? new Date(filters.dateFrom) : null;
         const toDate = filters.dateTo ? new Date(filters.dateTo) : null;
 
@@ -231,7 +250,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     // Amount range filter
     if (filters.amountMin || filters.amountMax) {
       filtered = filtered.filter(invoice => {
-        const amount = invoice.totalAmount || 0;
+        const amount = Number(invoice.totalAmount || 0);
         const minAmount = filters.amountMin ? parseFloat(filters.amountMin) : null;
         const maxAmount = filters.amountMax ? parseFloat(filters.amountMax) : null;
 
@@ -245,10 +264,10 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
   };
 
   const filteredInvoices = getFilteredInvoices();
-  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentInvoices = filteredInvoices.slice(startIndex, endIndex);
+  const currentInvoices = Array.isArray(filteredInvoices) ? filteredInvoices.slice(startIndex, endIndex) : [];
 
   // Reset to page 1 when filter changes
   useEffect(() => {
@@ -314,7 +333,10 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
     if (!confirm("Are you sure you want to delete this invoice?")) return;
     try {
       await invoicesAPI.delete(invoiceId);
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+      // remove by id or _id to be safe
+      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId && (inv as any)._id !== invoiceId));
+      // re-fetch to make sure UI matches server
+      fetchInvoices();
     } catch (err: any) {
       alert(err.message || "Failed to delete invoice");
     }
@@ -351,7 +373,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
 
       // Footer / total
       doc.setFontSize(12);
-      //@ts-ignore
+      // @ts-ignore
       doc.text(`Total Amount: ₹${invoice.totalAmount}`, 14, doc.lastAutoTable.finalY + 20);
 
       // Save the file
@@ -416,7 +438,10 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                   key={btn.value}
                   variant={activeStatusFilter === btn.value ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setActiveStatusFilter(btn.value)}
+                  onClick={() => {
+                    setActiveStatusFilter(btn.value);
+                    setCurrentPage(1);
+                  }}
                 >
                   {btn.label}
                   <span className="ml-1 text-xs opacity-70">
@@ -468,7 +493,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                 <PopoverContent className="w-96 p-4" align="end">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-sm">Filter Invoices</h4>
+                      <div className="font-semibold text-sm">Filter Invoices</div>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -667,17 +692,70 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
 
               <tbody>
                 {currentInvoices && currentInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-border hover:bg-muted/20">
+                  <tr key={invoice.id || (invoice as any)._id} className="border-b border-border hover:bg-muted/20">
                     <td className="py-3 px-2 text-sm text-foreground">{invoice.invoiceNumber}</td>
                     <td className="py-3 px-2">{invoice.customerName}</td>
                     <td className="py-3 px-2">{invoice.product}</td>
                     <td className="py-3 px-2">{invoice.quantity}</td>
-                    <td className="py-3 px-2">₹{invoice.unitPrice?.toLocaleString()}</td>
-                    <td className="py-3 px-2">₹{invoice.totalAmount?.toLocaleString()}</td>
-                    <td className="py-3 px-2">{invoice.dateOfSale}</td>
+                    <td className="py-3 px-2">₹{(invoice as any).unitPrice?.toLocaleString?.()}</td>
+                    <td className="py-3 px-2">₹{(invoice as any).totalAmount?.toLocaleString?.()}</td>
+                    <td className="py-3 px-2">{(invoice as any).dateOfSale || (invoice as any).date}</td>
                     <td className="py-3 px-2">{getStatusBadge(invoice.paymentStatus)}</td>
                     <td className="py-3 px-2 flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Normalize the invoice row into a shape the InvoiceForm expects.
+                          const normalized: any = {
+                            // copy raw fields
+                            ...invoice,
+                            // ensure we have _id and id for detection
+                            _id: (invoice as any)._id || invoice.id || undefined,
+                            id: invoice.id || (invoice as any)._id || undefined,
+                            // map dateOfSale -> date (use as any to satisfy TS)
+                            date: (invoice as any).dateOfSale || (invoice as any).date || new Date().toISOString().slice(0,10),
+                            // map customer -> billTo
+                            billTo: {
+                              name: invoice.customerName || "",
+                              email: (invoice as any).customerEmail || "",
+                              address: (invoice as any).customerAddress || "",
+                              phone: (invoice as any).customerPhone || "",
+                              gst: (invoice as any).customerGst || "",
+                              pan: (invoice as any).customerPan || "",
+                            },
+                            // ensure items array exists (fallback to single-item from row)
+                            items: (invoice as any).items && Array.isArray((invoice as any).items) && (invoice as any).items.length > 0
+                              ? (invoice as any).items
+                              : [
+                                  {
+                                    description: invoice.product || "",
+                                    hsn: (invoice as any).hsn || "",
+                                    quantity: invoice.quantity || 1,
+                                    unitPrice: (invoice as any).unitPrice || 0,
+                                    gst: (invoice as any).gst || 0,
+                                    discount: (invoice as any).discount || 0,
+                                    amount: (invoice as any).totalAmount || 0,
+                                  }
+                                ],
+                            total: (invoice as any).totalAmount || (invoice as any).total || 0,
+                            subtotal: (invoice as any).subtotal || (invoice as any).totalAmount || 0,
+                            currency: (invoice as any).currency || "INR",
+                            status: (invoice as any).paymentStatus || (invoice as any).status || "draft",
+                          };
+
+                          // open form in parent
+                          setIsInvoiceFormOpen(true);
+
+                          if (setEditingInvoice) {
+                            // preferred: directly pass normalized invoice to parent setter
+                            setEditingInvoice(normalized);
+                          } else {
+                            // fallback: emit event for older code paths
+                            window.dispatchEvent(new CustomEvent("invoice:edit", { detail: normalized }));
+                          }
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <DropdownMenu>
@@ -690,7 +768,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                           <DropdownMenuItem onClick={() => handleDownload(invoice)}>
                             <Download className="mr-2 h-4 w-4" /> Download
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(invoice.id)}>
+                          <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(invoice.id || (invoice as any)._id)}>
                             <Trash className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -701,10 +779,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                 {currentInvoices && currentInvoices.length === 0 && (
                   <tr>
                     <td colSpan={9} className="py-4 text-center text-muted-foreground">
-                      {hasActiveFilters()
-                        ? "No invoices match the selected filters."
-                        : "No invoices found for selected filter."
-                      }
+                      No invoices found for selected filter.
                     </td>
                   </tr>
                 )}
@@ -715,7 +790,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
           {/* Pagination */}
           <div className="flex items-center justify-between pt-4">
             <p className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
+              Showing {filteredInvoices.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
               {(hasActiveFilters() && filteredInvoices.length !== invoices.length) &&
                 ` (filtered from ${invoices.length} total)`
               }
