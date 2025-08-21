@@ -26,7 +26,7 @@ export default function LoginPage() {
                         <img src="/agility.jpg" alt="Logo" width={60} height={60} />
                         <div>
                             <h1 className="font-bold text-lg">Agility AI Invoicely</h1>
-                            <p className="text-xs text-gray-500">Powered by AgilityAI</p>
+                            {/* <p className="text-xs text-gray-500">Powered by AgilityAI</p> */}
                         </div>
                     </div>
                     {!forgotPassword ? (
