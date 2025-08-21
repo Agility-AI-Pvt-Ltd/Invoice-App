@@ -8,14 +8,14 @@ import {
 import {
     Home,
     Users,
-    FileText,
+    // FileText,
     Boxes,
-    // BarChart2,
     Receipt,
     UserCog,
     WalletMinimal,
     Settings,
     LogOut,
+    BarChart2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
@@ -37,7 +37,7 @@ function toTitleCase(input: string = ""): string {
 const menuItems = [
     { label: "Dashboard", icon: Home },
     { label: "My Customers", icon: Users },
-    { label: "Invoices", icon: FileText },
+    { label: "Sales", icon: BarChart2 },
     // { label: "Products/Services", icon: Package },
     { label: "Inventory", icon: Boxes },
     // { label: "Sales", icon: BarChart2 },
