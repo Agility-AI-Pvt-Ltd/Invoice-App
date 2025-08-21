@@ -30,7 +30,7 @@ interface SignUpFormData {
 const SignupForm: React.FC = () => {
     const [form, setForm] = useState<SignUpFormData>({
         name: '',
-        businessEmail: '',   // ✅ init
+        businessEmail: '',
         email: '',
         phonenumber: '',
         password: '',
@@ -77,8 +77,25 @@ const SignupForm: React.FC = () => {
 
         if (!form.name) newErrors.name = "Name is required";
         if (!form.businessEmail) newErrors.businessEmail = "Business email is required"; // ✅ validation
-        if (!form.phonenumber) newErrors.phonenumber = "Phone number is required";
-        if (!form.password) newErrors.password = "Password is required";
+        if (!form.phonenumber) {
+            newErrors.phonenumber = "Phone number is required";
+        } else {
+            // ✅ Phone number: allow +91 / 91, then 10 digits
+            const phoneRegex = /^(?:\+91|91)?\d{10}$/;
+            if (!phoneRegex.test(form.phonenumber)) {
+                newErrors.phonenumber = "Enter a valid 10-digit phone number (with or without +91)";
+            }
+        }
+        if (!form.password) {
+            newErrors.password = "Password is required";
+        } else {
+            // ✅ Password validation: at least 8 chars, 1 special char, 1 number
+            const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,}$/;
+            if (!passwordRegex.test(form.password)) {
+                newErrors.password =
+                    "Password must be at least 8 characters long, contain 1 number and 1 special character";
+            }
+        }
         if (!form.confirmPassword) newErrors.confirmPassword = "Confirm your password";
         // if (!form.website) newErrors.website = "Website is required";
 
@@ -90,7 +107,7 @@ const SignupForm: React.FC = () => {
             const payload = {
                 name: form.name,
                 email: form.businessEmail, // ✅ send in payload
-                phone: form.phonenumber,
+                phonenumber: form.phonenumber,
                 password: form.password,
                 website: form.website,
             };
@@ -104,9 +121,10 @@ const SignupForm: React.FC = () => {
             });
         } catch (error: unknown) {
             let message = "Something went wrong. Please try again.";
+            // console.log("Hi",error.response.data.detail)
             if (axios.isAxiosError(error)) {
-                const data = error.response?.data as { message?: string };
-                if (data?.message) message = data.message;
+                const data = error.response?.data as { detail?: string };
+                if (data?.detail) message = data.detail;
             }
             setErrors({ general: message });
         } finally {
@@ -121,7 +139,7 @@ const SignupForm: React.FC = () => {
                 <img src="/agility.jpg" alt="Logo" width={60} height={60} />
                 <div>
                     <h1 className="font-bold text-lg">Agility AI Invoicely</h1>
-                    <p className="text-xs text-gray-500">Powered by AgilityAI</p>
+                    {/* <p className="text-xs text-gray-500">Powered by AgilityAI</p> */}
                 </div>
             </div>
 

@@ -38,7 +38,6 @@ export default function Step1Form({ formData, setFormData }: Step1FormProps) {
                 <option value="" disabled className="text-slate-400">Select a Customer Type</option>
                 <option value="individual">Individual</option>
                 <option value="business">Business</option>
-                <option value="organization">Organization</option>
               </select>
               <ChevronDown
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
