@@ -27,6 +27,18 @@ const steps = [
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
+/* ------------------ Helpers ------------------ */
+
+const isValidEmail = (email?: string) => {
+  if (!email) return false;
+  // simple email regex for validation (good UX, not perfect RFC)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+type ValidationError = { step: number; message: string; field?: string };
+
+/* ------------------ Component ------------------ */
+
 export default function InvoiceForm({ onCancel, initialData }: Props) {
   const defaultInvoice: InvoiceModel = {
     invoiceNumber: `INV-${Date.now()}`,
@@ -74,7 +86,9 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     if (initialData) {
       // merge to avoid losing fields not present in initialData
       setInvoice((prev) => ({ ...prev, ...initialData }));
+      setStep(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
@@ -138,7 +152,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       name: payload.billTo?.name ?? "",
       email: payload.billTo?.email ?? "",
       address: payload.billTo?.address ?? "",
-      state: // backend expects this field present; default to "NA" if truly empty
+      state:
         payload.billTo?.state !== undefined && payload.billTo?.state !== null
           ? String(payload.billTo.state)
           : "NA",
@@ -221,16 +235,113 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     return cleaned as InvoiceModel;
   };
 
+  /* --------------- New: Client-side validation ----------------
+     validateInvoice returns array of ValidationError describing
+     problems organized by step so user knows exactly what to fix.
+  */
+  const validateInvoice = (inv: InvoiceModel): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Step 1: Invoice Details
+    if (!inv.date) {
+      errors.push({ step: 1, message: "Invoice date is required." });
+    } else {
+      const d = new Date(inv.date);
+      if (Number.isNaN(d.getTime())) {
+        errors.push({ step: 1, message: "Invoice date is invalid. Use YYYY-MM-DD." });
+      }
+    }
+
+    // Step 2: Party Details
+    const name = inv.billTo?.name?.toString().trim();
+    const email = inv.billTo?.email?.toString().trim();
+    const phone = inv.billTo?.phone?.toString().trim();
+    if (!name) {
+      errors.push({ step: 2, message: "Customer name (Bill To) is required." });
+    }
+    if (!email && !phone) {
+      errors.push({ step: 2, message: "Provide at least one contact: customer email or phone." });
+    } else if (email && !isValidEmail(email)) {
+      errors.push({ step: 2, message: "Customer email appears invalid." });
+    }
+
+    // Step 3: Item Details
+    const items = inv.items || [];
+    if (!Array.isArray(items) || items.length === 0) {
+      errors.push({ step: 3, message: "At least one invoice item is required." });
+    } else {
+      items.forEach((it: any, idx: number) => {
+        const idxDisplay = idx + 1;
+        const desc = (it.description || "").toString().trim();
+        const qty = Number(it.quantity || 0);
+        const up = Number(it.unitPrice || 0);
+        if (!desc) {
+          errors.push({ step: 3, message: `Item ${idxDisplay}: description is required.` });
+        }
+        if (!(qty > 0)) {
+          errors.push({ step: 3, message: `Item ${idxDisplay}: quantity must be greater than 0.` });
+        }
+        if (Number.isNaN(up) || up < 0) {
+          errors.push({ step: 3, message: `Item ${idxDisplay}: unit price must be >= 0.` });
+        }
+      });
+    }
+
+    // Step 4: totals check (non-blocking - show warning if zero)
+    const totals = computeTotals(inv);
+    if ((totals.total || 0) <= 0) {
+      // show as an error because saving a zero-total invoice is often a mistake
+      errors.push({ step: 4, message: "Invoice total is zero. Confirm items/prices before saving." });
+    }
+
+    return errors;
+  };
+
+  const formatValidationErrors = (errs: ValidationError[]) => {
+    // group by step for a nicer message
+    if (!errs || errs.length === 0) return "";
+    // sort by step
+    errs.sort((a, b) => a.step - b.step);
+    const grouped: Record<number, string[]> = {};
+    errs.forEach((e) => {
+      grouped[e.step] = grouped[e.step] || [];
+      grouped[e.step].push(e.message);
+    });
+    const stepLabels = ["", "Invoice Details", "Party Details", "Item Details", "Sub Total"];
+    const lines: string[] = [];
+    Object.keys(grouped).forEach((s) => {
+      const stepNum = Number(s);
+      lines.push(`${stepLabels[stepNum] || "Step " + stepNum}:`);
+      grouped[stepNum].forEach((m) => lines.push(` • ${m}`));
+    });
+    return lines.join("\n");
+  };
+
+  /* ------------------ Save ------------------ */
   const handleSave = async (status: "draft" | "sent") => {
     setSaving(true);
     try {
-      // compute totals synchronously to include latest values
+      // ensure totals are current
       const totals = computeTotals(invoice);
+
+      // merge totals into candidate for validation
+      const candidate: InvoiceModel = { ...invoice, ...totals };
+
+      // client-side validation
+      const validationErrors = validateInvoice(candidate);
+      if (validationErrors.length > 0) {
+        // jump to the first step with an error to help user
+        const firstStep = Math.min(...validationErrors.map((e) => e.step));
+        setStep(firstStep);
+        const msg = formatValidationErrors(validationErrors);
+        alert("Please fix the following before saving:\n\n" + msg);
+        setSaving(false);
+        return;
+      }
 
       // Build payload & sanitize
       const payload = sanitizePayload({
-        ...invoice,
-        ...totals,
+        ...candidate,
         status,
       } as any);
 
@@ -254,8 +365,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       const id = (invoice as any)._id || (invoice as any).id;
       let res;
       if (id) {
-        // Update existing invoice
-        // Use payload without _id/id - sanitizePayload removed those
+        // Update existing invoice (backend must accept PUT /api/invoices/:id)
         res = await axios.put(`${API_BASE}/api/invoices/${id}`, payload, axiosConfig);
       } else {
         // Create new invoice
@@ -275,17 +385,63 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       onCancel();
     } catch (err: any) {
       console.error("Save invoice error:", err);
-      try {
-        console.error("server response (full):", JSON.stringify(err?.response?.data, null, 2));
-      } catch {
-        console.error("server response fallback:", err?.response?.data);
+      // Try extract server validation errors in common shapes:
+      //  - { detail: "..." }
+      //  - { errors: { field: "..." } } or { errors: [ ... ] }
+      //  - { message: "..." }
+      //  - plain string
+      let friendly: string[] = [];
+
+      const resp = err?.response?.data;
+      if (resp) {
+        // If detail present (string or object)
+        if (typeof resp.detail === "string") {
+          friendly.push(resp.detail);
+        } else if (Array.isArray(resp.detail)) {
+          resp.detail.forEach((d: any) => friendly.push(typeof d === "string" ? d : JSON.stringify(d)));
+        } else if (typeof resp.detail === "object" && resp.detail !== null) {
+          // object mapping field -> message(s)
+          Object.keys(resp.detail).forEach((k) => {
+            const v = resp.detail[k];
+            if (Array.isArray(v)) {
+              v.forEach((m) => friendly.push(`${k}: ${m}`));
+            } else {
+              friendly.push(`${k}: ${v}`);
+            }
+          });
+        } else if (resp.errors) {
+          // error array or object
+          if (Array.isArray(resp.errors)) {
+            resp.errors.forEach((e: any) => friendly.push(typeof e === "string" ? e : JSON.stringify(e)));
+          } else if (typeof resp.errors === "object") {
+            Object.keys(resp.errors).forEach((k) => {
+              const v = resp.errors[k];
+              friendly.push(`${k}: ${Array.isArray(v) ? v.join(", ") : v}`);
+            });
+          }
+        } else if (resp.message) {
+          friendly.push(resp.message);
+        } else if (typeof resp === "string") {
+          friendly.push(resp);
+        } else {
+          // fallback: JSON stringify small object
+          try {
+            friendly.push(JSON.stringify(resp));
+          } catch {
+            // ignore
+          }
+        }
       }
-      const msg =
-        (err?.response?.data?.detail && JSON.stringify(err.response.data.detail)) ||
-        (typeof err?.response?.data === "string" ? err.response.data : undefined) ||
-        err?.message ||
-        "Save failed";
-      alert("Failed to save invoice: " + msg);
+
+      // If we didn't extract anything, use err.message
+      if (friendly.length === 0) {
+        if (err?.message) friendly.push(err.message);
+        else friendly.push("Unknown server error. Check console for details.");
+      }
+
+      // final formatted message
+      const finalMsg = friendly.map((s, i) => `${i + 1}. ${s}`).join("\n");
+      alert("Failed to save invoice:\n\n" + finalMsg);
     } finally {
       setSaving(false);
     }

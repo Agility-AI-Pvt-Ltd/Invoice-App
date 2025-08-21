@@ -553,7 +553,7 @@ const NavbarUpdated = () => {
             </div>
             <div>
               <h3 className="text-xl font-bold">Agility AI Invoicely</h3>
-              <p className="text-sm text-slate-400">Powered by AgilityAI</p>
+              {/* <p className="text-sm text-slate-400">Powered by AgilityAI</p> */}
             </div>
           </div>
 
@@ -580,9 +580,9 @@ const NavbarUpdated = () => {
           <MobileNavHeader>
             <div className="flex items-center gap-2">
               <NavbarLogo />
-              <span className="text-xs text-gray-100 bg-primary/10 px-2 py-1 rounded-full">
+              {/* <span className="text-xs text-gray-100 bg-primary/10 px-2 py-1 rounded-full">
                 Powered by AgilityAI
-              </span>
+              </span> */}
             </div>
             <MobileNavToggle
               isOpen={isMobileMenuOpen}
