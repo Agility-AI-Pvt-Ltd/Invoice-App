@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/Input";
 import { ChevronDown } from "lucide-react";
-import { InvoiceContext } from "./InvoiceForm";
+import { InvoiceContext } from "@/contexts/InvoiceContext";
 
 export default function Step1Form() {
   const ctx = useContext(InvoiceContext) as any | undefined;

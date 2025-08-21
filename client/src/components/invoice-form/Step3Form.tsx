@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Trash2 } from "lucide-react";
 import { NavbarButton } from "../ui/resizable-navbar";
-import { InvoiceContext } from "./InvoiceForm";
+import { InvoiceContext } from "@/contexts/InvoiceContext";
 
 // ✅ define proper type for an item
 type InvoiceItem = {

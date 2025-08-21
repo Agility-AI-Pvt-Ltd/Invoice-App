@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -44,16 +44,6 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 
-/**
- * NOTE:
- * This file uses the following third-party libs for export/import:
- *  - xlsx (SheetJS)  -> npm i xlsx
- *  - jspdf & jspdf-autotable -> npm i jspdf jspdf-autotable
- *
- * If you don't want to install all, basic Excel export (xlsx) requires xlsx.
- * Make sure these packages are installed in your project for Excel/PDF functionality.
- */
-
 export default function CustomerDashboard() {
   const [page, setPage] = useState(1);
   const [customers, setCustomers] = useState([]);
@@ -61,7 +51,6 @@ export default function CustomerDashboard() {
   const [showAddCustomerForm, setShowAddCustomerForm] = useState(false);
 
   // 🔹 Filter states
-  // Note: sentinel defaults are non-empty strings to satisfy Radix select item requirement
   const [statusFilter, setStatusFilter] = useState("__all");
   const [dateFilter, setDateFilter] = useState("__any");
   const [balanceFilter, setBalanceFilter] = useState("__any");
@@ -69,13 +58,13 @@ export default function CustomerDashboard() {
   // file input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // 🔹 Fetch customers from backend
-  useEffect(() => {
-    const fetchCustomers = async () => {
+  // ------------------ Fetch customers (extracted so we can call it from event handler) ------------------
+  const fetchCustomers = useCallback(
+    async (p = page) => {
       try {
         const token = Cookies.get("authToken");
         const res = await axios.get(
-          `https://invoice-backend-604217703209.asia-south1.run.app/api/get_customer?page=${page}&limit=${ITEMS_PER_PAGE}`,
+          `https://invoice-backend-604217703209.asia-south1.run.app/api/get_customer?page=${p}&limit=${ITEMS_PER_PAGE}`,
           {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
@@ -87,43 +76,50 @@ export default function CustomerDashboard() {
       } catch (err) {
         console.error("Failed to fetch customers:", err);
       }
+    },
+    [] // no internal deps — we'll pass page param explicitly when calling
+  );
+
+  // call fetch on page change
+  useEffect(() => {
+    fetchCustomers(page);
+  }, [page, fetchCustomers]);
+
+  // Listen for "customer:added" event and refetch (non-invasive)
+  useEffect(() => {
+    const handler = (e: any) => {
+      try {
+        console.log("customer:added event received, refetching list", e?.detail);
+        // If user is on page 1, optimistically show the new customer at top for instant feedback
+        if (page === 1 && e?.detail) {
+          setCustomers((prev) => {
+            // avoid duplicate if already present by id (best-effort)
+            try {
+              const newId = e.detail?.id ?? e.detail?._id ?? null;
+              if (newId && prev.some((c) => c.id === newId || c._id === newId)) {
+                // already present, just return prev and trigger fetch
+                fetchCustomers(page);
+                return prev;
+              }
+            } catch (err) {
+              /* ignore id check errors */
+            }
+            // prepend created customer
+            return [e.detail, ...prev];
+          });
+        }
+        // always ensure we re-sync with server
+        fetchCustomers(page);
+      } catch (err) {
+        console.error("Error handling customer:added event:", err);
+      }
     };
 
-    fetchCustomers();
-  }, [page]);
-
-  // 🔹 Apply filters (frontend)
-  const filteredCustomers = customers.filter((c) => {
-    // Status filter: sentinel "__all" means no filter
-    if (statusFilter && statusFilter !== "__all") {
-      if (!c.status || c.status !== statusFilter) return false;
-    }
-
-    // Date filter (assuming c.lastInvoice is a date string). sentinel "__any" means no filter
-    if (dateFilter && dateFilter !== "__any") {
-      // if lastInvoice missing, exclude when a date filter is applied
-      if (!c.lastInvoice) return false;
-      const today = new Date();
-      const invoiceDate = new Date(c.lastInvoice);
-      if (isNaN(invoiceDate.getTime())) return false;
-      const daysDiff =
-        (today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysDiff > parseInt(dateFilter, 10)) return false;
-    }
-
-    // Balance filter: sentinel "__any" means no filter
-    if (balanceFilter && balanceFilter !== "__any") {
-      const balance = parseFloat(c.balance || 0);
-      if (balanceFilter === "low" && balance >= 10000) return false;
-      if (balanceFilter === "medium" && (balance < 10000 || balance > 50000)) return false;
-      if (balanceFilter === "high" && balance <= 50000) return false;
-    }
-
-    return true;
-  });
+    window.addEventListener("customer:added", handler);
+    return () => window.removeEventListener("customer:added", handler);
+  }, [page, fetchCustomers]);
 
   // ------------------ Export / Import Helpers ------------------
-
   const loadXLSX = async () => {
     try {
       const XLSX = await import("xlsx");
@@ -309,7 +305,31 @@ export default function CustomerDashboard() {
     if (fileInputRef.current) fileInputRef.current.click();
   };
 
-  // ------------------ End Export / Import Helpers ------------------
+  // ------------------ Apply filters (frontend)
+  const filteredCustomers = customers.filter((c) => {
+    if (statusFilter && statusFilter !== "__all") {
+      if (!c.status || c.status !== statusFilter) return false;
+    }
+
+    if (dateFilter && dateFilter !== "__any") {
+      if (!c.lastInvoice) return false;
+      const today = new Date();
+      const invoiceDate = new Date(c.lastInvoice);
+      if (isNaN(invoiceDate.getTime())) return false;
+      const daysDiff =
+        (today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDiff > parseInt(dateFilter, 10)) return false;
+    }
+
+    if (balanceFilter && balanceFilter !== "__any") {
+      const balance = parseFloat(c.balance || 0);
+      if (balanceFilter === "low" && balance >= 10000) return false;
+      if (balanceFilter === "medium" && (balance < 10000 || balance > 50000)) return false;
+      if (balanceFilter === "high" && balance <= 50000) return false;
+    }
+
+    return true;
+  });
 
   if (showAddCustomerForm) {
     return (

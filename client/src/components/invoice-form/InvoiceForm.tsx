@@ -1,5 +1,6 @@
 // client/src/components/invoice-form/InvoiceForm.tsx
-import React, { createContext, useState } from "react";
+
+import { useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";
 import Step2Form from "./Step2Form";
@@ -7,8 +8,11 @@ import Step3Form from "./Step3Form";
 import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
+import Cookies from "js-cookie";
 
-
+// import context & types from the new contexts file
+import { InvoiceContext } from "@/contexts/InvoiceContext";
+import type { InvoiceModel } from "@/contexts/InvoiceContext";
 
 type Props = {
   onCancel: () => void;
@@ -20,52 +24,6 @@ const steps = [
   { label: "Item Details", icon: BanknoteX },
   { label: "Sub Total", icon: CurlyBraces },
 ];
-
-export type InvoiceItem = {
-  description?: string;
-  hsn?: string;
-  quantity?: number;
-  unitPrice?: number;
-  gst?: number;
-  discount?: number;
-  amount?: number;
-};
-
-export type InvoiceModel = {
-  invoiceNumber?: string;
-  date?: string; // YYYY-MM-DD
-  dueDate?: string; // YYYY-MM-DD
-  billTo?: {
-    name?: string;
-    email?: string;
-    address?: string;
-    state?: string;
-    gst?: string;
-    pan?: string;
-    phone?: string;
-  };
-  shipTo?: any;
-  items: InvoiceItem[];
-  notes?: string;
-  currency?: string;
-  status?: "draft" | "sent" | "paid" | string;
-  subtotal?: number;
-  cgst?: number;
-  sgst?: number;
-  igst?: number;
-  total?: number;
-  termsAndConditions?: string;
-};
-
-type InvoiceContextType = {
-  invoice: InvoiceModel;
-  setInvoice: React.Dispatch<React.SetStateAction<InvoiceModel>>;
-  recalcTotals: () => void;
-};
-
-export const InvoiceContext = createContext<InvoiceContextType | undefined>(
-  undefined
-);
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
@@ -106,35 +64,41 @@ export default function InvoiceForm({ onCancel }: Props) {
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // Recalculate subtotal/taxes/total
+  // compute totals synchronously from a given invoice object (used for payload)
+  const computeTotals = (inv: InvoiceModel) => {
+    const items = inv.items || [];
+    let subtotal = 0;
+    let totalGst = 0;
+    items.forEach((it) => {
+      const q = Number(it.quantity || 0);
+      const up = Number(it.unitPrice || 0);
+      const gst = Number(it.gst || 0);
+      const disc = Number(it.discount || 0);
+      const base = q * up;
+      const gstAmt = (base * gst) / 100;
+      subtotal += base - disc;
+      totalGst += gstAmt;
+    });
+    const cgst = +(totalGst / 2).toFixed(2);
+    const sgst = +(totalGst / 2).toFixed(2);
+    const igst = 0;
+    const total = +(subtotal + totalGst).toFixed(2);
+    return {
+      subtotal: +subtotal.toFixed(2),
+      cgst,
+      sgst,
+      igst,
+      total,
+    };
+  };
+
+  // Recalculate subtotal/taxes/total and update state (for UI)
   const recalcTotals = () => {
     setInvoice((prev) => {
-      const items = prev.items || [];
-      let subtotal = 0;
-      let totalGst = 0;
-      items.forEach((it) => {
-        const q = Number(it.quantity || 0);
-        const up = Number(it.unitPrice || 0);
-        const gst = Number(it.gst || 0);
-        const disc = Number(it.discount || 0);
-        const base = q * up;
-        const gstAmt = (base * gst) / 100;
-        subtotal += base - disc;
-        totalGst += gstAmt;
-      });
-      // split GST half-half for CGST/SGST by default (adjust if IGST rule needed)
-      const cgst = +(totalGst / 2).toFixed(2);
-      const sgst = +(totalGst / 2).toFixed(2);
-      const igst = 0;
-      const total = +(subtotal + totalGst).toFixed(2);
-
+      const totals = computeTotals(prev);
       return {
         ...prev,
-        subtotal: +subtotal.toFixed(2),
-        cgst,
-        sgst,
-        igst,
-        total,
+        ...totals,
       };
     });
   };
@@ -164,25 +128,38 @@ export default function InvoiceForm({ onCancel }: Props) {
   const handleSave = async (status: "draft" | "sent") => {
     setSaving(true);
     try {
-      // Ensure totals are up to date
-      recalcTotals();
+      // compute totals synchronously (avoid relying on async setState)
+      const totals = computeTotals(invoice);
 
       const payload = sanitizePayload({
         ...invoice,
+        ...totals,
         status,
         // backend expects ISO datetimes for datetime fields; convert if date present
         date: invoice.date ? new Date(invoice.date).toISOString() : new Date().toISOString(),
         dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString() : undefined,
       });
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Auth token not found. Please login.");
+      // Try localStorage token first, then readable cookie names (adjust names to your backend)
+      const cookieToken =
+        Cookies.get("token") ||
+        Cookies.get("authToken") ||
+        Cookies.get("bearer") ||
+        Cookies.get("access_token");
+      const token = localStorage.getItem("token") || cookieToken || undefined;
+
+      // axios config: set withCredentials so browser will send cookies cross-site if any,
+      // and if we have a readable token we also set Authorization header.
+      const axiosConfig: any = {
+        withCredentials: true,
+        headers: {},
+      };
+
+      if (token) {
+        axiosConfig.headers.Authorization = `Bearer ${token}`;
       }
 
-      const res = await axios.post(`${API_BASE}/api/invoices`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.post(`${API_BASE}/api/invoices`, payload, axiosConfig);
 
       const createdInvoice = res.data;
       // notify other parts of app to refresh lists (no UI changes here)
