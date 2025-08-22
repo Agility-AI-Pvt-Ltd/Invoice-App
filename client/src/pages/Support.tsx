@@ -147,7 +147,7 @@ const Support = () => {
              </div>
                 <div>
                   <h3 className="text-xl font-bold">Agility AI Invoicely</h3>
-                  <p className="text-sm text-gray-500 ">Powered by AgilityAI</p>
+                  {/* <p className="text-sm text-gray-500 ">Powered by AgilityAI</p> */}
                 </div>
               </div>
               <p className="text-gray-500  max-w-md">

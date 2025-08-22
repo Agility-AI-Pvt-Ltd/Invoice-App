@@ -1,5 +1,3 @@
-// client/src/pages/invoices.tsx
-
 import { useState, useEffect, useCallback } from "react";
 import { RevenueChart } from "@/components/RevenueChart";
 import { CashFlowCard } from "@/components/CashFlowCard";
@@ -7,7 +5,6 @@ import { InvoiceTable } from "@/components/InvoiceTables";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import InvoiceForm from "@/components/invoice-form/InvoiceForm";
-import { useProfile } from "@/contexts/ProfileContext";
 import { SalesStatsCard } from "@/components/SalesStatsCard";
 import Cookies from "js-cookie";
 import { getSalesStats } from "@/services/api/sales";
@@ -38,6 +35,13 @@ const Index = () => {
     averageOrderChange: 0,
   });
 
+  //@ts-ignore
+  const [loading, setLoading] = useState(true);
+  //@ts-ignore
+  const [error, setError] = useState<string | null>(null);
+
+
+  // ✅ Wrap stats fetching into a function so we can re-use it
   const fetchStats = useCallback(async () => {
     try {
       const token = Cookies.get("authToken") || "";
@@ -72,7 +76,6 @@ const Index = () => {
   }, [fetchStats]);
 
   const [refreshFlag, setRefreshFlag] = useState<number>(0);
-  const { profile } = useProfile();
 
   // When an invoice is created/updated/deleted we close the form and refresh the table & stats
   useEffect(() => {
@@ -143,7 +146,7 @@ const Index = () => {
       <div className="max-w-8xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-foreground">
-            Hello {profile?.data?.name}
+            {/* Hello {profile?.data?.name} */}
           </h1>
           <DateRangePicker />
         </div>

@@ -72,7 +72,8 @@ export default function CustomerDashboard() {
         );
         // console.log(res.data)
         //@ts-ignore
-        setCustomers(res.data.customers || []);
+        // console.log(res)
+        setCustomers(res.data.data || []);
         setTotalPages(res.data.pagination?.totalPages || 1);
       } catch (err) {
         console.error("Failed to fetch customers:", err);
@@ -595,7 +596,7 @@ export default function CustomerDashboard() {
                           {c.customer?.name?.[0] || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <p>{c.customer?.name}</p>
+                      <p>{c.customer?.name || "Unknown"}</p>
                     </div>
                   </TableCell>
                   <TableCell>{c.phone}</TableCell>

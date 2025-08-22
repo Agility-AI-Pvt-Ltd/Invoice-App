@@ -6,16 +6,19 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  company: string;
+  businessName: string;
   address: string;
-  gstNumber?: string;
-  panNumber?: string;
+  gst?: string;
+  pan?: string;
   phone: string;
   website?: string;
   state: string;
   isGstRegistered?: boolean;
   businessLogo?: string;
   createdAt?: string;
+  logoUrl : string;
+  plan? : string;
+  dateFormat : string;
 }
 export interface UserProfile {
   data : User;
@@ -25,8 +28,8 @@ export interface ProfileUpdate {
   name?: string;
   company?: string;
   address?: string;
-  gstNumber?: string;
-  panNumber?: string;
+  gst?: string;
+  pan?: string;
   phone?: string;
   website?: string;
   state?: string;
