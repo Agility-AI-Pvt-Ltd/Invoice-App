@@ -50,7 +50,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                     {/* <SearchBar /> */}
                     {/* <Notification /> */}
                     <>
-                        <Avatar className="w-6 h-6 sm:w-10 sm:h-10" onClick={() => navigate('/app/settings')}>
+                        <Avatar className="w-6 h-6 sm:w-10 sm:h-10 cursor-pointer" onClick={() => navigate('/app/profile')}>
                             <AvatarImage src={avatarUrl} alt="Profile" />
                             <AvatarFallback>{"U"}</AvatarFallback>
                         </Avatar>
