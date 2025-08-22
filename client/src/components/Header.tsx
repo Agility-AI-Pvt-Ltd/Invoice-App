@@ -49,7 +49,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                     date={selectedDate} onDateChange={setSelectedDate}  //TODO - Uncomment when DateRangePicker is implemented
                     /> */}
                     {/* <SearchBar /> */}
-                    <Notification />
+                    {/* <Notification /> */}
                     <>
                         <Avatar className="w-6 h-6 sm:w-10 sm:h-10" onClick={() => navigate('/app/settings')}>
                             <AvatarImage src={avatarUrl} alt="Profile" />
@@ -62,7 +62,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                 <div className="flex sm:hidden items-center gap-3">
                     {/* <DateRangePicker iconOnly /> */}
                     {/* <SearchBar iconOnly /> */}
-                    <Notification />
+                    {/* <Notification /> */}
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>
             </div>
