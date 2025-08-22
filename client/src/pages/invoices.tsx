@@ -1,5 +1,3 @@
-// client/src/pages/invoices.tsx
-
 import { useState, useEffect, useCallback } from "react";
 import { RevenueChart } from "@/components/RevenueChart";
 import { CashFlowCard } from "@/components/CashFlowCard";

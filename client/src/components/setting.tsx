@@ -8,6 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
 import Cookies from "js-cookie";
+import axios from "axios";
+
+export async function fetchBusinessLogo(token: string): Promise<string> {
+  const response = await axios.get(
+    "https://invoice-backend-604217703209.asia-south1.run.app/api/profile/logo",
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+    }
+  );
+
+  return URL.createObjectURL(response.data); // returns usable image URL
+}
 
 export default function Settings() {
   const { toast } = useToast();
@@ -44,6 +57,12 @@ export default function Settings() {
       try {
         const token = Cookies.get('authToken') || "";
         const userData = await getUserProfile(token);
+        let logoUrl = "";
+        try {
+          logoUrl = await fetchBusinessLogo(token);
+        } catch (e) {
+          console.warn("No logo found, using fallback");
+        }
         console.log(userData)
         setUserProfile(userData);
         setFormData({
@@ -56,7 +75,7 @@ export default function Settings() {
           gst: userData.data.gst || "",
           pan: userData.data.pan || "",
           isGstRegistered: userData.data.isGstRegistered || false,
-          logoUrl: userData.data.logoUrl
+          logoUrl: logoUrl // prefer blob if exists
         });
       } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -242,17 +261,16 @@ export default function Settings() {
           </div>
         )}
 
-
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
           {/* Left Column - Profile */}
           <Card className="p-4 sm:p-6 xl:col-span-1 bg-white">
             <div className="flex flex-col items-center space-y-4 mb-6">
               <Avatar className="w-24 h-24 sm:w-32 sm:h-32">
-                <AvatarImage src={userProfile?.data?.logoUrl} alt="Profile" />
-                <AvatarFallback>{userProfile?.data?.name?.charAt(0) || "FN"}</AvatarFallback>
+                <AvatarImage src={formData.logoUrl} alt="Profile" />
+                <AvatarFallback>{userProfile?.data?.name?.charAt(0)}</AvatarFallback>
               </Avatar>
               <Button variant="link" className="text-primary font-medium p-0 h-auto text-sm sm:text-base">
-                Change Profile Photo
+                {/* Change Profile Photo */}
               </Button>
             </div>
 
