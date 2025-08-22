@@ -38,7 +38,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   //@ts-ignore
   const [error, setError] = useState<string | null>(null);
-  
+
 
   // ✅ Wrap stats fetching into a function so we can re-use it
   const fetchStats = useCallback(async () => {
@@ -84,7 +84,6 @@ const Index = () => {
 
   // trigger for refresh
   const [refreshFlag, setRefreshFlag] = useState<number>(0);
-  const { profile } = useProfile();
   useEffect(() => {
     const handleInvoiceCreated = () => {
       setIsInvoiceFormOpen(false);
@@ -117,7 +116,7 @@ const Index = () => {
         {/* Header with Date Filter */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-foreground">
-            Hello {profile?.data?.name}
+            {/* Hello {profile?.data?.name} */}
           </h1>
           <DateRangePicker
           // date={selectedDate} onDateChange={setSelectedDate}
