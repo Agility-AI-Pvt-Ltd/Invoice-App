@@ -20,7 +20,7 @@ const DashboardPreview = () => {
           >
             <div className="relative">
               <img
-                src={"dashboard.jpeg"}
+                src={"new owner dashboard.png"}
                 alt="Dashboard interface showing analytics and reports"
                 className="block w-full h-auto rounded-lg sm:rounded-2xl select-none"
                 loading="lazy"

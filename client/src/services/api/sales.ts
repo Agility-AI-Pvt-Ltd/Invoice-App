@@ -1,4 +1,4 @@
-// File: client/src/services/api/sales.ts
+// client/src/services/api/sales.ts
 
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -36,6 +36,19 @@ export interface SalesRecord {
 }
 
 /**
+ * Stats returned from the sales/stats endpoint.
+ * Most "change" fields are optional because backend may or may not return them.
+ */
+export interface SalesStats {
+  totalSales: number;
+  totalSalesChange?: number;
+  currentMonthSales?: number;
+  currentMonthChange?: number;
+  averageOrderValue?: number;
+  averageOrderChange?: number;
+}
+
+/**
  * Fetch sales data
  */
 export const getSalesData = async (): Promise<SalesRecord[]> => {
@@ -52,11 +65,7 @@ export const getSalesData = async (): Promise<SalesRecord[]> => {
 export const getSalesStats = async (
   from?: string,
   to?: string
-): Promise<{
-  totalSales: number;
-  currentMonthSales: number;
-  averageOrderValue: number;
-}> => {
+): Promise<SalesStats> => {
   const token = Cookies.get("authToken") || "";
   const params: Record<string, string> = {};
   if (from) params.from = from;
@@ -67,7 +76,8 @@ export const getSalesStats = async (
     params,
   });
 
-  return response.data;
+  // Cast to SalesStats — response.data should conform, but we keep optional fields
+  return response.data as SalesStats;
 };
 
 /**
@@ -127,13 +137,13 @@ export const getRegionalSales = async (
 
   const regions = response.data.regions || [];
   const totalSales = regions.reduce(
-    (sum: number, r: any) => sum + r.sales,
+    (sum: number, r: any) => sum + (r.sales || 0),
     0
   );
 
   return regions.map((r: any) => ({
     region: r.name || "Unknown",
-    value: r.sales,
+    value: r.sales || 0,
     percentage:
       totalSales > 0
         ? `${((r.sales / totalSales) * 100).toFixed(1)}%`

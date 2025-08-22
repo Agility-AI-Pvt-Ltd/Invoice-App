@@ -41,11 +41,11 @@ const Footer = () => {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-white text-slate-900 border-0 h-12"
+                  className="flex-1 bg-white text-slate-900 border-0 h-9"
                 />
                 <Button 
                   onClick={handleSignUp}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 h-12 font-medium"
+                  className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
                 >
                   Sign Up
                 </Button>
