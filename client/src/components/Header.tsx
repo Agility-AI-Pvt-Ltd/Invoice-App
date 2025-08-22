@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
-import SearchBar from "./ui/SearchBar";
 import ProfileAvatar from "./ui/ProfileAvatar";
 import Notification from "./ui/Notification";
-import { DateRangePicker } from "./ui/DateRangePicker";
 import { fetchBusinessLogo } from "./setting";
 import Cookies from "js-cookie";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -47,15 +45,15 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
 
                 {/* Desktop */}
                 <div className="hidden sm:flex flex-row items-center gap-4">
-                    <DateRangePicker
-                    // date={selectedDate} onDateChange={setSelectedDate}  //TODO - Uncomment when DateRangePicker is implemented
-                    />
-                    <SearchBar />
+                    {/* <DateRangePicker
+                    date={selectedDate} onDateChange={setSelectedDate}  //TODO - Uncomment when DateRangePicker is implemented
+                    /> */}
+                    {/* <SearchBar /> */}
                     <Notification />
                     <>
                         <Avatar className="w-6 h-6 sm:w-10 sm:h-10" onClick={() => navigate('/app/settings')}>
                             <AvatarImage src={avatarUrl} alt="Profile" />
-                            <AvatarFallback>{"A"}</AvatarFallback>
+                            <AvatarFallback>{"U"}</AvatarFallback>
                         </Avatar>
                     </>
                 </div>
@@ -63,7 +61,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                 {/* Mobile */}
                 <div className="flex sm:hidden items-center gap-3">
                     {/* <DateRangePicker iconOnly /> */}
-                    <SearchBar iconOnly />
+                    {/* <SearchBar iconOnly /> */}
                     <Notification />
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>

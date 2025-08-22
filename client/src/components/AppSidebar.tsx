@@ -8,15 +8,25 @@ import {
 import {
     Home,
     Users,
-    // FileText,
     Boxes,
     Receipt,
     UserCog,
     WalletMinimal,
-    Settings,
     LogOut,
     BarChart2,
+    User,
 } from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
@@ -46,7 +56,7 @@ const menuItems = [
     { label: "Tax Summary", icon: Receipt },
     // { label: "Accounts", icon: CreditCard },
     { label: "Team", icon: UserCog },
-    { label: "Settings", icon: Settings },
+    { label: "Profile", icon: User },
 ]
 
 export function AppSidebar() {
@@ -72,8 +82,8 @@ export function AppSidebar() {
     return (
         <Sidebar className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
             <SidebarHeader>
-                <div className="flex" onClick={()=>navigate('/')}>
-                    <img src="/agility.jpg" alt="Logo" className="h-18 m-2" onClick={()=>{
+                <div className="flex" onClick={() => navigate('/')}>
+                    <img src="/agility.jpg" alt="Logo" className="h-18 m-2" onClick={() => {
                         navigate("/")
                     }}
                     />
@@ -112,15 +122,46 @@ export function AppSidebar() {
             <SidebarFooter>
                 <div className="p-4 border-t border-sidebar-border">
                     {/* Logout Button */}
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm hover:bg-red-600 text-white"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        <span>Logout</span>
-                    </button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <button
+                                className="flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm hover:bg-red-600 text-white"
+                            >
+                                <LogOut className="w-5 h-5" />
+                                <span>Logout</span>
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md bg-white ">
+                            <DialogHeader>
+                                <DialogTitle>Are you sure?</DialogTitle>
+                                <DialogDescription>
+                                    Do you really want to log out? You’ll need to log in again to access your account.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button className="bg-white text-black hover:bg-white ">
+                                    <DialogClose asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="hover:text-black cursor-pointer"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </DialogClose>
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleLogout}
+                                    className=" cursor-pointer"
+                                >
+                                    Logout
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
                 </div>
             </SidebarFooter>
-        </Sidebar>
+        </Sidebar >
     )
 }

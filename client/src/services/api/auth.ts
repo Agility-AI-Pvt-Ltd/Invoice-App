@@ -24,9 +24,11 @@ export const signup = async (data: any) => {
 export const login = async (data: { email: string; password: string }) => {
     try {
         const res = await axios.post(routes.auth.login, data, config);
+        console.log(res)
         return res.data;
     } catch (err: any) {
-        const message = err.response?.data?.error || 'Login failed';
+        console.log(err.response.data)
+        const message = err.response?.data?.detail || 'Login failed';
         throw { message };
     }
 };
