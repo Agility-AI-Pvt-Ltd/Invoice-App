@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import SearchBar from "./ui/SearchBar";
+// import SearchBar from "./ui/SearchBar";
 import ProfileAvatar from "./ui/ProfileAvatar";
 import Notification from "./ui/Notification";
 import { DateRangePicker } from "./ui/DateRangePicker";
@@ -47,7 +47,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                     <DateRangePicker 
                     // date={selectedDate} onDateChange={setSelectedDate}  //TODO - Uncomment when DateRangePicker is implemented
                     />
-                    <SearchBar />
+                    {/* <SearchBar /> */}
                     <Notification />
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>
@@ -55,7 +55,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                 {/* Mobile */}
                 <div className="flex sm:hidden items-center gap-3">
                     {/* <DateRangePicker iconOnly /> */}
-                    <SearchBar iconOnly />
+                    {/* <SearchBar iconOnly /> */}
                     <Notification />
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>

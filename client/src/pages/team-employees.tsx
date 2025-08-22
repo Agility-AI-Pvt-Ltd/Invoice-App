@@ -660,13 +660,13 @@ export default function TeamManagement() {
                           >
                             Export as Excel
                           </DropdownMenuItem>
-                          <DropdownMenuItem
+                          {/* <DropdownMenuItem
                             onClick={() => handleExport('pdf')}
                             disabled={loading}
                             className={loading ? 'opacity-50 cursor-not-allowed' : ''}
                           >
                             Export as PDF
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                         </DropdownMenuContent>
                       </DropdownMenu>
 
