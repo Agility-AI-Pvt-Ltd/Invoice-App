@@ -68,12 +68,15 @@ export function AppSidebar() {
             setSelected(titleCaseLabel);
         }
     }, [param.menuItems]);
-
+    // const navigate = useNavigate();
     return (
         <Sidebar className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
             <SidebarHeader>
-                <div className="flex" onClick={() => navigate('/')}>
-                    <img src="/agility.jpg" alt="Logo" className="h-18 m-2" />
+                <div className="flex" onClick={()=>navigate('/')}>
+                    <img src="/agility.jpg" alt="Logo" className="h-18 m-2" onClick={()=>{
+                        navigate("/")
+                    }}
+                    />
                     <div className="flex flex-col items-center py-4">
                         <div className="text-xl font-bold text-white">Agility AI Invoicely</div>
                         {/* <div className="text-xs text-muted-foreground">Powered by AgilityAI</div> */}

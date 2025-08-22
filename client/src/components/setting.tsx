@@ -5,29 +5,29 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { Switch } from "@/components/ui/switch";
-// import { useProfile } from "@/contexts/ProfileContext";
 import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
 import Cookies from "js-cookie";
 
 export default function Settings() {
-  // const [lightMode, setLightMode] = useState(true);
-  // const { profile } = useProfile();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  console.log("User Profile:", userProfile);
   const [loading, setLoading] = useState(true);
+
+  // 🔹 UI Message state
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const [formData, setFormData] = useState({
     name: "",
-    company: "",
+    businessName: "",
     address: "",
     phone: "",
     website: "",
     state: "",
-    gstNumber: "",
-    panNumber: "",
-    isGstRegistered: false
+    gst: "",
+    pan: "",
+    isGstRegistered: false,
+    logoUrl: ""
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -44,20 +44,20 @@ export default function Settings() {
       try {
         const token = Cookies.get('authToken') || "";
         const userData = await getUserProfile(token);
+        console.log(userData)
         setUserProfile(userData);
-        console.log("Hello", userData);
         setFormData({
           name: userData.data.name || "",
-          company: userData.data.company || "",
+          businessName: userData.data.businessName || "",
           address: userData.data.address || "",
           phone: userData.data.phone || "",
           website: userData.data.website || "",
           state: userData.data.state || "",
-          gstNumber: userData.data.gstNumber || "",
-          panNumber: userData.data.panNumber || "",
-          isGstRegistered: userData.data.isGstRegistered || false
+          gst: userData.data.gst || "",
+          pan: userData.data.pan || "",
+          isGstRegistered: userData.data.isGstRegistered || false,
+          logoUrl: userData.data.logoUrl
         });
-
       } catch (error) {
         console.error('Error fetching user profile:', error);
         toast({
@@ -65,6 +65,7 @@ export default function Settings() {
           description: "Failed to fetch user profile",
           variant: "destructive",
         });
+        setMessage({ type: "error", text: "Failed to fetch user profile" });
       } finally {
         setLoading(false);
       }
@@ -89,10 +90,10 @@ export default function Settings() {
         title: "Success",
         description: "Profile updated successfully",
       });
-      // Refresh profile data
+      setMessage({ type: "success", text: "Profile updated successfully" });
+
       const updatedProfile = await getUserProfile(token);
       setUserProfile(updatedProfile);
-
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
@@ -100,20 +101,18 @@ export default function Settings() {
         description: "Failed to update profile",
         variant: "destructive",
       });
+      setMessage({ type: "error", text: "Failed to update profile" });
     }
   };
 
   const handlePasswordChange = async () => {
-    // alert('Password change button clicked!');
-    // console.log('Password change button clicked!');
-    // console.log('Password data:', passwordData);
-
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "Error",
         description: "New password and confirm password do not match",
         variant: "destructive",
       });
+      setMessage({ type: "error", text: "New password and confirm password do not match" });
       return;
     }
 
@@ -123,27 +122,23 @@ export default function Settings() {
         description: "New password must be at least 8 characters long",
         variant: "destructive",
       });
+      setMessage({ type: "error", text: "New password must be at least 8 characters long" });
       return;
     }
 
     try {
       const token = Cookies.get('authToken') || "";
-      console.log('Token:', token);
-      console.log('Calling changePassword API...');
-
-      const result = await changePassword(token, {
+      await changePassword(token, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });
-
-      console.log('API response:', result);
 
       toast({
         title: "Success",
         description: "Password changed successfully",
       });
+      setMessage({ type: "success", text: "Password changed successfully" });
 
-      // Clear password fields
       setPasswordData({
         currentPassword: "",
         newPassword: "",
@@ -157,18 +152,20 @@ export default function Settings() {
         description: errorMessage,
         variant: "destructive",
       });
+      setMessage({ type: "error", text: errorMessage });
     }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "Error",
           description: "File size must be less than 5MB",
           variant: "destructive",
         });
+        setMessage({ type: "error", text: "File size must be less than 5MB" });
         return;
       }
       setSelectedFile(file);
@@ -182,31 +179,27 @@ export default function Settings() {
         description: "Please select a file first",
         variant: "destructive",
       });
+      setMessage({ type: "error", text: "Please select a file first" });
       return;
     }
 
     try {
       setUploadingLogo(true);
       const token = Cookies.get('authToken') || "";
-      // const result = await uploadBusinessLogo(token, selectedFile);
       await uploadBusinessLogo(token, selectedFile);
 
       toast({
         title: "Success",
         description: "Logo uploaded successfully",
       });
+      setMessage({ type: "success", text: "Logo uploaded successfully" });
 
-      // Refresh profile data to get new logo URL
       const updatedProfile = await getUserProfile(token);
       setUserProfile(updatedProfile);
 
-      // Clear selected file
       setSelectedFile(null);
-
-      // Reset file input
       const fileInput = document.getElementById('logo-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
-
     } catch (error: any) {
       console.error('Error uploading logo:', error);
       const errorMessage = error.response?.data?.detail || "Failed to upload logo";
@@ -215,6 +208,7 @@ export default function Settings() {
         description: errorMessage,
         variant: "destructive",
       });
+      setMessage({ type: "error", text: errorMessage });
     } finally {
       setUploadingLogo(false);
     }
@@ -237,19 +231,25 @@ export default function Settings() {
     <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <div className="max-w-8xl mx-auto">
 
+        {message && (
+          <div
+            className={`mb-4 p-3 rounded-md text-sm font-medium ${message.type === "success"
+              ? "bg-green-100 text-green-700 border border-green-400"
+              : "bg-red-100 text-red-700 border border-red-400"
+              }`}
+          >
+            {message.text}
+          </div>
+        )}
+
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
           {/* Left Column - Profile */}
           <Card className="p-4 sm:p-6 xl:col-span-1 bg-white">
             <div className="flex flex-col items-center space-y-4 mb-6">
               <Avatar className="w-24 h-24 sm:w-32 sm:h-32">
-
-                <AvatarImage src={userProfile?.data?.businessLogo} alt="Profile" />
+                <AvatarImage src={userProfile?.data?.logoUrl} alt="Profile" />
                 <AvatarFallback>{userProfile?.data?.name?.charAt(0) || "FN"}</AvatarFallback>
-
-                <AvatarImage src="/dp.png" alt="Profile" />
-                <AvatarFallback>FN</AvatarFallback>
-
               </Avatar>
               <Button variant="link" className="text-primary font-medium p-0 h-auto text-sm sm:text-base">
                 Change Profile Photo
@@ -260,19 +260,19 @@ export default function Settings() {
               <div className="space-y-3 text-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center">
                   <span className="font-medium text-foreground min-w-[80px]">Name:</span>
-                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data?.name || "Full Name"}</span>
+                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data?.name}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center">
                   <span className="font-medium text-foreground min-w-[80px]">Email:</span>
-                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2 break-all">{userProfile?.data?.email || "user@email.com"}</span>
+                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2 break-all">{userProfile?.data?.email}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center">
                   <span className="font-medium text-foreground min-w-[80px]">Phone No.:</span>
-                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data?.phone || "+91 966 696 123"}</span>
+                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data?.phone}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center">
                   <span className="font-medium text-foreground min-w-[80px]">Plan:</span>
-                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">Free</span>
+                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data.plan}</span>
                 </div>
               </div>
 
@@ -314,7 +314,7 @@ export default function Settings() {
                     id="businessname"
                     placeholder="Text"
                     className="bg-background border-input"
-                    value={formData.company}
+                    value={formData.businessName}
                     onChange={(e) => handleInputChange('company', e.target.value)}
                   />
                 </div>
@@ -426,8 +426,8 @@ export default function Settings() {
                     id="pan"
                     placeholder="xxxxx"
                     className="bg-background border-input"
-                    value={formData.panNumber}
-                    onChange={(e) => handleInputChange('panNumber', e.target.value)}
+                    value={formData.pan}
+                    onChange={(e) => handleInputChange('pan', e.target.value)}
                   />
                 </div>
               </div>
@@ -443,6 +443,7 @@ export default function Settings() {
                     className="bg-background border-input"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
+                    disabled={true}
                   />
                 </div>
                 <div className="space-y-2">
@@ -453,8 +454,8 @@ export default function Settings() {
                     id="gst"
                     placeholder="xxxxx"
                     className="bg-background border-input"
-                    value={formData.gstNumber}
-                    onChange={(e) => handleInputChange('gstNumber', e.target.value)}
+                    value={formData.gst}
+                    onChange={(e) => handleInputChange('gst', e.target.value)}
                   />
                 </div>
               </div>
@@ -468,6 +469,7 @@ export default function Settings() {
                     id="dateformat"
                     placeholder="DD/MM/YYYY"
                     className="bg-background border-input"
+                    value={userProfile?.data.dateFormat}
                   />
                 </div>
                 <div className="space-y-2">
