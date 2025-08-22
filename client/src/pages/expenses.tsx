@@ -1,5 +1,4 @@
 // client/src/pages/expenses.tsx
-
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ interface Expense {
   amount: number;
   status: "Paid" | "Unpaid" | "Overdue";
   date: string;
+  [k: string]: any;
 }
 
 type Filters = {
@@ -35,8 +35,8 @@ type Filters = {
 // transform API shape -> Expense (keeps resiliency for different server payloads)
 const transformExpenseData = (apiExpense: any): Expense => {
   return {
-    id: apiExpense._id || `expense-${Date.now()}`,
-    expenseId: apiExpense.invoiceNumber || apiExpense.expenseId || `EX-${Date.now()}`,
+    id: apiExpense._id || apiExpense.id || `expense-${Date.now()}`,
+    expenseId: apiExpense.invoiceNumber || apiExpense.expenseId || apiExpense.expense_id || `EX-${Date.now()}`,
     title:
       apiExpense.items?.[0]?.description ||
       apiExpense.step3?.items?.[0]?.name ||
@@ -47,7 +47,7 @@ const transformExpenseData = (apiExpense: any): Expense => {
       (apiExpense.billFrom?.name || apiExpense.step2?.vendorName || apiExpense.vendorName || "V")[0]?.toUpperCase() ||
       "V",
     paymentMethod: apiExpense.step2?.paymentMethod || apiExpense.paymentMethod || "Cash",
-    amount: apiExpense.total || apiExpense.step4?.total || apiExpense.step2?.amount || apiExpense.amount || 0,
+    amount: apiExpense.total ?? apiExpense.step4?.total ?? apiExpense.step2?.amount ?? apiExpense.amount ?? 0,
     status:
       apiExpense.status === "paid"
         ? "Paid"
@@ -65,6 +65,8 @@ const transformExpenseData = (apiExpense: any): Expense => {
       : apiExpense.date
       ? format(new Date(apiExpense.date), "dd MMMM yyyy")
       : format(new Date(), "dd MMMM yyyy"),
+    // keep raw payload for any extras that other components might need
+    raw: apiExpense,
   };
 };
 
@@ -171,7 +173,11 @@ export default function Expenses() {
 
   const [metrics, setMetrics] = useState<any>(null);
 
+  // show/create/edit form state
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
+  // selectedExpense holds the raw payload (or transformed) for editing; null => create flow
+  const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+
   const { toast } = useToast();
 
   // hidden file input reference (used by table header Import button)
@@ -405,6 +411,82 @@ export default function Expenses() {
     }
   };
 
+  // Handler invoked by ExpenseTable when it wants the parent to persist/update a changed expense.
+  // The table will call this with the updated expense object returned by backend (or the form).
+  const handleUpdateExpense = (updated: any) => {
+    try {
+      const mapped = transformExpenseData(updated);
+      setExpenses((prev) =>
+        prev.map((e) =>
+          e.expenseId === mapped.expenseId || e.id === mapped.id || e.id === mapped._id ? mapped : e
+        )
+      );
+      toast?.({
+        title: "Expense Updated",
+        description: `Expense ${mapped.expenseId} updated successfully.`,
+      });
+    } catch (err) {
+      console.error("handleUpdateExpense:", err);
+    }
+  };
+
+  // Parent-level handler to open form in the same style as Add New (create)
+  const handleOpenEdit = (expense: any) => {
+    // If caller passed a transformed object that includes raw, prefer raw (server shape)
+    const raw = expense?.raw ?? expense;
+    setSelectedExpense(raw);
+    setIsExpenseFormOpen(true);
+  };
+
+  // Listen to global events dispatched by the form(s): expense:created, expense:updated
+  useEffect(() => {
+    const onCreated = (ev: Event) => {
+      try {
+        const custom = ev as CustomEvent;
+        const payload = custom?.detail;
+        if (!payload) return;
+        const mapped = transformExpenseData(payload);
+        // prepend created expense
+        setExpenses((prev) => [mapped, ...prev]);
+        toast?.({
+          title: "Expense Created",
+          description: `Expense ${mapped.expenseId} created.`,
+        });
+      } catch (err) {
+        console.error("expense:created handler failed", err);
+      }
+    };
+
+    const onUpdated = (ev: Event) => {
+      try {
+        const custom = ev as CustomEvent;
+        const payload = custom?.detail;
+        if (!payload) return;
+        const mapped = transformExpenseData(payload);
+        setExpenses((prev) =>
+          prev.map((e) =>
+            e.expenseId === mapped.expenseId || e.id === mapped.id || e.id === mapped._id ? mapped : e
+          )
+        );
+        toast?.({
+          title: "Expense Updated",
+          description: `Expense ${mapped.expenseId} updated.`,
+        });
+      } catch (err) {
+        console.error("expense:updated handler failed", err);
+      }
+    };
+
+    window.addEventListener("expense:created", onCreated as EventListener);
+    window.addEventListener("expense:updated", onUpdated as EventListener);
+
+    return () => {
+      window.removeEventListener("expense:created", onCreated as EventListener);
+      window.removeEventListener("expense:updated", onUpdated as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Memoized filteredExpenses (uses searchTerm + filters)
   const filteredExpenses = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -439,14 +521,39 @@ export default function Expenses() {
     });
   }, [expenses, searchTerm, filters]);
 
-  // If form open show form
+  // If form open show form (create or edit depending on selectedExpense)
   if (isExpenseFormOpen) {
     return (
       <div className="px-2 sm:px-4">
         <Card className="w-full p-4 sm:p-6 bg-white">
-          <p className="font-semibold text-2xl">Create Expense Form</p>
+          <p className="font-semibold text-2xl">{selectedExpense ? "Edit Expense" : "Create Expense Form"}</p>
           <CardContent className="mt-2">
-            <ExpenseForm onCancel={() => setIsExpenseFormOpen(false)} />
+            <ExpenseForm
+              onCancel={() => {
+                setIsExpenseFormOpen(false);
+                setSelectedExpense(null);
+              }}
+              initialData={selectedExpense ?? undefined}
+              // onSaved handles the update flow (PUT) — ExpenseForm should call this when an edit/save occurs
+              onSaved={(u: any) => {
+                // ExpenseForm may pass server response or raw payload — map then update
+                handleUpdateExpense(u);
+                setIsExpenseFormOpen(false);
+                setSelectedExpense(null);
+              }}
+              // onCreated handles create flow (if ExpenseForm calls it)
+              onCreated={(c: any) => {
+                try {
+                  const mapped = transformExpenseData(c);
+                  setExpenses((prev) => [mapped, ...prev]);
+                } catch (err) {
+                  console.error("onCreated callback error:", err);
+                } finally {
+                  setIsExpenseFormOpen(false);
+                  setSelectedExpense(null);
+                }
+              }}
+            />
           </CardContent>
         </Card>
       </div>
@@ -517,7 +624,7 @@ export default function Expenses() {
           </div>
         )}
 
-        {/* ExpenseTable: pass fileInputRef + onExport so header buttons live inside table header (no layout change) */}
+        {/* ExpenseTable: pass fileInputRef + onExport + onUpdateExpense + onEditExpense so header buttons live inside table header (no layout change) */}
         {!loading && !error && (
           <ExpenseTable
             expenses={filteredExpenses}
@@ -526,6 +633,8 @@ export default function Expenses() {
             setIsExpenseFormOpen={setIsExpenseFormOpen}
             fileInputRef={fileInputRef as RefObject<HTMLInputElement>}
             onExport={() => downloadCSV(filteredExpenses)}
+            onUpdateExpense={handleUpdateExpense} // let table notify parent of updates
+            onEditExpense={handleOpenEdit} // when edit clicked in table, open page-level form (same as Add New)
           />
         )}
 
