@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import ProfileAvatar from "./ui/ProfileAvatar";
-import Notification from "./ui/Notification";
 import { fetchBusinessLogo } from "./setting";
 import Cookies from "js-cookie";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
