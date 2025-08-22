@@ -179,6 +179,7 @@ const Aboutus = () => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+
                     className="flex-1 bg-white text-slate-900 border-0 h-9"
                   />
                   <Button
@@ -256,9 +257,11 @@ const Aboutus = () => {
                 <h4 className="text-lg font-semibold mb-4">Company</h4>
                 <ul className="space-y-3 text-gray-500">
                   <li><a href="/about" className="hover:text-black transition-colors">About Us</a></li>
+
                   {/* <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
                   <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
                   <li><a href="#" className="hover:text-black transition-colors">Contact</a></li> */}
+
                 </ul>
               </div>
 
@@ -268,8 +271,10 @@ const Aboutus = () => {
                 <ul className="space-y-3 text-gray-500">
                   <li><a href="/privacy-policy" className="hover:text-black transition-colors">Privacy Policy</a></li>
                   <li><a href="/T&C" className="hover:text-black transition-colors">Terms of Service</a></li>
+
                   <li><a href="/support" className="hover:text-black transition-colors">Support</a></li>
                   <li><a href="/userguide" className="hover:text-black transition-colors">User Guide</a></li>
+
                 </ul>
               </div>
             </div>
