@@ -110,7 +110,7 @@ const Aboutus = () => {
                 </span>
               </h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                The visionaries and innovators behind Agility AI who are committed to transforming how businesses operate
+                The visionaries and innovators behind Agility AI Invoicely who are committed to transforming how businesses operate
               </p>
             </div>
 
