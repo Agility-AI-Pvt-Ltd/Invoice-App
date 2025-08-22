@@ -1,8 +1,4 @@
-
 import React, { useEffect, useRef, useState } from "react";
-
-
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,8 +27,7 @@ function FormSection({ title, children }: FormSectionProps) {
       <div className="flex justify-between items-center px-6 py-3 bg-[#F4F0FF] rounded-t-lg">
         <h2 className="text-base font-semibold text-gray-800">{title}</h2>
         <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
-          <Plus className="h-5 w-5" />
-          <span className="sr-only">Add new section</span>
+          {/* <span className="sr-only">Add new section</span> */}
         </Button>
       </div>
 
@@ -259,6 +254,10 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     if (fileInputRef.current) fileInputRef.current.click();
   };
 
+  const handleCancel = () => {
+    onClose?.();
+  };
+
   // Attach handlers to UI inputs while leaving markup intact
   return (
     <div className="min-h-screen bg-white p-6 md:p-10 overflow-y-auto">
@@ -443,12 +442,12 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         {/* Action Buttons */}
         <div className="flex justify-end items-center gap-4 mt-8">
           <Button
-            variant="link"
-            className="text-[#B5A3FF] hover:text-[#9F91D8] font-medium"
-            onClick={() => handleSave(true)}
+            variant="outline"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-2 rounded-md hover:text-black"
+            onClick={handleCancel}
             disabled={loading}
           >
-            Save as Draft
+            Cancel
           </Button>
           <Button
             className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] hover:opacity-90 text-white px-8 py-2 rounded-md"

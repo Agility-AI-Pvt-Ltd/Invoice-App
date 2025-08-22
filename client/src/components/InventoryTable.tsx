@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Edit, Trash2, ChevronDown } from "lucide-react";
+import { Search,  Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -174,7 +174,7 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
             setLoading(false);
         }
     };
-
+    //@ts-ignore
     const handleEditClick = (item: InventoryItem) => {
         if (onEdit) {
             onEdit(item);
@@ -398,9 +398,9 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
+                                            {/* <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
                                                 <Edit className="h-4 w-4" />
-                                            </Button>
+                                            </Button> */}
                                             <Button variant="ghost" size="sm" onClick={() => deleteItem(item.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
