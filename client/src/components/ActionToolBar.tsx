@@ -17,7 +17,7 @@ const ActionToolbar = () => {
   };
 
   const handleANewInvoice = () => {
-    navigate("/app/invoices");
+    navigate("/app/sales");
   };
 
 

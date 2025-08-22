@@ -62,7 +62,7 @@ const CoreFeatures = () => {
                   <h3 className="text-xl lg:text-2xl font-semibold text-foreground mb-4">
                     {feature.title}
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <p className="text-black/64 leading-relaxed">
                     {feature.description}
                   </p>
                 </div>

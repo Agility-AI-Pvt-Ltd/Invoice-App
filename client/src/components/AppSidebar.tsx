@@ -72,7 +72,7 @@ export function AppSidebar() {
     return (
         <Sidebar className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
             <SidebarHeader>
-                <div className="flex">
+                <div className="flex" onClick={() => navigate('/')}>
                     <img src="/agility.jpg" alt="Logo" className="h-18 m-2" />
                     <div className="flex flex-col items-center py-4">
                         <div className="text-xl font-bold text-white">Agility AI Invoicely</div>

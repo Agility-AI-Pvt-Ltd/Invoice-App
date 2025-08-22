@@ -1,5 +1,5 @@
 import StickyScroll  from "@/components/ui/sticky-scroll-reveal";
-import { FileText, Send, DollarSign, Users } from "lucide-react";
+import { FileText, Send, DollarSign } from "lucide-react";
 
 const content = [
   {
@@ -38,18 +38,20 @@ const content = [
       </div>
     ),
   },
-  {
-    title: "Client Management Hub",
-    description:
-      "Manage all your clients from one central dashboard. Track payment history, set automated reminders, and build stronger relationships with comprehensive client profiles.",
-    content: (
-      <div className="flex h-full w-full flex-col items-center justify-center text-white p-4 sm:p-8">
-        <Users className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 text-black" />
-        <h3 className="text-lg sm:text-xl font-semibold text-black">Client Portal</h3>
-        <p className="text-center text-xs sm:text-sm mt-2 opacity-90 text-black">Relationship Management</p>
-      </div>
-    ),
-  },
+//   {
+//   title: "Client Management Hub",
+//   description:
+//     "Manage all your clients from one central dashboard. Track payment history, set automated reminders, and build stronger relationships with comprehensive client profiles.",
+//   content: (
+//     <div className="flex h-full w-full flex-col items-center justify-center p-4 sm:p-8">
+//       <Users className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 text-black" />
+//       <h3 className="text-lg sm:text-xl font-semibold text-black">Client Portal</h3>
+//       <p className="text-center text-xs sm:text-sm mt-2 text-black">
+//         Relationship Management
+//       </p>
+//     </div>
+//   ),
+// },
 ];
 
 export default function StickyScrollRevealDemo() {
