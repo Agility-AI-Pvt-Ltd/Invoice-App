@@ -60,7 +60,7 @@ const OtpForm: React.FC = () => {
             });
 
             toast.success("Registration successful!");
-            navigate("/app/dashboard");
+            navigate("/login");
         } catch (error: unknown) {
             let message = "Invalid or expired OTP";
             if (axios.isAxiosError(error)) {
