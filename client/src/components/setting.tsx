@@ -30,6 +30,20 @@ export default function Settings() {
   // 🔹 UI Message state
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // 🔹 Original data to compare against for changes
+  const [originalData, setOriginalData] = useState({
+    name: "",
+    businessName: "",
+    address: "",
+    phone: "",
+    website: "",
+    state: "",
+    gst: "",
+    pan: "",
+    isGstRegistered: false,
+    logoUrl: ""
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     businessName: "",
@@ -52,6 +66,29 @@ export default function Settings() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  // 🔹 Check if form has changes
+  const hasChanges = () => {
+    return Object.keys(formData).some(key => {
+      const formValue = formData[key as keyof typeof formData];
+      const originalValue = originalData[key as keyof typeof originalData];
+      return formValue !== originalValue;
+    });
+  };
+
+  // 🔹 Function to refresh logo
+  const refreshLogo = async () => {
+    try {
+      const token = Cookies.get('authToken') || "";
+      const logoUrl = await fetchBusinessLogo(token);
+      setFormData(prev => ({ ...prev, logoUrl }));
+      setOriginalData(prev => ({ ...prev, logoUrl }));
+    } catch (e) {
+      console.warn("No logo found, using fallback");
+      setFormData(prev => ({ ...prev, logoUrl: "" }));
+      setOriginalData(prev => ({ ...prev, logoUrl: "" }));
+    }
+  };
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -65,7 +102,8 @@ export default function Settings() {
         }
         console.log(userData)
         setUserProfile(userData);
-        setFormData({
+        
+        const profileData = {
           name: userData.data.name || "",
           businessName: userData.data.businessName || "",
           address: userData.data.address || "",
@@ -76,7 +114,10 @@ export default function Settings() {
           pan: userData.data.pan || "",
           isGstRegistered: userData.data.isGstRegistered || false,
           logoUrl: logoUrl // prefer blob if exists
-        });
+        };
+
+        setFormData(profileData);
+        setOriginalData(profileData); // 🔹 Store original data
       } catch (error) {
         console.error('Error fetching user profile:', error);
         toast({
@@ -113,6 +154,9 @@ export default function Settings() {
 
       const updatedProfile = await getUserProfile(token);
       setUserProfile(updatedProfile);
+      
+      // 🔹 Update original data to match current form data after successful save
+      setOriginalData({ ...formData });
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
@@ -216,6 +260,9 @@ export default function Settings() {
       const updatedProfile = await getUserProfile(token);
       setUserProfile(updatedProfile);
 
+      // 🔹 Refresh logo after upload
+      await refreshLogo();
+
       setSelectedFile(null);
       const fileInput = document.getElementById('logo-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
@@ -286,7 +333,7 @@ export default function Settings() {
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center">
                   <span className="font-medium text-foreground min-w-[80px]">Phone No.:</span>
-                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data?.phone}</span>
+                  <span className="text-muted-foreground mt-1 sm:mt-0 sm:ml-2">{userProfile?.data?.phone || userProfile?.data.PhoneNumber}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center">
                   <span className="font-medium text-foreground min-w-[80px]">Plan:</span>
@@ -333,7 +380,7 @@ export default function Settings() {
                     placeholder="Text"
                     className="bg-background border-input"
                     value={formData.businessName}
-                    onChange={(e) => handleInputChange('company', e.target.value)}
+                    onChange={(e) => handleInputChange('businessName', e.target.value)}
                   />
                 </div>
               </div>
@@ -521,7 +568,12 @@ export default function Settings() {
               <div className="flex justify-end pt-4">
                 <Button
                   type="submit"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={!hasChanges()}
+                  className={`${
+                    hasChanges() 
+                      ? "bg-primary hover:bg-primary/90 text-primary-foreground" 
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
                 >
                   Save Changes
                 </Button>

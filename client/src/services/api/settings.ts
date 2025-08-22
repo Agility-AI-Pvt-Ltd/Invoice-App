@@ -10,18 +10,19 @@ export interface User {
   address: string;
   gst?: string;
   pan?: string;
-  phone: string;
+  phone?: string;
   website?: string;
   state: string;
   isGstRegistered?: boolean;
   businessLogo?: string;
   createdAt?: string;
-  logoUrl : string;
-  plan? : string;
-  dateFormat : string;
+  logoUrl: string;
+  plan?: string;
+  dateFormat: string;
+  PhoneNumber?: string
 }
 export interface UserProfile {
-  data : User;
+  data: User;
 }
 
 export interface ProfileUpdate {
@@ -117,7 +118,7 @@ export const uploadBusinessLogo = async (token: string, file: File): Promise<{ s
   try {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await axios.post(SETTINGS_API.UPLOAD_LOGO, formData, {
       headers: {
         Authorization: `Bearer ${token}`,

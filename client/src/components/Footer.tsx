@@ -9,6 +9,7 @@ const Footer = () => {
   const handleSignUp = () => {
     // Handle newsletter signup
     console.log("Newsletter signup:", email);
+    if (email) alert(`We will contact you soon on ${email}`)
     setEmail("");
   };
 
@@ -43,9 +44,9 @@ const Footer = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 bg-white text-slate-900 border-0 h-9"
                 />
-                <Button 
+                <Button
                   onClick={handleSignUp}
-                  className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
+                  className="cursor-pointer bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
                 >
                   Sign Up
                 </Button>
@@ -68,13 +69,13 @@ const Footer = () => {
           <div>
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-lg overflow-hidden">
-              <img
-                src="/agility.jpg"
-                alt="Agility Logo"
-                className="w-full h-full object-cover"
-              />
-             </div>
+                <div className="w-12 h-12 rounded-lg overflow-hidden">
+                  <img
+                    src="/agility.jpg"
+                    alt="Agility Logo"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div>
                   <h3 className="text-xl font-bold">Agility AI Invoicely</h3>
                   {/* <p className="text-sm text-gray-500 ">Powered by AgilityAI</p> */}
@@ -92,7 +93,7 @@ const Footer = () => {
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-purple-500 mt-1" />
                   <p>Abhay Khand-3, Indirapuram, Suraksha Apartment
-                  Ghaziabad, Uttar Pradesh 201010, IN</p>
+                    Ghaziabad, Uttar Pradesh 201010, IN</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Phone className="w-4 h-4 text-purple-500 mt-1" />

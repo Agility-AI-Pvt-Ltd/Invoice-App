@@ -31,8 +31,7 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
 
     try {
       const res = await login({ email, password });
-      // console.log(res)
-
+      console.log(res)
       Cookies.set('authToken', res.token, {
         expires: 1, // 1 day
         secure: true,
@@ -41,18 +40,27 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
 
       navigate("/app/dashboard");
     } catch (err: any) {
-      const error = err.message || 'Login failed';
-      if (error.includes('email')) {
-        setEmailError(error);
-      } else if (error.includes('password')) {
-        setPasswordError(error);
+      // 🔑 handle backend error properly
+      let errorMsg = 'Login failed';
+      if (err.response && err.response.data) {
+        errorMsg = err.response.data.detail || errorMsg;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+
+      // Decide where to show error
+      if (errorMsg.toLowerCase().includes('email')) {
+        setEmailError(errorMsg);
+      } else if (errorMsg.toLowerCase().includes('password')) {
+        setPasswordError(errorMsg);
       } else {
-        setGeneralError(error);
+        setGeneralError(errorMsg);
       }
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="w-full max-w-md space-y-6">
