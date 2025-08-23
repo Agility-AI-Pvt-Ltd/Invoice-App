@@ -13,6 +13,8 @@ import Cookies from "js-cookie";
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
 
+import PrintPreview from "./Print-preview"; // added import
+
 type Props = {
   onCancel: () => void;
   initialData?: InvoiceModel; // optional edit data
@@ -50,6 +52,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       address: "",
       state: "",
       gst: "",
+      gstin:"",
       pan: "",
       phone: "",
     },
@@ -80,6 +83,9 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   const [invoice, setInvoice] = useState<InvoiceModel>(initialData || defaultInvoice);
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+
+  // new: state for print preview modal (holds sanitized invoice for preview)
+  const [previewInvoice, setPreviewInvoice] = useState<InvoiceModel | null>(null);
 
   // If parent provides initialData later (e.g. via event) update local state
   useEffect(() => {
@@ -452,7 +458,20 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   };
 
   const handleSaveDraft = async () => {
-    await handleSave("draft");
+    console.log("Draft Save")
+  };
+
+  // Handler to open print preview modal
+  const handleOpenPrintPreview = () => {
+    // compute current totals (do not mutate main invoice state here)
+    const totals = computeTotals(invoice);
+    const candidate: InvoiceModel = { ...invoice, ...totals };
+    const sanitized = sanitizePayload(candidate);
+    setPreviewInvoice(sanitized);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewInvoice(null);
   };
 
   return (
@@ -507,9 +526,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
                   Save as Draft
                 </button>
                 <button
-                  onClick={() => {
-                    console.log("Print preview");
-                  }}
+                  onClick={handleOpenPrintPreview} // wired up to open preview
                   className="w-full sm:w-auto px-6 py-2 border-3 border-[#785FDA] text-gray-700 font-semibold rounded-md hover:bg-gray-100 transition duration-200"
                 >
                   Print Preview
@@ -526,6 +543,11 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Render print preview modal when previewInvoice is set */}
+      {previewInvoice && (
+        <PrintPreview invoice={previewInvoice} onClose={handleClosePreview} />
+      )}
     </InvoiceContext.Provider>
   );
 }

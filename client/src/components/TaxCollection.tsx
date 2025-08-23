@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import  { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -200,58 +200,80 @@ export function TaxCollectedChart({ selectedDate }: TaxCollectedChartProps) {
 
   return (
     <Card className="p-6 bg-white">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Monthly Revenue vs Monthly Tax</h3>
-        <select className="border border-border rounded px-2 py-1 text-sm">
-          <option>This Year</option>
-          <option>Last Year</option>
-        </select>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="inline-block w-3 h-3 rounded-sm bg-gradient-to-r from-pink-400 to-pink-500" />
+            <span className="text-xs text-muted-foreground">Revenue</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="inline-block w-3 h-3 rounded-sm bg-pink-200" />
+            <span className="text-xs text-muted-foreground">Tax</span>
+          </div>
+          <select className="border border-border rounded px-2 py-1 text-sm">
+            <option>This Year</option>
+            <option>Last Year</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <div className="space-y-4">
-          {data.map((item) => {
-            const revenuePct = Math.min(100, (item.revenue / maxVal) * 100);
-            const taxPct = Math.min(100, (item.tax / maxVal) * 100);
+        <div>
+          {/* Chart area: horizontal scroll on small screens, responsive */}
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[720px] md:min-w-full flex items-end gap-4 px-2 py-4">
+              {data.map((item) => {
+                const revenuePct = Math.min(100, (item.revenue / maxVal) * 100);
+                const taxPct = Math.min(100, (item.tax / maxVal) * 100);
 
-            return (
-              <div key={item.monthKey} className="space-y-2">
-                {/* Revenue row (primary) */}
-                <div className="flex items-center gap-4 group">
-                  <div className="w-12 text-xs sm:text-sm font-medium text-muted-foreground">
-                    {item.monthLabel}
-                  </div>
-                  <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-pink-400 to-pink-500 rounded-full transition-all duration-300"
-                      style={{ width: `${revenuePct}%` }}
-                      title={`Revenue: ₹${item.revenue.toLocaleString()}`}
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground w-16 text-right">
-                    ₹{item.revenue.toLocaleString()}
-                  </div>
-                </div>
+                return (
+                  <div key={item.monthKey} className="flex flex-col items-center justify-end w-12 md:w-16">
+                    {/* Bars container with fixed chart height */}
+                    <div className="relative w-full h-44 md:h-52 flex items-end">
+                      {/* Revenue bar (left) */}
+                      <div
+                        className="absolute bottom-0 left-1/4 transform -translate-x-1/2 w-3 md:w-4 rounded-t-lg bg-gradient-to-t from-pink-400 to-pink-500 transition-all duration-300 hover:opacity-90"
+                        style={{ height: `${revenuePct}%` }}
+                        title={`Revenue: ₹${item.revenue.toLocaleString()}`}
+                        aria-label={`Revenue ${item.monthLabel} ₹${item.revenue.toLocaleString()}`}
+                      />
 
-                {/* Tax row (secondary) */}
-                <div className="flex items-center gap-4 group">
-                  <div className="w-12" />
-                  <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
-                    <div
-                      className="h-full bg-pink-200 rounded-full transition-all duration-300"
-                      style={{ width: `${taxPct}%` }}
-                      title={`Tax: ₹${item.tax.toLocaleString()}`}
-                    />
+                      {/* Tax bar (right) */}
+                      <div
+                        className="absolute bottom-0 right-1/4 transform translate-x-1/2 w-3 md:w-4 rounded-t-lg bg-pink-200 transition-all duration-300 hover:opacity-90"
+                        style={{ height: `${taxPct}%` }}
+                        title={`Tax: ₹${item.tax.toLocaleString()}`}
+                        aria-label={`Tax ${item.monthLabel} ₹${item.tax.toLocaleString()}`}
+                      />
+
+                      {/* Value labels above bars (small, shown on hover via opacity) */}
+                      <div className="absolute -top-5 left-1/4 transform -translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
+                        ₹{item.revenue.toLocaleString()}
+                      </div>
+                      <div className="absolute -top-5 right-1/4 transform translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
+                        ₹{item.tax.toLocaleString()}
+                      </div>
+                    </div>
+
+                    {/* Month label */}
+                    <div className="mt-2 text-xs font-medium text-muted-foreground">{item.monthLabel}</div>
                   </div>
-                  <div className="text-xs text-muted-foreground w-16 text-right">
-                    ₹{item.tax.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* X axis values area for larger screens (also keeps layout consistent) */}
+          <div className="mt-3 hidden md:block">
+            <div className="grid grid-cols-12 text-xs text-muted-foreground">
+              {data.map((d) => (
+                <div key={d.monthKey} className="col-span-1 text-center"></div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </Card>

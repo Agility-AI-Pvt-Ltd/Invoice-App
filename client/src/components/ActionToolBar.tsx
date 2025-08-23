@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import ActionButton from "./ui/ActionButton";
 import { Plus } from "lucide-react";
@@ -6,35 +5,23 @@ import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useNavigate } from "react-router-dom";
 
-
 const ActionToolbar = () => {
   //@ts-ignore
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleAddClient = () => {
-    navigate("/app/my-customers");
+    // navigate to customers page and instruct it to open Add Customer form
+    navigate("/app/my-customers", { state: { openAddCustomerForm: true } });
   };
 
+  // <-- changed: send navigation state so sales page knows to open form
   const handleANewInvoice = () => {
-    navigate("/app/sales");
+    navigate("/app/sales", { state: { openSalesForm: true } });
   };
-
-
-
-  // return (
-  //     <div className="flex gap-3">
-  //         {/* Full buttons for medium+ screens */}
-  //         <div className="hidden sm:flex flex-wrap gap-3">
-  //             <ActionButton label="New Invoice" onClick={()=>navigate("/app/invoices")}/>
-  //             <ActionButton label="Add Client" />
-  //             <ActionButton label="Add Payment" />
-  //             <ActionButton label="Generate Report" />
-  //         </div>
 
   return (
     <div className="flex gap-3">
-      {/* Full buttons for medium+ screens */}
       <div className="hidden sm:flex flex-wrap gap-3">
         <ActionButton
           label="New Invoice"
@@ -46,11 +33,8 @@ const ActionToolbar = () => {
           onClick={handleAddClient}
           className="bg-white-500 text-black hover:bg-black-600 hover:text-white"
         />
-        {/* <ActionButton label="Add Payment" />
-        <ActionButton label="Generate Report" /> */}
       </div>
 
-      {/* For mobile (popover) */}
       <div className="sm:hidden">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
