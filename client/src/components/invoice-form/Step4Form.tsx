@@ -1,3 +1,4 @@
+// FILE : client/src/components/invoice-form/Step4Form.tsx
 
 import { useContext } from "react";
 import { Input } from "@/components/ui/Input";
@@ -9,16 +10,28 @@ import { InvoiceContext } from "@/contexts/InvoiceContext";
 export default function InvoiceSummaryForm() {
   const ctx = useContext(InvoiceContext) as any | undefined;
   const invoice = ctx?.invoice ?? {};
+  const fieldErrors: Record<string, string> = ctx?.fieldErrors ?? {};
 
   const setField = (key: string, value: any) => {
     if (!ctx) return;
     ctx.setInvoice((prev: any) => ({ ...prev, [key]: value }));
+    // clear total-related validation when user edits summary fields
+    if (typeof ctx.clearFieldError === "function") {
+      ctx.clearFieldError("total");
+      // also clear generic step-level message if present
+      ctx.clearFieldError("_step_4");
+    }
   };
 
   const setNumberField = (key: string, raw: any) => {
     const v = raw === "" ? "" : Number(raw);
     if (!ctx) return;
     ctx.setInvoice((prev: any) => ({ ...prev, [key]: v }));
+    // editing numeric summary fields can address a zero-total error; clear it
+    if (typeof ctx.clearFieldError === "function") {
+      ctx.clearFieldError("total");
+      ctx.clearFieldError("_step_4");
+    }
   };
 
   return (
@@ -39,7 +52,11 @@ export default function InvoiceSummaryForm() {
             className="h-24"
             value={invoice.termsAndConditions ?? ""}
             onChange={(e) => setField("termsAndConditions", e.target.value)}
+            aria-invalid={!!fieldErrors["termsAndConditions"]}
           />
+          {fieldErrors["termsAndConditions"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["termsAndConditions"]}</p>
+          )}
         </div>
 
         {/* Summary Fields */}
@@ -52,6 +69,7 @@ export default function InvoiceSummaryForm() {
               className="w-40 h-8"
               value={invoice.subtotal ?? ""}
               onChange={(e) => setNumberField("subtotal", e.target.value)}
+              aria-invalid={!!fieldErrors["subtotal"]}
             />
           </div>
 
@@ -63,6 +81,7 @@ export default function InvoiceSummaryForm() {
               className="w-40 h-8"
               value={invoice.discount ?? ""}
               onChange={(e) => setNumberField("discount", e.target.value)}
+              aria-invalid={!!fieldErrors["discount"]}
             />
           </div>
 
@@ -74,6 +93,7 @@ export default function InvoiceSummaryForm() {
               className="w-40 h-8"
               value={invoice.cgst ?? ""}
               onChange={(e) => setNumberField("cgst", e.target.value)}
+              aria-invalid={!!fieldErrors["cgst"]}
             />
           </div>
 
@@ -85,6 +105,7 @@ export default function InvoiceSummaryForm() {
               className="w-40 h-8"
               value={invoice.sgst ?? ""}
               onChange={(e) => setNumberField("sgst", e.target.value)}
+              aria-invalid={!!fieldErrors["sgst"]}
             />
           </div>
 
@@ -96,6 +117,7 @@ export default function InvoiceSummaryForm() {
               className="w-40 h-8"
               value={invoice.igst ?? ""}
               onChange={(e) => setNumberField("igst", e.target.value)}
+              aria-invalid={!!fieldErrors["igst"]}
             />
           </div>
 
@@ -107,18 +129,34 @@ export default function InvoiceSummaryForm() {
               className="w-40 h-8"
               value={invoice.shipping ?? ""}
               onChange={(e) => setNumberField("shipping", e.target.value)}
+              aria-invalid={!!fieldErrors["shipping"]}
             />
           </div>
 
           <div className="flex items-center justify-between font-semibold">
-            <Label htmlFor="total">Total:</Label>
-            <Input
-              id="total"
-              type="number"
-              className="w-40 h-8"
-              value={invoice.total ?? ""}
-              onChange={(e) => setNumberField("total", e.target.value)}
-            />
+            <Label htmlFor="total">
+              Total:
+              <span className="text-red-600 ml-1 text-sm" aria-hidden>
+                *
+              </span>
+            </Label>
+            <div className="flex flex-col items-end">
+              <Input
+                id="total"
+                type="number"
+                className="w-40 h-8"
+                value={invoice.total ?? ""}
+                onChange={(e) => setNumberField("total", e.target.value)}
+                aria-invalid={!!fieldErrors["total"]}
+              />
+              {fieldErrors["total"] && (
+                <p className="text-sm text-red-600 mt-1">{fieldErrors["total"]}</p>
+              )}
+              {/* also show any step-level message for step 4 */}
+              {fieldErrors["_step_4"] && (
+                <p className="text-sm text-red-600 mt-1">{fieldErrors["_step_4"]}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

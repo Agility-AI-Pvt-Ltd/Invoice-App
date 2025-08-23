@@ -1,3 +1,5 @@
+// FILE : client/src/components/invoice-form/Step1Form.tsx
+
 import { useContext } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/Input";
@@ -11,9 +13,17 @@ export default function Step1Form() {
   const setField = (key: string, value: any) => {
     if (!ctx) return;
     ctx.setInvoice((prev: any) => ({ ...prev, [key]: value }));
+
+    // clear inline error for this field if present
+    // For nested fields, callers should pass keys like "billTo.name"
+    const fieldPath = key;
+    if (typeof ctx.clearFieldError === "function") {
+      ctx.clearFieldError(fieldPath);
+    }
   };
 
   const invoice = ctx?.invoice ?? {};
+  const fieldErrors = ctx?.fieldErrors ?? {};
 
   return (
     <div className="w-full">
@@ -29,7 +39,11 @@ export default function Step1Form() {
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
             value={invoice.invoiceNumber ?? ""}
             onChange={(e) => setField("invoiceNumber", e.target.value)}
+            aria-invalid={!!fieldErrors["invoiceNumber"]}
           />
+          {fieldErrors["invoiceNumber"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["invoiceNumber"]}</p>
+          )}
         </div>
 
         {/* Payment Terms */}
@@ -43,6 +57,7 @@ export default function Step1Form() {
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
               value={invoice.paymentTerms ?? ""}
               onChange={(e) => setField("paymentTerms", e.target.value)}
+              aria-invalid={!!fieldErrors["paymentTerms"]}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -56,12 +71,18 @@ export default function Step1Form() {
               size={18}
             />
           </div>
+          {fieldErrors["paymentTerms"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["paymentTerms"]}</p>
+          )}
         </div>
 
-        {/* Invoice Date */}
+        {/* Invoice Date (MANDATORY) */}
         <div className="space-y-2">
           <Label htmlFor="invoiceDate" className="text-sm font-medium text-foreground">
             Invoice Date
+            <span className="text-red-600 ml-1 text-sm" aria-hidden>
+              *
+            </span>
           </Label>
           <Input
             id="invoiceDate"
@@ -70,7 +91,11 @@ export default function Step1Form() {
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
             value={invoice.date ?? ""}
             onChange={(e) => setField("date", e.target.value)}
+            aria-invalid={!!fieldErrors["date"]}
           />
+          {fieldErrors["date"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["date"]}</p>
+          )}
         </div>
 
         {/* Due Date */}
@@ -84,9 +109,13 @@ export default function Step1Form() {
             placeholder="Pick the Date"
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
             value={invoice.dueDate ?? ""}
-            min={invoice.date || ""}  // ✅ Prevent selecting before invoiceDate
+            min={invoice.date || ""} // ✅ Prevent selecting before invoiceDate
             onChange={(e) => setField("dueDate", e.target.value)}
+            aria-invalid={!!fieldErrors["dueDate"]}
           />
+          {fieldErrors["dueDate"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["dueDate"]}</p>
+          )}
         </div>
 
         {/* Status */}
@@ -100,6 +129,7 @@ export default function Step1Form() {
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
               value={invoice.status ?? ""}
               onChange={(e) => setField("status", e.target.value)}
+              aria-invalid={!!fieldErrors["status"]}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -113,6 +143,9 @@ export default function Step1Form() {
               size={18}
             />
           </div>
+          {fieldErrors["status"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["status"]}</p>
+          )}
         </div>
 
         {/* Currency */}
@@ -126,7 +159,11 @@ export default function Step1Form() {
             className="h-11 px-3 text-sm border border-input bg-background placeholder:text-slate-400"
             value={invoice.currency ?? ""}
             onChange={(e) => setField("currency", e.target.value)}
+            aria-invalid={!!fieldErrors["currency"]}
           />
+          {fieldErrors["currency"] && (
+            <p className="text-sm text-red-600 mt-1">{fieldErrors["currency"]}</p>
+          )}
         </div>
       </div>
     </div>
