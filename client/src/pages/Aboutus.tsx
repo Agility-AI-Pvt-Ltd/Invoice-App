@@ -1,20 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Quote, Target, Eye, Lock, ChevronRight, ChevronLeft } from "lucide-react"
+import { BarChart3, Quote, Target, Eye, Lock, ChevronRight, ChevronLeft, ArrowLeft } from "lucide-react"
 import { useState } from "react"
 import { MapPin, Phone, Mail, Globe, Linkedin } from "lucide-react"
-import { Input } from "@/components/ui/Input"
+// import { Input } from "@/components/ui/Input"
 import BackgroundEffects from "@/components/BackgroundEffects"
-import NavbarUpdated from "@/components/Navbar"
+// import NavbarUpdated from "@/components/Navbar"
 import { IconNeedleThread } from "@tabler/icons-react"
 
 const AboutUs = () => {
-  const [email, setEmail] = useState("")
+  // const [email, setEmail] = useState("")
 
-  const handleSignUp = () => {
-    console.log("Newsletter signup:", email)
-    setEmail("")
-  }
+  // const handleSignUp = () => {
+  //   console.log("Newsletter signup:", email)
+  //   setEmail("")
+  // }
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
 
   const testimonials = [
@@ -125,10 +125,19 @@ const AboutUs = () => {
   return (
     <div className="min-h-screen bg-transparent">
       <BackgroundEffects />
-      <NavbarUpdated />
+      
       <section className="py-20 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <div className="mb-8">
+            <a href="/">
+              <Button variant="outline" className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+              </Button>
+            </a>
+          </div>
           <div className="text-center mb-16">
+           
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-gray-900">About Us</h1>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               Learn more about who we are, what we do, and the vision driving our journey.
@@ -395,76 +404,42 @@ const AboutUs = () => {
         </div>
       </section>
 
-      <footer className="bg-transparent border-t">
-        <div className="max-w-6xl mx-auto px-6 py-16">
-          <div className="border-b border-gray-200 pb-12 mb-12">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4 text-gray-900">Subscribe</h2>
-              <p className="text-gray-600 text-lg">
-                Be the first to know about updates, new tools, and exclusive deals.
-              </p>
-            </div>
-
-            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
-              <div className="flex-1">
-                <h3 className="text-2xl font-semibold mb-3 text-gray-900">Stay in the tech loop.</h3>
-                <p className="text-gray-600 max-w-md">
-                  Keep up to date with new products, all the goss, and anything else you might have missed on twitter.
-                </p>
-              </div>
-
-              <div className="flex-1 max-w-md w-full">
-                <div className="flex gap-3">
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 bg-white text-gray-900 border-gray-300"
-                  />
-                  <Button onClick={handleSignUp} className="bg-purple-600 hover:bg-purple-700 text-white px-6">
-                    Sign Up
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">
-                  By clicking Sign Up you're confirming that you agree with our{" "}
-                  <a href="#" className="text-purple-600 hover:underline">
-                    Terms and Conditions
-                  </a>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <footer className="bg-[#D1E3FF] py-16">
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
             <div>
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Agility AI Invoicely</h3>
-                <p className="text-gray-600 max-w-md">AI-driven business solutions that simplify your workflow.</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden">
+                    <img src="/agility.jpg" alt="Agility Logo" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Agility AI Invoicely</h3>
+                  </div>
+                </div>
+                <p className="text-gray-500 max-w-md">
+                  AI-driven business solutions that simplify your workflow.
+                </p>
               </div>
 
               <div>
-                <h4 className="text-lg font-semibold mb-4 text-gray-900">Contact Us</h4>
-                <div className="space-y-3 text-gray-600">
+                <h4 className="text-lg font-semibold mb-4">Contact Us</h4>
+                <div className="space-y-3 text-gray-500">
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-purple-600 mt-1" />
-                    <p>
-                      Abhay Khand-3, Indirapuram, Suraksha Apartment
-                      <br />
-                      Ghaziabad, Uttar Pradesh 201010, IN
-                    </p>
+                    <MapPin className="w-4 h-4 rounded-2xl text-purple-500 mt-1" />
+                    <p>Ghaziabad, Uttar Pradesh, India</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Phone className="w-4 h-4 text-purple-600 mt-1" />
+                    <Phone className="w-4 h-4 text-purple-500 mt-1" />
                     <p>+91-7042149608</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Mail className="w-4 h-4 text-purple-600 mt-1" />
+                    <Mail className="w-4 h-4 text-purple-500 mt-1" />
                     <p>service@agilityai.in</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Globe className="w-4 h-4 text-purple-600 mt-1" />
-                    <a href="https://agilityai.co.in/" className="hover:text-purple-600 transition-colors">
+                    <Globe className="w-4 h-4 text-purple-500 mt-1" />
+                    <a href="https://agilityai.co.in/" className="hover:text-white transition-colors">
                       www.agilityai.co.in
                     </a>
                   </div>
@@ -472,48 +447,29 @@ const AboutUs = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div>
-                <h4 className="text-lg font-semibold mb-4 text-gray-900">Company</h4>
-                <ul className="space-y-3 text-gray-600">
-                  <li>
-                    <a href="/about" className="hover:text-purple-600 transition-colors">
-                      About Us
-                    </a>
-                  </li>
+                <h4 className="text-lg font-semibold mb-4">Company</h4>
+                <ul className="space-y-3 text-gray-500">
+                  <li><a href="/about" className="hover:text-black transition-colors">About Us</a></li>
+                  <li><a href="/contact" className="hover:text-white transition-colors">Contact</a></li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-lg font-semibold mb-4 text-gray-900">Resources</h4>
-                <ul className="space-y-3 text-gray-600">
-                  <li>
-                    <a href="/privacy-policy" className="hover:text-purple-600 transition-colors">
-                      Privacy Policy
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/T&C" className="hover:text-purple-600 transition-colors">
-                      Terms of Service
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/support" className="hover:text-purple-600 transition-colors">
-                      Support
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/userguide" className="hover:text-purple-600 transition-colors">
-                      User Guide
-                    </a>
-                  </li>
+                <h4 className="text-lg font-semibold mb-4">Resources</h4>
+                <ul className="space-y-3 text-gray-500">
+                  <li><a href="/privacy-policy" className="hover:text-black transition-colors">Privacy Policy</a></li>
+                  <li><a href="/T&C" className="hover:text-black transition-colors">Terms of Service</a></li>
+                  <li><a href="/support" className="hover:text-black transition-colors">Support</a></li>
+                  <li><a href="/userguide" className="hover:text-black transition-colors">User Guide</a></li>
                 </ul>
               </div>
             </div>
           </div>
 
-          <div className="text-center pt-8 border-t border-gray-200 mt-12">
-            <p className="text-gray-600">© 2025 Agility AI Pvt. Ltd. All rights reserved.</p>
+          <div className="text-center pt-4 border-t border-slate-700">
+            <p className="text-gray-800">© 2025 Agility AI Pvt. Ltd. All rights reserved.</p>
           </div>
         </div>
       </footer>

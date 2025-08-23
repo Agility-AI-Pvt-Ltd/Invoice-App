@@ -17,10 +17,11 @@ type Item = {
   id?: number | string;
   name: string;
   hsn: string;
-  qty: number;
-  price: number;
-  gst: number;
-  discount: number;
+  // numeric fields allowed as string while editing so we can keep user input like "" or "0."
+  qty: number | string;
+  price: number | string;
+  gst: number | string;
+  discount: number | string;
 };
 
 type Props = {
@@ -60,14 +61,72 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleChange = (index: number, field: string, value: any) => {
+    const handleChange = (index: number, field: string, value: string) => {
         const updatedItems = [...items];
-        updatedItems[index] = {
+
+        if (field === "name" || field === "hsn") {
+          updatedItems[index] = {
             ...updatedItems[index],
-            [field]:
-                field === "name" || field === "hsn" ? value : parseFloat(value) || 0,
-        };
+            [field]: value,
+          };
+        } else {
+          // numeric fields: allow empty string while typing, block plain "-" by converting to ""
+          let newValue = value;
+
+          if (newValue === "-") {
+            // user typed just '-' — treat as empty so they can continue typing, but don't keep '-' as value
+            newValue = "";
+          } else {
+            // try parse
+            const parsed = parseFloat(newValue);
+            if (!isNaN(parsed) && parsed < 0) {
+              // clamp negatives to 0 immediately
+              newValue = "0";
+            }
+            // if parsed is NaN (like "00.", "0.", ""), we keep the raw string to allow typing
+          }
+          updatedItems[index] = {
+            ...updatedItems[index],
+            [field]: newValue,
+          };
+        }
+
         setItems(updatedItems);
+    };
+
+    const handleNumericFocus = (index: number, field: string) => {
+      const current = items[index]?.[field as keyof Item] as any;
+      if (current === 0 || current === "0") {
+        const updated = [...items];
+        updated[index] = { ...updated[index], [field]: "" };
+        setItems(updated);
+      }
+    };
+
+    const handleNumericBlur = (index: number, field: string) => {
+      const current = items[index]?.[field as keyof Item] as any;
+      // empty or invalid or negative -> set to "0"
+      if (current === "" || current === null || typeof current === "undefined") {
+        const updated = [...items];
+        updated[index] = { ...updated[index], [field]: "0" };
+        setItems(updated);
+        return;
+      }
+      const parsed = parseFloat(String(current));
+      if (isNaN(parsed) || parsed < 0) {
+        const updated = [...items];
+        updated[index] = { ...updated[index], [field]: "0" };
+        setItems(updated);
+        return;
+      }
+      // else keep as entered (string representing valid >=0 number)
+    };
+
+    // prevent '-' key in numeric fields (extra safety)
+    const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "-") {
+        e.preventDefault();
+      }
     };
 
     const addItem = () => {
@@ -81,10 +140,22 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         setItems(items.filter((item) => item.id !== id));
     };
 
+    const toNumber = (val: number | string) => {
+      // convert string/number to a safe number (empty or invalid -> 0)
+      if (val === "" || val === null || typeof val === "undefined") return 0;
+      const n = parseFloat(String(val));
+      return isNaN(n) ? 0 : n;
+    };
+
     const calculateTotal = (item: typeof items[0]) => {
-        const base = (Number(item.qty) || 0) * (Number(item.price) || 0);
-        const gstAmt = (base * (Number(item.gst) || 0)) / 100;
-        const discountAmt = (base * (Number(item.discount) || 0)) / 100;
+        const qty = toNumber(item.qty);
+        const price = toNumber(item.price);
+        const gst = toNumber(item.gst);
+        const discount = toNumber(item.discount);
+
+        const base = qty * price;
+        const gstAmt = (base * gst) / 100;
+        const discountAmt = (base * discount) / 100;
         return (base + gstAmt - discountAmt).toFixed(2);
     };
 
@@ -99,7 +170,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                             <TableHead>Item Name</TableHead>
                             <TableHead>HSN Code</TableHead>
                             <TableHead>Qty</TableHead>
-                            <TableHead>Price</TableHead>
+                            <TableHead>Price (₹)</TableHead>
                             <TableHead>GST (%)</TableHead>
                             <TableHead>Discount (%)</TableHead>
                             <TableHead className="text-right">Gross Total</TableHead>
@@ -114,14 +185,14 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                 <TableCell>
                                     <Input
                                         className="w-full"
-                                        value={item.name}
+                                        value={item.name as string}
                                         onChange={(e) => handleChange(index, "name", e.target.value)}
                                     />
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         className="w-full"
-                                        value={item.hsn}
+                                        value={item.hsn as string}
                                         onChange={(e) => handleChange(index, "hsn", e.target.value)}
                                     />
                                 </TableCell>
@@ -129,32 +200,48 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                     <Input
                                         className="w-full"
                                         type="number"
-                                        value={item.qty}
+                                        min={0}
+                                        value={String(item.qty ?? "")}
                                         onChange={(e) => handleChange(index, "qty", e.target.value)}
+                                        onFocus={() => handleNumericFocus(index, "qty")}
+                                        onBlur={() => handleNumericBlur(index, "qty")}
+                                        onKeyDown={handleNumericKeyDown}
                                     />
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         className="w-full"
                                         type="number"
-                                        value={item.price}
+                                        min={0}
+                                        value={String(item.price ?? "")}
                                         onChange={(e) => handleChange(index, "price", e.target.value)}
+                                        onFocus={() => handleNumericFocus(index, "price")}
+                                        onBlur={() => handleNumericBlur(index, "price")}
+                                        onKeyDown={handleNumericKeyDown}
                                     />
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         className="w-full"
                                         type="number"
-                                        value={item.gst}
+                                        min={0}
+                                        value={String(item.gst ?? "")}
                                         onChange={(e) => handleChange(index, "gst", e.target.value)}
+                                        onFocus={() => handleNumericFocus(index, "gst")}
+                                        onBlur={() => handleNumericBlur(index, "gst")}
+                                        onKeyDown={handleNumericKeyDown}
                                     />
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         className="w-full"
                                         type="number"
-                                        value={item.discount}
+                                        min={0}
+                                        value={String(item.discount ?? "")}
                                         onChange={(e) => handleChange(index, "discount", e.target.value)}
+                                        onFocus={() => handleNumericFocus(index, "discount")}
+                                        onBlur={() => handleNumericBlur(index, "discount")}
+                                        onKeyDown={handleNumericKeyDown}
                                     />
                                 </TableCell>
                                 <TableCell className="text-right">

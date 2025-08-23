@@ -38,7 +38,7 @@ const CoreFeatures = () => {
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
               Core Features That Count
             </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-lg text-black/64 leading-relaxed">
               Every feature is made to make your invoicing process smooth, efficient, and stress-free whether you're a freelancer, startup, or growing company.
             </p>
           </div>
