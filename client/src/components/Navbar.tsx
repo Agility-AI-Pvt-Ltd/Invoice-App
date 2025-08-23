@@ -39,7 +39,7 @@ const NavbarUpdated = () => {
     { name: "Pricing", link: "#pricing-section" },
     { name: "FAQs", link: "#FAQsection" },
     { name: "Testimonials", link: "#tesimonialsection" },
-    { name: "Contact Us", link: "#contact" },
+    { name: "Contact Us", link: "/contact" },
   ];
 
   useEffect(() => {
@@ -88,12 +88,16 @@ const NavbarUpdated = () => {
       <Navbar>
         {/* Desktop View */}
         <NavBody>
-          <div className="flex items-center gap-3" onClick={() => scrollTo("top")}>
+          <div className="flex items-center gap-3" onClick={() => {
+            scrollTo("top")
+            navigate('/')
+          }}>
             <div className="w-12 h-10 rounded-lg overflow-hidden">
               <img
                 src="/agility.jpg"
                 alt="Agility Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover cursor-pointer"
+
               />
             </div>
             <div>
@@ -106,8 +110,16 @@ const NavbarUpdated = () => {
             items={navItems.map((item) => ({
               name: item.name,
               link: item.link,
+              onClick: () => {
+                if (item.link === "/contact") {
+                  navigate("/contact");
+                } else {
+                  scrollTo(item.link.replace("#", ""));
+                }
+              },
             }))}
           />
+
 
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
