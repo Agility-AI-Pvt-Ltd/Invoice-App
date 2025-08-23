@@ -1,3 +1,5 @@
+// FILE : client/src/components/expense-form/Step2Form.tsx
+
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,22 +19,27 @@ type Step2Props = {
     panNumber?: string;
   };
   onChange: (partial: Partial<any>) => void;
+  // errors from parent (e.g. { vendorName: "Vendor name is required." })
+  errors?: Record<string, string>;
 };
 
-export default function Step2Form({ data = {}, onChange }: Step2Props) {
+export default function Step2Form({ data = {}, onChange, errors = {} }: Step2Props) {
   return (
     <div className="w-full">
       <h3 className="font-semibold text-lg mb-8">Vendor Details</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
 
-        {/* Vendor Name */}
+        {/* Vendor Name (MANDATORY) */}
         <div className="relative flex flex-col">
           <Label
             htmlFor="vendorName"
             className="mb-2 text-sm font-medium text-gray-700"
           >
             Vendor Name
+            <span className="text-red-500 text-sm ml-1" aria-hidden>
+              *
+            </span>
           </Label>
           <Input
             id="vendorName"
@@ -40,11 +47,18 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 pr-10 text-sm placeholder:text-gray-400"
             value={data.vendorName || ""}
             onChange={(e) => onChange({ vendorName: e.target.value })}
+            aria-invalid={Boolean(errors?.vendorName)}
+            aria-describedby={errors?.vendorName ? "vendorName-error" : undefined}
           />
           <ChevronDown
             className="absolute right-3 top-[60%] -translate-y-1/2 text-muted-foreground pointer-events-none"
             size={18}
           />
+          {errors?.vendorName && (
+            <p id="vendorName-error" className="text-sm text-red-600 mt-1">
+              {errors.vendorName}
+            </p>
+          )}
         </div>
 
         {/* Business Name */}
@@ -61,20 +75,30 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 pr-10 text-sm placeholder:text-gray-400"
             value={data.businessName || ""}
             onChange={(e) => onChange({ businessName: e.target.value })}
+            aria-invalid={Boolean(errors?.businessName)}
+            aria-describedby={errors?.businessName ? "businessName-error" : undefined}
           />
           <ChevronDown
             className="absolute right-3 top-[60%] -translate-y-1/2 text-muted-foreground pointer-events-none"
             size={18}
           />
+          {errors?.businessName && (
+            <p id="businessName-error" className="text-sm text-red-600 mt-1">
+              {errors.businessName}
+            </p>
+          )}
         </div>
 
-        {/* Billing Address */}
+        {/* Billing Address (MANDATORY) */}
         <div className="flex flex-col">
           <Label
             htmlFor="billingAddress"
             className="mb-2 text-sm font-medium text-gray-700"
           >
             Billing Address
+            <span className="text-red-500 text-sm ml-1" aria-hidden>
+              *
+            </span>
           </Label>
           <Input
             id="billingAddress"
@@ -82,7 +106,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.billingAddress || ""}
             onChange={(e) => onChange({ billingAddress: e.target.value })}
+            aria-invalid={Boolean(errors?.billingAddress)}
+            aria-describedby={errors?.billingAddress ? "billingAddress-error" : undefined}
           />
+          {errors?.billingAddress && (
+            <p id="billingAddress-error" className="text-sm text-red-600 mt-1">
+              {errors.billingAddress}
+            </p>
+          )}
         </div>
 
         {/* Shipping Address */}
@@ -99,7 +130,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.shippingAddress || ""}
             onChange={(e) => onChange({ shippingAddress: e.target.value })}
+            aria-invalid={Boolean(errors?.shippingAddress)}
+            aria-describedby={errors?.shippingAddress ? "shippingAddress-error" : undefined}
           />
+          {errors?.shippingAddress && (
+            <p id="shippingAddress-error" className="text-sm text-red-600 mt-1">
+              {errors.shippingAddress}
+            </p>
+          )}
         </div>
 
         {/* Email */}
@@ -117,7 +155,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.email || ""}
             onChange={(e) => onChange({ email: e.target.value })}
+            aria-invalid={Boolean(errors?.email)}
+            aria-describedby={errors?.email ? "email-error" : undefined}
           />
+          {errors?.email && (
+            <p id="email-error" className="text-sm text-red-600 mt-1">
+              {errors.email}
+            </p>
+          )}
         </div>
 
         {/* Country */}
@@ -134,7 +179,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.country || ""}
             onChange={(e) => onChange({ country: e.target.value })}
+            aria-invalid={Boolean(errors?.country)}
+            aria-describedby={errors?.country ? "country-error" : undefined}
           />
+          {errors?.country && (
+            <p id="country-error" className="text-sm text-red-600 mt-1">
+              {errors.country}
+            </p>
+          )}
         </div>
 
         {/* Phone Number */}
@@ -151,7 +203,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.phoneNumber || ""}
             onChange={(e) => onChange({ phoneNumber: e.target.value })}
+            aria-invalid={Boolean(errors?.phoneNumber)}
+            aria-describedby={errors?.phoneNumber ? "phoneNumber-error" : undefined}
           />
+          {errors?.phoneNumber && (
+            <p id="phoneNumber-error" className="text-sm text-red-600 mt-1">
+              {errors.phoneNumber}
+            </p>
+          )}
         </div>
 
         {/* State */}
@@ -165,6 +224,8 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
           <Select
             value={data.state || ""}
             onValueChange={(value) => onChange({ state: value })}
+            aria-invalid={Boolean(errors?.state)}
+            aria-describedby={errors?.state ? "state-error" : undefined}
           >
             <SelectTrigger className="h-11 px-4 text-sm placeholder:text-gray-400 w-full">
               <SelectValue placeholder="Select a state" />
@@ -210,6 +271,11 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
               <SelectItem value="outside-india">OUTSIDE INDIA</SelectItem>
             </SelectContent>
           </Select>
+          {errors?.state && (
+            <p id="state-error" className="text-sm text-red-600 mt-1">
+              {errors.state}
+            </p>
+          )}
         </div>
 
         {/* GSTIN / Tax ID */}
@@ -226,7 +292,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.gstin || ""}
             onChange={(e) => onChange({ gstin: e.target.value })}
+            aria-invalid={Boolean(errors?.gstin)}
+            aria-describedby={errors?.gstin ? "gstin-error" : undefined}
           />
+          {errors?.gstin && (
+            <p id="gstin-error" className="text-sm text-red-600 mt-1">
+              {errors.gstin}
+            </p>
+          )}
         </div>
 
         {/* PAN Number */}
@@ -243,7 +316,14 @@ export default function Step2Form({ data = {}, onChange }: Step2Props) {
             className="h-11 px-4 text-sm placeholder:text-gray-400"
             value={data.panNumber || ""}
             onChange={(e) => onChange({ panNumber: e.target.value })}
+            aria-invalid={Boolean(errors?.panNumber)}
+            aria-describedby={errors?.panNumber ? "panNumber-error" : undefined}
           />
+          {errors?.panNumber && (
+            <p id="panNumber-error" className="text-sm text-red-600 mt-1">
+              {errors.panNumber}
+            </p>
+          )}
         </div>
       </div>
     </div>

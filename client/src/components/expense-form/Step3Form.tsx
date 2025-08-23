@@ -1,3 +1,5 @@
+// FILE : client/src/components/expense-form/Step3Form.tsx
+
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 // import { Label } from "@/components/ui/label";
@@ -27,22 +29,30 @@ type Item = {
 type Props = {
   items?: Item[];
   setItems?: (items: Item[]) => void;
+  // errors from parent: e.g. { "items[0].name": "Item name is required.", "items": "At least one item is required." }
+  errors?: Record<string, string>;
 };
 
-export default function Step3ItemTable({ items, setItems }: Props) {
+export default function Step3ItemTable({ items, setItems, errors = {} }: Props) {
     return (
         <div className="mt-6 space-y-4">
             <h3 className="rounded-md text-lg font-semibold bg-indigo-100 text-indigo-700 px-4 py-2 ">
                 Add Item Details
             </h3>
-            <AddItem items={items} setItems={setItems} />
+
+            {/* show general items error (e.g. "At least one item is required.") */}
+            {errors?.["items"] && (
+              <p className="text-sm text-red-600 px-4">{errors["items"]}</p>
+            )}
+
+            <AddItem items={items} setItems={setItems} errors={errors} />
         </div>
     );
 }
 
 
 
-export function AddItem({ items: externalItems, setItems: externalSetItems }: Props) {
+export function AddItem({ items: externalItems, setItems: externalSetItems, errors = {} }: Props) {
     // If parent provided items & setItems, use them. Otherwise fallback to local state for compatibility.
     const [localItems, setLocalItems] = useState<Item[]>([
         { id: Date.now(), name: "", hsn: "", qty: 0, price: 0, gst: 0, discount: 0 },
@@ -159,6 +169,11 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         return (base + gstAmt - discountAmt).toFixed(2);
     };
 
+    // helper to fetch possible error for a specific cell
+    const cellError = (index: number, field: string) => {
+      return errors?.[`items[${index}].${field}`] || "";
+    };
+
     return (
         <>
             {/* Responsive scroll container for table */}
@@ -167,10 +182,19 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                     <TableHeader>
                         <TableRow>
                             <TableHead>Serial No.</TableHead>
-                            <TableHead>Item Name</TableHead>
+                            <TableHead>
+                              Item Name
+                              <span className="text-red-500 text-sm ml-1" aria-hidden>*</span>
+                            </TableHead>
                             <TableHead>HSN Code</TableHead>
-                            <TableHead>Qty</TableHead>
-                            <TableHead>Price (₹)</TableHead>
+                            <TableHead>
+                              Qty
+                              <span className="text-red-500 text-sm ml-1" aria-hidden>*</span>
+                            </TableHead>
+                            <TableHead>
+                              Price (₹)
+                              <span className="text-red-500 text-sm ml-1" aria-hidden>*</span>
+                            </TableHead>
                             <TableHead>GST (%)</TableHead>
                             <TableHead>Discount (%)</TableHead>
                             <TableHead className="text-right">Gross Total</TableHead>
@@ -187,14 +211,24 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                         className="w-full"
                                         value={item.name as string}
                                         onChange={(e) => handleChange(index, "name", e.target.value)}
+                                        aria-invalid={Boolean(cellError(index, "name"))}
+                                        aria-describedby={cellError(index, "name") ? `items-${index}-name-error` : undefined}
                                     />
+                                    {cellError(index, "name") && (
+                                      <p id={`items-${index}-name-error`} className="text-sm text-red-600 mt-1">{cellError(index, "name")}</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         className="w-full"
                                         value={item.hsn as string}
                                         onChange={(e) => handleChange(index, "hsn", e.target.value)}
+                                        aria-invalid={Boolean(cellError(index, "hsn"))}
+                                        aria-describedby={cellError(index, "hsn") ? `items-${index}-hsn-error` : undefined}
                                     />
+                                    {cellError(index, "hsn") && (
+                                      <p id={`items-${index}-hsn-error`} className="text-sm text-red-600 mt-1">{cellError(index, "hsn")}</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Input
@@ -206,7 +240,12 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                         onFocus={() => handleNumericFocus(index, "qty")}
                                         onBlur={() => handleNumericBlur(index, "qty")}
                                         onKeyDown={handleNumericKeyDown}
+                                        aria-invalid={Boolean(cellError(index, "qty"))}
+                                        aria-describedby={cellError(index, "qty") ? `items-${index}-qty-error` : undefined}
                                     />
+                                    {cellError(index, "qty") && (
+                                      <p id={`items-${index}-qty-error`} className="text-sm text-red-600 mt-1">{cellError(index, "qty")}</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Input
@@ -218,7 +257,12 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                         onFocus={() => handleNumericFocus(index, "price")}
                                         onBlur={() => handleNumericBlur(index, "price")}
                                         onKeyDown={handleNumericKeyDown}
+                                        aria-invalid={Boolean(cellError(index, "price"))}
+                                        aria-describedby={cellError(index, "price") ? `items-${index}-price-error` : undefined}
                                     />
+                                    {cellError(index, "price") && (
+                                      <p id={`items-${index}-price-error`} className="text-sm text-red-600 mt-1">{cellError(index, "price")}</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Input
@@ -230,7 +274,12 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                         onFocus={() => handleNumericFocus(index, "gst")}
                                         onBlur={() => handleNumericBlur(index, "gst")}
                                         onKeyDown={handleNumericKeyDown}
+                                        aria-invalid={Boolean(cellError(index, "gst"))}
+                                        aria-describedby={cellError(index, "gst") ? `items-${index}-gst-error` : undefined}
                                     />
+                                    {cellError(index, "gst") && (
+                                      <p id={`items-${index}-gst-error`} className="text-sm text-red-600 mt-1">{cellError(index, "gst")}</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Input
@@ -242,7 +291,12 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                                         onFocus={() => handleNumericFocus(index, "discount")}
                                         onBlur={() => handleNumericBlur(index, "discount")}
                                         onKeyDown={handleNumericKeyDown}
+                                        aria-invalid={Boolean(cellError(index, "discount"))}
+                                        aria-describedby={cellError(index, "discount") ? `items-${index}-discount-error` : undefined}
                                     />
+                                    {cellError(index, "discount") && (
+                                      <p id={`items-${index}-discount-error`} className="text-sm text-red-600 mt-1">{cellError(index, "discount")}</p>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     ₹{calculateTotal(item)}
