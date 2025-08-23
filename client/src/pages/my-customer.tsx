@@ -42,6 +42,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
+
 const ITEMS_PER_PAGE = 10;
 
 export default function CustomerDashboard() {
@@ -57,6 +59,9 @@ export default function CustomerDashboard() {
 
   // file input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const location = useLocation(); // <-- ADDED
+  const navigate = useNavigate(); // <-- ADDED
 
   // ------------------ Fetch customers (extracted so we can call it from event handler) ------------------
   const fetchCustomers = useCallback(
@@ -86,6 +91,22 @@ export default function CustomerDashboard() {
   useEffect(() => {
     fetchCustomers(page);
   }, [page, fetchCustomers]);
+
+  // If navigated here with state.openAddCustomerForm -> open the add-customer form and clear history state.
+  useEffect(() => {
+    try {
+      const stateAny = (location && (location.state as any)) || {};
+      if (stateAny && stateAny.openAddCustomerForm) {
+        setShowAddCustomerForm(true);
+        // Clear navigation state so it doesn't re-trigger on refresh/back
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    } catch (err) {
+      // ignore
+    }
+    // run on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Listen for "customer:added" event and refetch (non-invasive)
   useEffect(() => {
@@ -181,8 +202,6 @@ export default function CustomerDashboard() {
       const details = [
         ["Last Invoice Date", customer.lastInvoice ?? "-"],
         ["Outstanding Balance", customer.balance ?? "-"],
-        // ["Customer ID", customer._id ?? "-"],
-        // ["User ID", customer.userId ?? "-"],
       ];
 
       // Check if autoTable is available, if not, fall back to basic PDF
@@ -613,20 +632,6 @@ export default function CustomerDashboard() {
                   <TableCell>{c.lastInvoice}</TableCell>
                   <TableCell className="font-semibold">{c.balance}</TableCell>
                   <TableCell className="flex gap-2">
-                    {/* <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 p-1"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 p-1 "
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button> */}
                     <Button
                       size="icon"
                       variant="outline"

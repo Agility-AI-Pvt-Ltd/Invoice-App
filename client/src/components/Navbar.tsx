@@ -39,7 +39,7 @@ const NavbarUpdated = () => {
     { name: "Pricing", link: "#pricing-section" },
     { name: "FAQs", link: "#FAQsection" },
     { name: "Testimonials", link: "#tesimonialsection" },
-    { name: "Contact Us", link: "#contact" },
+    { name: "About Us", link: "/about" },
   ];
 
   useEffect(() => {

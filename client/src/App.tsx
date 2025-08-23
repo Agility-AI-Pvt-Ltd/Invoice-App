@@ -18,6 +18,7 @@ import OTP from './pages/otp.tsx'
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserGuide from './pages/UserGuide.tsx'
 import Support from './pages/Support.tsx'
+import Contact from './pages/Contact.tsx'
 // import LoginPage from './pages/login.tsx'
 function App() {
 
@@ -31,6 +32,7 @@ function App() {
           <Route path='/privacy-policy' element={<PrivacyPolicy/>}/>
           <Route path='/userguide' element={<UserGuide/>}/>
           <Route path='/support' element={<Support/>}/>
+          <Route path='/contact' element={<Contact/>}/>
 
           <Route path='/login' element={<LoginPage/>}/>
           <Route path='/signup' element={<SignUpPage/>}/>

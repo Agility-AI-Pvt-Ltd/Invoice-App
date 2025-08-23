@@ -21,6 +21,7 @@ export type InvoiceModel = {
     email?: string;
     address?: string;
     state?: string;
+    gstin?: string;
     gst?: string;
     pan?: string;
     phone?: string;

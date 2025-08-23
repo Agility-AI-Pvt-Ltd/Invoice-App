@@ -1,4 +1,4 @@
-// client/src/components/InvoiceTables.tsx
+// FILE: client/src/components/InvoiceTables.tsx
 
 import { useState, useEffect } from "react";
 import { invoicesAPI } from "@/services/api/dashboard";
@@ -31,6 +31,7 @@ import Cookies from "js-cookie";
 import { getSalesData, type SalesRecord } from "@/services/api/sales";
 import autoTable from "jspdf-autotable";
 import jsPDF from "jspdf";
+import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
 
 interface InvoiceTableProps {
   selectedDate: Date;
@@ -74,6 +75,9 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
   const [isProcessingScannedImage, setIsProcessingScannedImage] = useState(false);
 
   const itemsPerPage = 10;
+
+  const location = useLocation(); // <-- ADDED
+  const navigate = useNavigate(); // <-- ADDED
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -141,6 +145,31 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
   useEffect(() => {
     fetchInvoices();
   }, [selectedDate, refreshFlag]);
+
+  // If navigated here with state.openSalesForm -> open the invoice form (Step 1) and clear history state.
+  useEffect(() => {
+    try {
+      const stateAny = (location && (location.state as any)) || {};
+      if (stateAny && stateAny.openSalesForm) {
+        // Clear any editing invoice (we're creating a new one)
+        if (setEditingInvoice) {
+          try {
+            // pass null so parent knows it's a new invoice
+            setEditingInvoice(null as any);
+          } catch (e) {
+            // ignore if parent doesn't like null
+          }
+        }
+        setIsInvoiceFormOpen(true);
+        // Remove the flag from history so it doesn't retrigger on refresh/back
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    } catch (err) {
+      // ignore silently
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Listen to global invoice events so updates/creates reflect immediately in table.
   useEffect(() => {
