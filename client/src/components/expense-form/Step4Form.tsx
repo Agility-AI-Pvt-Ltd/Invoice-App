@@ -7,10 +7,11 @@ type Item = {
   id?: number | string;
   name: string;
   hsn: string;
-  qty: number;
-  price: number;
-  gst: number;
-  discount: number;
+  // <- MATCH Step3Form: allow string while editing, or number when normalized
+  qty: number | string;
+  price: number | string;
+  gst: number | string;
+  discount: number | string;
 };
 
 type Props = {

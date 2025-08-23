@@ -17,14 +17,15 @@ type Props = {
   onCreated?: (created: any) => void; // optional callback after successful create
 };
 
+// ----- CHANGED: widen numeric fields to accept string during editing (compatible with Step3ItemTable) -----
 type Item = {
   id?: number | string;
   name: string;
   hsn: string;
-  qty: number;
-  price: number;
-  gst: number;
-  discount: number;
+  qty: number | string;
+  price: number | string;
+  gst: number | string;
+  discount: number | string;
 };
 
 type ExpenseFormShape = {
@@ -161,6 +162,7 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
             id: it.id ?? it._id ?? it.key ?? `${Date.now()}_${idx}`,
             name: it.name ?? it.description ?? it.item ?? "",
             hsn: it.hsn ?? it.code ?? "",
+            // keep numeric conversion to number here — numbers are assignable to number|string fields
             qty: Number(it.qty ?? it.quantity ?? 0),
             price: Number(it.price ?? it.rate ?? 0),
             gst: Number(it.gst ?? it.tax ?? 0),
