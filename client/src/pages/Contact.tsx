@@ -1,12 +1,12 @@
-import { Card, CardContent } from '@/components/ui/card';
+import BackgroundEffects from '@/components/BackgroundEffects';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from "react";
 import { MapPin, Phone, Mail, Globe } from "lucide-react";
 import { Input } from "@/components/ui/Input";
-import BackgroundEffects from "@/components/BackgroundEffects";
-const TermsOfService = () => {
+const Contact = () => {
     const [email, setEmail] = useState("");
 
     const handleSignUp = () => {
@@ -15,9 +15,9 @@ const TermsOfService = () => {
       setEmail("");
     };
   return (
-    <div className="min-h-screen relative">
-      
+    <div className="min-h-screen">
       <BackgroundEffects />
+      
       <section className="py-20 bg-background mt-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
@@ -31,40 +31,53 @@ const TermsOfService = () => {
           
           <div className="text-center mb-16">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-              <span className="bg-gradient-hero bg-clip-text text-Black">
-                Terms of Service
+              <span className="bg-gradient-hero bg-clip-text text-black">
+                User Guide
               </span>
             </h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Learn how to make the most of our platform with these helpful guides.
+            </p>
           </div>
 
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-8 space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Service Usage</h3>
-                <p className="text-muted-foreground">By using our service, you agree to use it responsibly and in accordance with all applicable laws and regulations.</p>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Account Responsibilities</h3>
-                <p className="text-muted-foreground">You are responsible for maintaining the security of your account and all activities that occur under your account.</p>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Service Availability</h3>
-                <p className="text-muted-foreground">We strive to maintain 99.9% uptime, but cannot guarantee uninterrupted service due to maintenance or unforeseen circumstances.</p>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Payment Terms</h3>
-                <p className="text-muted-foreground">All payments are processed securely and charged according to your selected plan. Refunds are available within 30 days of purchase.</p>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Intellectual Property</h3>
-                <p className="text-muted-foreground">All content and materials available on our platform are protected by intellectual property laws and remain our property.</p>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Termination</h3>
-                <p className="text-muted-foreground">We may terminate or suspend your account at any time for violations of these terms. You may also cancel your account at any time.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-8">
+            {[
+              { 
+                title: 'Getting Started', 
+                content: 'Learn the basics of setting up your account and getting your first project running. This comprehensive guide covers account creation, initial setup, and your first steps with our platform.' 
+              },
+              { 
+                title: 'Advanced Features', 
+                content: 'Discover powerful features that can help you work more efficiently and effectively. Explore automation tools, advanced integrations, and productivity enhancers.' 
+              },
+              { 
+                title: 'Best Practices', 
+                content: 'Follow our recommended approaches to get the most value from our platform. Learn from successful customers and industry experts about optimal workflows.' 
+              },
+              { 
+                title: 'Troubleshooting', 
+                content: 'Common issues and their solutions to help you resolve problems quickly. Find step-by-step solutions to frequent questions and technical challenges.' 
+              },
+              { 
+                title: 'API Documentation', 
+                content: 'Complete reference for developers looking to integrate with our platform. Includes code examples, authentication guides, and endpoint documentation.' 
+              },
+              { 
+                title: 'Security Guidelines', 
+                content: 'Best practices for keeping your account and data secure. Learn about two-factor authentication, password management, and security monitoring.' 
+              }
+            ].map((guide, index) => (
+              <Card key={index} className="border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-elegant transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-xl">{guide.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">{guide.content}</p>
+                  <Button variant="outline">Read Guide</Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
       
@@ -216,4 +229,4 @@ const TermsOfService = () => {
   );
 };
 
-export default TermsOfService;
+export default Contact;

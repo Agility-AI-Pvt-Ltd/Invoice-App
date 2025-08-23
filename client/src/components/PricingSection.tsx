@@ -1,5 +1,8 @@
+
+// File: client/src/components/PricingSection.tsx
+
 import { useState, useEffect, useRef } from "react";
-import { Check, X } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "./ui/card";
@@ -18,7 +21,7 @@ interface PricingPlan {
 
 const plans: PricingPlan[] = [
   {
-    name: "Starter (1 User + 1 Admin)",
+    name: "Starter",
     description: "Perfect plan to get started",
     monthlyPrice: "₹249",
     yearlyPrice: "₹2,499",
@@ -41,14 +44,13 @@ const plans: PricingPlan[] = [
     buttonText: "Get Your Free Plan",
   },
   {
-    name: "Premium (3 Users + 1 Admin)",
+    name: "Premium",
     description: "Perfect plan for professionals!",
     monthlyPrice: "₹349",
-    yearlyPrice: "₹3,499" ,
+    yearlyPrice: "₹3,499",
     explain: "For professional only! Start arranging your expenses with our best templates",
     highlights: ["Unlimited Invoices", "Income & Expense Tracking", "Invoice Scan (standard)", "GST-Compliant Invoices", "Automated Payment Reminders"],
     features: [
-      
       { name: "Recurring Invoices & Auto-Billing", included: true },
       { name: "Expense Categorization & Tags", included: true },
       { name: "100+ integrations", included: false },
@@ -63,7 +65,7 @@ const plans: PricingPlan[] = [
     buttonText: "Get Started",
   },
   {
-    name: "Diamond (5 Users: 2 Admin + 2 Manager + 1 Exec)",
+    name: "Diamond",
     description: "Best suits for great company!",
     monthlyPrice: "₹549",
     yearlyPrice: "₹5,499",
@@ -85,6 +87,7 @@ export default function PricingSection() {
   const [isYearly, setIsYearly] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [accessOpenIndex, setAccessOpenIndex] = useState<number | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -97,6 +100,12 @@ export default function PricingSection() {
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const accessMap: Record<string, string> = {
+    "Starter": "1 User + 1 Admin",
+    "Premium": "3 Users + 1 Admin",
+    "Diamond": "5 Users: 2 Admin + 2 Manager + 1 Exec",
+  };
 
   return (
     <section
@@ -132,11 +141,31 @@ export default function PricingSection() {
 
               {/* HEADER: name, description, price & short explain */}
               <div className="text-center mb-4">
-                <div className="flex items-center gap-2 mb-2 justify-center">
+                <div className="flex items-center gap-2 mb-2 justify-center relative">
                   <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-primary rounded-sm"></div>
                   </div>
+
+                  {/* Plan name */}
                   <h3 className="text-2xl font-bold text-black">{plan.name}</h3>
+
+                  {/* Access dropdown button - slightly to the right of the plan name */}
+                  <div className="ml-3 relative">
+                    <button
+                      onClick={() => setAccessOpenIndex(accessOpenIndex === index ? null : index)}
+                      className="text-sm bg-transparent/100"
+                      aria-expanded={accessOpenIndex === index}
+                      aria-haspopup="true"
+                    >
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </button>
+
+                    {accessOpenIndex === index && (
+                      <div className="absolute top-full mt-2 right-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-20">
+                        <div className="text-sm text-gray-800 font-medium">{accessMap[plan.name] ?? "—"}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <p className="text-gray-600 mb-3">{plan.description}</p>
 

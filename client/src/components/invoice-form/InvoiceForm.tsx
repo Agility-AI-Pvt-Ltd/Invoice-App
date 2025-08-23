@@ -52,6 +52,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       address: "",
       state: "",
       gst: "",
+      gstin:"",
       pan: "",
       phone: "",
     },
@@ -457,7 +458,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   };
 
   const handleSaveDraft = async () => {
-    await handleSave("draft");
+    console.log("Draft Save")
   };
 
   // Handler to open print preview modal

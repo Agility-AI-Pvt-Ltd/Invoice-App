@@ -258,8 +258,8 @@ const Aboutus = () => {
                 <ul className="space-y-3 text-gray-500">
                   <li><a href="/about" className="hover:text-black transition-colors">About Us</a></li>
 
-                  {/* <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                  {/* <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
                   <li><a href="#" className="hover:text-black transition-colors">Contact</a></li> */}
 
                 </ul>
