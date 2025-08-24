@@ -19,12 +19,21 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserGuide from './pages/UserGuide.tsx'
 import Support from './pages/Support.tsx'
 import ContactPage from './pages/Contact.tsx'
-// import LoginPage from './pages/login.tsx'
+
+// 🔹 new imports
+import GoogleTag from './GoogleTag.tsx'
+import AnalyticsRouter from './AnalyticsRouter.tsx'
+
 function App() {
 
   return (
     <ProfileProvider>
       <BrowserRouter>
+        {/* 🔹 inject Google Tag once for whole app */}
+        <GoogleTag />
+        {/* 🔹 track SPA route changes */}
+        <AnalyticsRouter />
+
         <Routes>
           <Route path='/' element={<Index/>}/>
           <Route path='/T&C' element={<TermsOfService />} />
