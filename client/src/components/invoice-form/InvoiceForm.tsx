@@ -1,4 +1,5 @@
 // client/src/components/invoice-form/InvoiceForm.tsx
+
 import { useEffect, useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";
@@ -86,31 +87,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     termsAndConditions: "",
   };
 
-  // use initialData if provided (edit mode) otherwise default
-  const [invoice, setInvoice] = useState<InvoiceModel>(initialData || defaultInvoice);
-  const [step, setStep] = useState(1);
-  const [saving, setSaving] = useState(false);
-
-  // new: state for print preview modal (holds sanitized invoice for preview)
-  const [previewInvoice, setPreviewInvoice] = useState<InvoiceModel | null>(null);
-
-  // Field-level inline errors mapping: fieldPath -> message
-  type FieldErrors = Record<string, string>;
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-
-  // If parent provides initialData later (e.g. via event) update local state
-  useEffect(() => {
-    if (initialData) {
-      // merge to avoid losing fields not present in initialData
-      setInvoice((prev) => ({ ...prev, ...initialData }));
-      setStep(1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData]);
-
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
-  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
-
+  /* define computeTotals BEFORE mergeWithDefaults to avoid temporal-dead-zone errors */
   const computeTotals = (inv: InvoiceModel) => {
     const items = inv.items || [];
     let subtotal = 0;
@@ -137,6 +114,173 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       total,
     };
   };
+
+  /* ---------- deep merge / normalize helper ----------
+     Ensures any incoming initialData is merged with defaults,
+     converts dates to YYYY-MM-DD, ensures nested objects/arrays exist,
+     and returns a complete InvoiceModel-shaped object.
+  */
+  const mergeWithDefaults = (data?: Partial<InvoiceModel>) => {
+    const safe = data ? { ...data } : {};
+    const out: any = { ...defaultInvoice };
+
+    // top-level shallow keys (use data if present)
+    Object.keys(defaultInvoice).forEach((k) => {
+      if ((safe as any)[k] !== undefined && (safe as any)[k] !== null) {
+        out[k] = (safe as any)[k];
+      }
+    });
+
+    // normalize dates -> YYYY-MM-DD for form inputs
+    if ((safe as any).date) {
+      try {
+        out.date = new Date((safe as any).date).toISOString().slice(0, 10);
+      } catch {
+        out.date = defaultInvoice.date;
+      }
+    }
+
+    if ((safe as any).dueDate) {
+      try {
+        out.dueDate = new Date((safe as any).dueDate).toISOString().slice(0, 10);
+      } catch {
+        out.dueDate = "";
+      }
+    }
+
+    // billFrom (seller) deep merge
+    out.billFrom = {
+      ...defaultInvoice.billFrom,
+      ...(safe as any).billFrom,
+      // sometimes seller info might be flattened in row (companyName/companyAddress)
+    };
+    // also accept flattened seller fields from passed data
+    if ((safe as any).sellerBusinessName) out.billFrom.businessName = (safe as any).sellerBusinessName;
+    if ((safe as any).sellerAddress) out.billFrom.address = (safe as any).sellerAddress;
+    if ((safe as any).sellerState) out.billFrom.state = (safe as any).sellerState;
+    if ((safe as any).sellerEmail) out.billFrom.email = (safe as any).sellerEmail;
+    if ((safe as any).sellerPhone) out.billFrom.phone = (safe as any).sellerPhone;
+    if ((safe as any).sellerGst) out.billFrom.gst = (safe as any).sellerGst;
+
+    // billTo (customer) deep merge
+    out.billTo = {
+      ...defaultInvoice.billTo,
+      ...(safe as any).billTo,
+    };
+    // accept flattened customer fields
+    if ((safe as any).customerName) out.billTo.name = (safe as any).customerName;
+    if ((safe as any).customerEmail) out.billTo.email = (safe as any).customerEmail;
+    if ((safe as any).customerPhone) out.billTo.phone = (safe as any).customerPhone;
+    if ((safe as any).customerAddress) out.billTo.address = (safe as any).customerAddress;
+    if ((safe as any).customerGst) out.billTo.gst = (safe as any).customerGst;
+    if ((safe as any).customerPan) out.billTo.pan = (safe as any).customerPan;
+    if ((safe as any).companyName && !out.billTo.name) out.billTo.companyName = (safe as any).companyName;
+
+    // shipTo
+    out.shipTo = {
+      ...(defaultInvoice.shipTo as any),
+      ...((safe as any).shipTo || {}),
+    };
+
+    // items: if provided, normalize each item to required shape; otherwise fallback to default item
+    if (Array.isArray((safe as any).items) && (safe as any).items.length > 0) {
+      out.items = (safe as any).items.map((it: any) => {
+        return {
+          description: it?.description ?? it?.product ?? "",
+          hsn: it?.hsn ?? "",
+          quantity: it?.quantity !== undefined ? Number(it.quantity) : 1,
+          unitPrice: it?.unitPrice !== undefined ? Number(it.unitPrice) : Number(it?.price ?? 0),
+          gst: it?.gst !== undefined ? Number(it.gst) : Number(it?.tax ?? 0),
+          discount: it?.discount !== undefined ? Number(it.discount) : 0,
+          amount:
+            it?.amount !== undefined
+              ? Number(it.amount)
+              : +( ( (it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0) ) ).toFixed(2),
+        };
+      });
+    } else {
+      // maybe the row contains single-item flattened fields
+      const possibleItem = {
+        description: (safe as any).product || (safe as any).description || "",
+        hsn: (safe as any).hsn || "",
+        quantity: (safe as any).quantity || 1,
+        unitPrice: (safe as any).unitPrice || (safe as any).price || 0,
+        gst: (safe as any).gst || 0,
+        discount: (safe as any).discount || 0,
+        amount: (safe as any).totalAmount || (safe as any).amount || 0,
+      };
+      // only use flattened item if any meaningful field present
+      const hasAny = Boolean(
+        possibleItem.description ||
+          possibleItem.hsn ||
+          possibleItem.unitPrice ||
+          possibleItem.amount ||
+          possibleItem.quantity > 1
+      );
+      out.items = hasAny ? [possibleItem] : defaultInvoice.items;
+    }
+
+    // totals and numeric fields
+    out.subtotal = (safe as any).subtotal ?? (safe as any).subtotalAmount ?? defaultInvoice.subtotal;
+    out.total = (safe as any).total ?? (safe as any).totalAmount ?? defaultInvoice.total;
+    out.cgst = (safe as any).cgst ?? defaultInvoice.cgst;
+    out.sgst = (safe as any).sgst ?? defaultInvoice.sgst;
+    out.igst = (safe as any).igst ?? defaultInvoice.igst;
+    out.currency = (safe as any).currency ?? defaultInvoice.currency;
+    out.status = (safe as any).status ?? (safe as any).paymentStatus ?? defaultInvoice.status;
+    out.notes = (safe as any).notes ?? defaultInvoice.notes;
+    out.termsAndConditions = (safe as any).termsAndConditions ?? defaultInvoice.termsAndConditions;
+
+    // keep any id fields
+    if ((safe as any)._id) out._id = (safe as any)._id;
+    if ((safe as any).id) out.id = (safe as any).id;
+
+    // ensure numbers are numbers on items
+    out.items = (out.items || []).map((it: any) => ({
+      ...it,
+      quantity: Number(it.quantity || 0),
+      unitPrice: Number(it.unitPrice || 0),
+      gst: Number(it.gst || 0),
+      discount: Number(it.discount || 0),
+      amount: Number(it.amount || 0),
+    }));
+
+    // compute final totals from items to keep consistent view (but allow prefilled totals if present)
+    const computedTotals = computeTotals(out);
+    // if incoming provided total/subtotal are falsy (0 or undefined), use computed; otherwise respect provided non-zero values
+    if (!out.subtotal || Number(out.subtotal) === 0) out.subtotal = computedTotals.subtotal;
+    if (!out.total || Number(out.total) === 0) out.total = computedTotals.total;
+    out.cgst = Number(out.cgst) || computedTotals.cgst;
+    out.sgst = Number(out.sgst) || computedTotals.sgst;
+    out.igst = Number(out.igst) || computedTotals.igst;
+
+    return out as InvoiceModel;
+  };
+
+  // use initialData if provided (edit mode) otherwise default
+  const [invoice, setInvoice] = useState<InvoiceModel>(mergeWithDefaults(initialData));
+  const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  // new: state for print preview modal (holds sanitized invoice for preview)
+  const [previewInvoice, setPreviewInvoice] = useState<InvoiceModel | null>(null);
+
+  // Field-level inline errors mapping: fieldPath -> message
+  type FieldErrors = Record<string, string>;
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  // If parent provides initialData later (e.g. via event) update local state
+  useEffect(() => {
+    if (initialData) {
+      const merged = mergeWithDefaults(initialData);
+      setInvoice(merged);
+      setStep(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
+
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
+  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   const recalcTotals = () => {
     setInvoice((prev) => {
@@ -269,87 +413,10 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
      validateInvoice returns array of ValidationError describing
      problems organized by step so user knows exactly what to fix.
   */
-  // const validateInvoice = (inv: InvoiceModel): ValidationError[] => {
-  //   const errors: ValidationError[] = [];
-
-  //   // Step 1: Invoice Details
-  //   if (!inv.date) {
-  //     errors.push({ step: 1, message: "Invoice date is required." });
-  //   } else {
-  //     const d = new Date(inv.date);
-  //     if (Number.isNaN(d.getTime())) {
-  //       errors.push({ step: 1, message: "Invoice date is invalid. Use YYYY-MM-DD." });
-  //     }
-  //   }
-
-  //   // Step 2: Seller (billFrom) required checks
-  //   const bFrom = (inv as any).billFrom || {};
-  //   if (!bFrom.businessName || String(bFrom.businessName).trim() === "") {
-  //     errors.push({ step: 2, message: "Seller business name is required." });
-  //   }
-  //   if (!bFrom.address || String(bFrom.address).trim() === "") {
-  //     errors.push({ step: 2, message: "Seller address is required." });
-  //   }
-  //   if (!bFrom.state || String(bFrom.state).trim() === "") {
-  //     errors.push({ step: 2, message: "Seller state is required." });
-  //   }
-  //   const bFromEmail = (bFrom.email || "").toString().trim();
-  //   const bFromPhone = (bFrom.phone || "").toString().trim();
-  //   if (!bFromEmail && !bFromPhone) {
-  //     errors.push({ step: 2, message: "Provide at least one seller contact: email or phone." });
-  //   } else if (bFromEmail && !isValidEmail(bFromEmail)) {
-  //     errors.push({ step: 2, message: "Seller email appears invalid." });
-  //   }
-
-  //   // Step 2: Party Details (billTo)
-  //   const name = inv.billTo?.name?.toString().trim();
-  //   const email = inv.billTo?.email?.toString().trim();
-  //   const phone = inv.billTo?.phone?.toString().trim();
-  //   if (!name) {
-  //     errors.push({ step: 2, message: "Customer name (Bill To) is required." });
-  //   }
-  //   if (!email && !phone) {
-  //     errors.push({ step: 2, message: "Provide at least one contact: customer email or phone." });
-  //   } else if (email && !isValidEmail(email)) {
-  //     errors.push({ step: 2, message: "Customer email appears invalid." });
-  //   }
-
-  //   // Step 3: Item Details
-  //   const items = inv.items || [];
-  //   if (!Array.isArray(items) || items.length === 0) {
-  //     errors.push({ step: 3, message: "At least one invoice item is required." });
-  //   } else {
-  //     items.forEach((it: any, idx: number) => {
-  //       const idxDisplay = idx + 1;
-  //       const desc = (it.description || "").toString().trim();
-  //       const qty = Number(it.quantity || 0);
-  //       const up = Number(it.unitPrice || 0);
-  //       if (!desc) {
-  //         errors.push({ step: 3, message: `Item ${idxDisplay}: description is required.` });
-  //       }
-  //       if (!(qty > 0)) {
-  //         errors.push({ step: 3, message: `Item ${idxDisplay}: quantity must be greater than 0.` });
-  //       }
-  //       if (Number.isNaN(up) || up < 0) {
-  //         errors.push({ step: 3, message: `Item ${idxDisplay}: unit price must be >= 0.` });
-  //       }
-  //     });
-  //   }
-
-  //   // Step 4: totals check (non-blocking - show warning if zero)
-  //   const totals = computeTotals(inv);
-  //   if ((totals.total || 0) <= 0) {
-  //     // show as an error because saving a zero-total invoice is often a mistake
-  //     errors.push({ step: 4, message: "Invoice total is zero. Confirm items/prices before saving." });
-  //   }
-
-  //   return errors;
-  // };
+  // (validation helpers kept unchanged)...
 
   const formatValidationErrors = (errs: ValidationError[]) => {
-    // group by step for a nicer message
     if (!errs || errs.length === 0) return "";
-    // sort by step
     errs.sort((a, b) => a.step - b.step);
     const grouped: Record<number, string[]> = {};
     errs.forEach((e) => {
@@ -366,7 +433,6 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     return lines.join("\n");
   };
 
-  /* Helper: convert ValidationError[] to fieldErrors map and set state */
   const setErrorsFromArray = (errs: ValidationError[]) => {
     const fe: FieldErrors = {};
     errs.forEach((e) => {
@@ -401,7 +467,6 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // client-side validation at field level
       const fieldLevelErrors = validateAllStepsFields(candidate);
       if (fieldLevelErrors.length > 0) {
-        // jump to the first step with an error to help user
         const firstStep = Math.min(...fieldLevelErrors.map((e) => e.step));
         setStep(firstStep);
         setErrorsFromArray(fieldLevelErrors);
@@ -458,11 +523,10 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     } catch (err: any) {
       console.error("Save invoice error:", err);
 
-      // --- NEW: robust server-side validation parsing & mapping to inline fields ---
+      // --- robust server-side validation parsing & mapping to inline fields ---
       const resp = err?.response?.data;
       const serverErrors: ValidationError[] = [];
 
-      // helper: map field name to step — now includes billFrom
       const fieldToStep = (fieldName: string | undefined) => {
         if (!fieldName) return 1;
         const f = String(fieldName);
@@ -473,10 +537,8 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         return 1;
       };
 
-      // Case 1: Fastify/AJV style error object (has 'validation' or 'validation' array OR 'message' plus details)
       if (resp && Array.isArray(resp.validation)) {
         resp.validation.forEach((it: any) => {
-          // try instancePath or loc
           let field: string | undefined;
           if (it.instancePath) {
             field = it.instancePath.replace(/^\//, "").replace(/\//g, ".");
@@ -488,17 +550,13 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
           const msg = it.message || it.msg || JSON.stringify(it);
           serverErrors.push({ step: fieldToStep(field), message: msg, field });
         });
-      }
-      // Case 2: express-validator / Joi / other: resp.errors array of { param, msg } or { message, path }
-      else if (resp && Array.isArray(resp.errors)) {
+      } else if (resp && Array.isArray(resp.errors)) {
         resp.errors.forEach((it: any) => {
           let field = it.param ?? (it.path && (Array.isArray(it.path) ? it.path.join(".") : it.path));
           const msg = it.msg ?? it.message ?? JSON.stringify(it);
           serverErrors.push({ step: fieldToStep(field), message: msg, field });
         });
-      }
-      // Case 3: resp.detail can be object mapping field->message or array of messages
-      else if (resp && resp.detail) {
+      } else if (resp && resp.detail) {
         if (Array.isArray(resp.detail)) {
           resp.detail.forEach((d: any) => {
             if (typeof d === "string") {
@@ -524,10 +582,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         } else if (typeof resp.detail === "string") {
           serverErrors.push({ step: 1, message: resp.detail });
         }
-      }
-      // Case 4: resp is an object of { field: message } or { errors: { field: msg } }
-      else if (resp && typeof resp === "object") {
-        // check for simple mapping
+      } else if (resp && typeof resp === "object") {
         const potentialFields = Object.keys(resp).filter(k => !["message","status","statusCode"].includes(k));
         if (potentialFields.length > 0) {
           potentialFields.forEach((k) => {
@@ -541,9 +596,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         }
       }
 
-      // Fallback: if we couldn't parse anything, fall back to generic message(s)
       if (serverErrors.length === 0) {
-        // try some common spots
         if (resp && resp.message) {
           serverErrors.push({ step: 1, message: resp.message });
         } else if (err?.message) {
@@ -553,7 +606,6 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         }
       }
 
-      // Convert serverErrors into fieldErrors map and set into context
       setFieldErrors((prev) => {
         const out: FieldErrors = { ...(prev || {}) };
         serverErrors.forEach((e) => {
@@ -563,18 +615,14 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         return out;
       });
 
-      // Jump to first step containing error
       const firstStep = Math.min(...serverErrors.map((s) => s.step || 1));
       setStep(firstStep);
 
-      // Friendly short alert (do not dump raw JSON)
       const shortMsgs = serverErrors.slice(0, 6).map((s, i) => `${i + 1}. ${s.message}${s.field ? ` (${s.field})` : ""}`);
       alert("Server validation failed. Fix the highlighted fields.\n\n" + shortMsgs.join("\n"));
 
-      // keep console with full server response for debugging
       console.info("Parsed server validation errors:", serverErrors);
       console.debug("Full server response (for debugging):", resp);
-
     } finally {
       setSaving(false);
     }
@@ -585,7 +633,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   };
 
   const handleSaveDraft = async () => {
-    console.log("Draft Save")
+    console.log("Draft Save");
   };
 
   // Handler to open print preview modal
@@ -610,18 +658,14 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     const errs = validateStepFields(step, candidate);
     if (errs.length > 0) {
       setErrorsFromArray(errs);
-      // Jump to same step (helps UX) — keep user on step with inline errors visible
       setStep(step);
       return;
     }
 
-    // clear errors for this step then advance
-    // remove any _step_x or fields belonging to this step
     setFieldErrors((prev) => {
       const copy = { ...prev };
       Object.keys(copy).forEach((k) => {
         if (k.startsWith("_step_") && k.includes(String(step))) delete copy[k];
-        // also remove fields that start with step-specific prefixes
         if (step === 1 && k === "date") delete copy[k];
         if (step === 2 && (k.startsWith("billTo") || k.startsWith("billFrom"))) delete copy[k];
         if (step === 3 && k.startsWith("items")) delete copy[k];
@@ -630,15 +674,12 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       return copy;
     });
 
-    // recalc totals (to keep main state in sync) and then go to next step
     recalcTotals();
     nextStep();
   };
 
   return (
     <InvoiceContext.Provider
-      // cast to any because context shape may be defined elsewhere;
-      // we intentionally add fieldErrors & helpers for step forms to consume.
       value={{
         invoice,
         setInvoice,
@@ -679,7 +720,6 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
             {step < 4 && (
               <button
                 onClick={() => {
-                  // validate current step before advancing
                   handleNext();
                 }}
                 className="w-full sm:w-auto px-6 py-2 bg-gradient-to-b from-purple-500 to-purple-700 text-white font-semibold rounded-md hover:opacity-90 transition duration-200"
@@ -698,7 +738,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
                   Save as Draft
                 </button>
                 <button
-                  onClick={handleOpenPrintPreview} // wired up to open preview
+                  onClick={handleOpenPrintPreview}
                   className="w-full sm:w-auto px-6 py-2 border-3 border-[#785FDA] text-gray-700 font-semibold rounded-md hover:bg-gray-100 transition duration-200"
                 >
                   Print Preview
@@ -716,7 +756,6 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         </div>
       </div>
 
-      {/* Render print preview modal when previewInvoice is set */}
       {previewInvoice && (
         <PrintPreview invoice={previewInvoice} onClose={handleClosePreview} />
       )}
@@ -738,7 +777,6 @@ function validateStepFields(s: number, inv: InvoiceModel): ValidationError[] {
       }
     }
   } else if (s === 2) {
-    // seller (billFrom) checks
     const bFrom: any = (inv as any).billFrom || {};
     if (!bFrom.businessName || String(bFrom.businessName).trim() === "") {
       errs.push({ step: 2, message: "Seller business name is required.", field: "billFrom.businessName" });
@@ -758,7 +796,6 @@ function validateStepFields(s: number, inv: InvoiceModel): ValidationError[] {
       errs.push({ step: 2, message: "Seller email appears invalid.", field: "billFrom.email" });
     }
 
-    // customer (billTo) checks
     const name = inv.billTo?.name?.toString().trim();
     const email = inv.billTo?.email?.toString().trim();
     const phone = inv.billTo?.phone?.toString().trim();

@@ -1,5 +1,4 @@
 // client/src/components/expense-form/ExpenseForm.tsx
-
 import { useEffect, useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";
@@ -85,6 +84,13 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
     },
     step4: {},
   });
+
+  // NEW: key to force remount of child step components when initialData changes.
+  const [formKey, setFormKey] = useState<string>(() => `form-${Date.now()}`);
+
+  // NEW: ensure we only render child forms after mapped data is applied,
+  // so uncontrolled inputs using defaultValue will get correct initial mount values.
+  const [initialized, setInitialized] = useState<boolean>(false);
 
   // Errors: per-step map of fieldPath -> message
   const [errors, setErrors] = useState<{
@@ -178,21 +184,43 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
   };
 
   useEffect(() => {
+    // reset initialized while mapping to avoid accidental child mount
+    setInitialized(false);
+
     if (initialData) {
       try {
-        setFormData((prev) => {
-          const mapped = mapInitialToForm(initialData);
-          return {
-            step1: { ...prev.step1, ...mapped.step1 },
-            step2: { ...prev.step2, ...mapped.step2 },
-            step3: { ...prev.step3, ...mapped.step3 },
-            step4: { ...prev.step4, ...mapped.step4 },
-          };
-        });
+        const mapped = mapInitialToForm(initialData);
+
+        // Merge with prev so we don't lose defaults (like items array) if mapped part is partial.
+        setFormData((prev) => ({
+          step1: { ...prev.step1, ...mapped.step1 },
+          step2: { ...prev.step2, ...mapped.step2 },
+          step3: { ...prev.step3, ...mapped.step3 },
+          step4: { ...prev.step4, ...mapped.step4 },
+        }));
+
+        // compute a stable-ish id for remount key (use existing ids if present)
+        const editId =
+          initialData?._id ?? initialData?.id ?? initialData?.expenseId ?? initialData?.invoice_id ?? Date.now();
+        setFormKey(`edit-${String(editId)}-${Date.now()}`);
+
+        // ensure child components mount only AFTER formData is set
         setStep(1);
+        // small microtask to ensure state applied (but setInitialized after setFormData above)
+        setTimeout(() => setInitialized(true), 0);
       } catch (err) {
         console.error("Failed to map initialData into form:", err);
+        setInitialized(true); // fallback - don't block rendering forever
       }
+    } else {
+      // If no initialData (creating new) ensure a fresh key so default inputs mount cleanly
+      setFormKey(`new-${Date.now()}`);
+      // ensure we render children for new form too
+      setFormData((prev) => ({
+        ...prev,
+        // keep defaults
+      }));
+      setTimeout(() => setInitialized(true), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
@@ -461,29 +489,37 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
       <StepIndicator currentStep={step} steps={steps} />
 
       <div className="mt-6">
-        {step === 1 && (
+        {/* NOTE: we pass key props derived from formKey so child components remount and
+            pick up initial/default values correctly (fixes edit-prefill issue). */}
+        {/* Also: render children only after we've applied mapped initial data (initialized === true)
+            so uncontrolled inputs using defaultValue mount with correct values. */}
+        {initialized && step === 1 && (
           <Step1Form
+            key={`${formKey}-s1`}
             data={formData.step1}
             onChange={(d) => updateStep("step1", { ...formData.step1, ...d })}
             errors={errors.step1}
           />
         )}
-        {step === 2 && (
+        {initialized && step === 2 && (
           <Step2Form
+            key={`${formKey}-s2`}
             data={formData.step2}
             onChange={(d) => updateStep("step2", { ...formData.step2, ...d })}
             errors={errors.step2}
           />
         )}
-        {step === 3 && (
+        {initialized && step === 3 && (
           <Step3Form
+            key={`${formKey}-s3`}
             items={formData.step3.items}
             setItems={setItems}
             errors={errors.step3}
           />
         )}
-        {step === 4 && (
+        {initialized && step === 4 && (
           <Step4Form
+            key={`${formKey}-s4`}
             items={formData.step3.items}
             setItems={setItems}
             data={formData.step4}
