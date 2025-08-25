@@ -19,7 +19,8 @@ export interface User {
   logoUrl: string;
   plan?: string;
   dateFormat: string;
-  PhoneNumber?: string
+  PhoneNumber?: string;
+  currency?: string;
 }
 export interface UserProfile {
   data: User;

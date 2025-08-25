@@ -36,28 +36,17 @@ export default function Step1Form({ data = {}, onChange }: Step1Props) {
         </div>
 
         {/* Invoice Number */}
-        <div className="flex flex-col space-y-1 relative">
+        <div className="flex flex-col space-y-1">
           <Label htmlFor="invoiceNumber" className="text-sm font-medium text-foreground">
             Invoice Number (Vendor's Bill)
           </Label>
-          <div className="relative">
-            <select
-              id="invoiceNumber"
-              className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-muted-foreground appearance-none w-full rounded-md"
-              value={data.invoiceNumber || ""}
-              onChange={(e) => onChange({ invoiceNumber: e.target.value })}
-            >
-              <option value="" disabled>
-                Select
-              </option>
-              <option value="inv001">INV001</option>
-              <option value="inv002">INV002</option>
-            </select>
-            <ChevronDown
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-              size={18}
-            />
-          </div>
+          <Input
+            id="invoiceNumber"
+            placeholder="Enter Invoice Number"
+            className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.invoiceNumber || ""}
+            onChange={(e) => onChange({ invoiceNumber: e.target.value })}
+          />
         </div>
 
         {/* Expense Date */}
