@@ -83,9 +83,44 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Maharashtra">Maharashtra</SelectItem>
-            <SelectItem value="Delhi">Delhi</SelectItem>
-            <SelectItem value="Karnataka">Karnataka</SelectItem>
+            <SelectItem value="jammu-and-kashmir">01 - JAMMU AND KASHMIR</SelectItem>
+            <SelectItem value="himachal-pradesh">02 - HIMACHAL PRADESH</SelectItem>
+            <SelectItem value="punjab">03 - PUNJAB</SelectItem>
+            <SelectItem value="chandigarh">04 - CHANDIGARH</SelectItem>
+            <SelectItem value="uttarakhand">05 - UTTARAKHAND</SelectItem>
+            <SelectItem value="haryana">06 - HARYANA</SelectItem>
+            <SelectItem value="delhi">07 - DELHI</SelectItem>
+            <SelectItem value="rajasthan">08 - RAJASTHAN</SelectItem>
+            <SelectItem value="uttar-pradesh">09 - UTTAR PRADESH</SelectItem>
+            <SelectItem value="bihar">10 - BIHAR</SelectItem>
+            <SelectItem value="sikkim">11 - SIKKIM</SelectItem>
+            <SelectItem value="arunachal-pradesh">12 - ARUNACHAL PRADESH</SelectItem>
+            <SelectItem value="nagaland">13 - NAGALAND</SelectItem>
+            <SelectItem value="manipur">14 - MANIPUR</SelectItem>
+            <SelectItem value="mizoram">15 - MIZORAM</SelectItem>
+            <SelectItem value="tripura">16 - TRIPURA</SelectItem>
+            <SelectItem value="meghalaya">17 - MEGHALAYA</SelectItem>
+            <SelectItem value="assam">18 - ASSAM</SelectItem>
+            <SelectItem value="west-bengal">19 - WEST BENGAL</SelectItem>
+            <SelectItem value="jharkhand">20 - JHARKHAND</SelectItem>
+            <SelectItem value="odisha">21 - ODISHA</SelectItem>
+            <SelectItem value="chattisgarh">22 - CHATTISGARH</SelectItem>
+            <SelectItem value="madhya-pradesh">23 - MADHYA PRADESH</SelectItem>
+            <SelectItem value="gujarat">24 - GUJARAT</SelectItem>
+            <SelectItem value="dadra-nagar-haveli-daman-diu">26* - DADRA AND NAGAR HAVELI AND DAMAN AND DIU NEWLY MERGED UT</SelectItem>
+            <SelectItem value="maharashtra">27 - MAHARASHTRA</SelectItem>
+            <SelectItem value="andhra-pradesh-before-division">28 - ANDHRA PRADESH BEFORE DIVISION</SelectItem>
+            <SelectItem value="karnataka">29 - KARNATAKA</SelectItem>
+            <SelectItem value="goa">30 - GOA</SelectItem>
+            <SelectItem value="lakshadweep">31 - LAKSHADWEEP</SelectItem>
+            <SelectItem value="kerala">32 - KERALA</SelectItem>
+            <SelectItem value="tamil-nadu">33 - TAMIL NADU</SelectItem>
+            <SelectItem value="puducherry">34 - PUDUCHERRY</SelectItem>
+            <SelectItem value="andaman-nicobar">35 - ANDAMAN AND NICOBAR ISLANDS</SelectItem>
+            <SelectItem value="telangana">36 - TELANGANA</SelectItem>
+            <SelectItem value="andhra-pradesh-new">37 - ANDHRA PRADESH NEWLY ADDED</SelectItem>
+            <SelectItem value="ladakh">38 - LADAKH NEWLY ADDED</SelectItem>
+            <SelectItem value="outside-india">OUTSIDE INDIA</SelectItem>
           </SelectContent>
         </Select>
       </div>

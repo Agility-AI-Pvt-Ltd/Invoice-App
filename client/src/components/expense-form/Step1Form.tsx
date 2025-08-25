@@ -47,10 +47,19 @@ export default function Step1Form({ data = {}, onChange, errors = {} }: Step1Pro
         </div>
 
         {/* Invoice Number */}
-        <div className="flex flex-col space-y-1 relative">
+        <div className="flex flex-col space-y-1">
           <Label htmlFor="invoiceNumber" className="text-sm font-medium text-foreground">
             Invoice Number (Vendor's Bill)
           </Label>
+
+          <Input
+            id="invoiceNumber"
+            placeholder="Enter Invoice Number"
+            className="h-11 px-3 text-sm placeholder:text-muted-foreground"
+            value={data.invoiceNumber || ""}
+            onChange={(e) => onChange({ invoiceNumber: e.target.value })}
+          />
+
           <div className="relative">
             <select
               id="invoiceNumber"
@@ -76,6 +85,7 @@ export default function Step1Form({ data = {}, onChange, errors = {} }: Step1Pro
               {errors.invoiceNumber}
             </p>
           )}
+
         </div>
 
         {/* Expense Date (MANDATORY) */}

@@ -29,6 +29,9 @@ export default function Settings() {
 
   // 🔹 UI Message state
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  // 🔹 Password-specific message state
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // 🔹 Original data to compare against for changes
   const [originalData, setOriginalData] = useState({
@@ -65,6 +68,11 @@ export default function Settings() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // 🔹 Function to clear password message
+  const clearPasswordMessage = () => {
+    setPasswordMessage(null);
+  };
 
   // 🔹 Check if form has changes
   const hasChanges = () => {
@@ -134,6 +142,16 @@ export default function Settings() {
     fetchUserProfile();
   }, [toast]);
 
+  // 🔹 Auto-clear password success messages after 5 seconds
+  useEffect(() => {
+    if (passwordMessage?.type === "success") {
+      const timer = setTimeout(() => {
+        setPasswordMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [passwordMessage]);
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -175,7 +193,7 @@ export default function Settings() {
         description: "New password and confirm password do not match",
         variant: "destructive",
       });
-      setMessage({ type: "error", text: "New password and confirm password do not match" });
+      setPasswordMessage({ type: "error", text: "New password and confirm password do not match" });
       return;
     }
 
@@ -185,7 +203,7 @@ export default function Settings() {
         description: "New password must be at least 8 characters long",
         variant: "destructive",
       });
-      setMessage({ type: "error", text: "New password must be at least 8 characters long" });
+      setPasswordMessage({ type: "error", text: "New password must be at least 8 characters long" });
       return;
     }
 
@@ -200,7 +218,7 @@ export default function Settings() {
         title: "Success",
         description: "Password changed successfully",
       });
-      setMessage({ type: "success", text: "Password changed successfully" });
+      setPasswordMessage({ type: "success", text: "Password changed successfully" });
 
       setPasswordData({
         currentPassword: "",
@@ -215,7 +233,7 @@ export default function Settings() {
         description: errorMessage,
         variant: "destructive",
       });
-      setMessage({ type: "error", text: errorMessage });
+      setPasswordMessage({ type: "error", text: errorMessage });
     }
   };
 
@@ -596,7 +614,10 @@ export default function Settings() {
                     placeholder="Current Password"
                     className="bg-background border-input"
                     value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }));
+                      clearPasswordMessage();
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -609,7 +630,10 @@ export default function Settings() {
                     placeholder="New Password"
                     className="bg-background border-input"
                     value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, newPassword: e.target.value }));
+                      clearPasswordMessage();
+                    }}
                   />
                 </div>
               </div>
@@ -624,7 +648,10 @@ export default function Settings() {
                     placeholder="Confirm Password"
                     className="bg-background border-input"
                     value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                      clearPasswordMessage();
+                    }}
                   />
                 </div>
                 <div className="flex items-end">
@@ -642,6 +669,16 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+              {passwordMessage && (
+                <div
+                  className={`mt-4 p-3 rounded-md text-sm font-medium ${passwordMessage.type === "success"
+                    ? "bg-green-100 text-green-700 border border-green-400"
+                    : "bg-red-100 text-red-700 border border-red-400"
+                    }`}
+                >
+                  {passwordMessage.text}
+                </div>
+              )}
             </div>
           </Card>
         </div>
