@@ -1,5 +1,4 @@
 // client/src/components/expense-form/ExpenseForm.tsx
-
 import { useEffect, useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";
@@ -12,19 +11,19 @@ import Cookies from "js-cookie"; // ✅ use js-cookie like InvoiceForm
 
 type Props = {
   onCancel: () => void;
-  initialData?: any; // optional: provide an expense object to open form in edit mode
-  onSaved?: (updated: any) => void; // optional callback after successful update
-  onCreated?: (created: any) => void; // optional callback after successful create
+  initialData?: any;
+  onSaved?: (updated: any) => void;
+  onCreated?: (created: any) => void;
 };
 
 type Item = {
   id?: number | string;
   name: string;
   hsn: string;
-  qty: number;
-  price: number;
-  gst: number;
-  discount: number;
+  qty: number | string;
+  price: number | string;
+  gst: number | string;
+  discount: number | string;
 };
 
 type ExpenseFormShape = {
@@ -63,7 +62,7 @@ type ExpenseFormShape = {
     shipping?: number;
     total?: number;
   };
-}
+};
 
 const steps = [
   { label: "Expense Information", icon: Pin },
@@ -86,10 +85,28 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
     step4: {},
   });
 
-  // whether the form is editing an existing expense
+  // NEW: key to force remount of child step components when initialData changes.
+  const [formKey, setFormKey] = useState<string>(() => `form-${Date.now()}`);
+
+  // NEW: ensure we only render child forms after mapped data is applied,
+  // so uncontrolled inputs using defaultValue will get correct initial mount values.
+  const [initialized, setInitialized] = useState<boolean>(false);
+
+  // Errors: per-step map of fieldPath -> message
+  const [errors, setErrors] = useState<{
+    step1: Record<string, string>;
+    step2: Record<string, string>;
+    step3: Record<string, string>;
+    step4: Record<string, string>;
+  }>({
+    step1: {},
+    step2: {},
+    step3: {},
+    step4: {},
+  });
+
   const isEdit = Boolean(initialData);
 
-  // Map incoming initialData to form shape (best-effort)
   const mapInitialToForm = (data: any): ExpenseFormShape => {
     const s1Source = data?.step1 ?? {};
     const s2Source = data?.step2 ?? {};
@@ -107,24 +124,12 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
 
     const step1 = {
       expenseNumber:
-        s1Source.expenseNumber ??
-        data.expenseNumber ??
-        data.expense_number ??
-        s1Source.reference ??
-        undefined,
+        s1Source.expenseNumber ?? data.expenseNumber ?? data.expense_number ?? s1Source.reference ?? undefined,
       invoiceNumber: s1Source.invoiceNumber ?? data.invoiceNumber ?? undefined,
       expenseDate:
-        s1Source.expenseDate ??
-        data.expenseDate ??
-        data.expense_date ??
-        safeIsoDate(data.date) ??
-        undefined,
+        s1Source.expenseDate ?? data.expenseDate ?? data.expense_date ?? safeIsoDate(data.date) ?? undefined,
       dueDate:
-        s1Source.dueDate ??
-        data.dueDate ??
-        data.due_date ??
-        safeIsoDate(data.dueDate) ??
-        undefined,
+        s1Source.dueDate ?? data.dueDate ?? data.due_date ?? safeIsoDate(data.dueDate) ?? undefined,
       paymentMethod: s1Source.paymentMethod ?? data.paymentMethod ?? undefined,
       currency: s1Source.currency ?? data.currency ?? undefined,
       status: s1Source.status ?? data.status ?? undefined,
@@ -144,14 +149,8 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
       panNumber: s2Source.panNumber ?? data.panNumber ?? undefined,
     };
 
-    // items: try common shapes
     const itemsCandidate =
-      s3Source.items ??
-      data.items ??
-      data.line_items ??
-      data.itemsList ??
-      (Array.isArray(data.items) ? data.items : undefined) ??
-      [];
+      s3Source.items ?? data.items ?? data.line_items ?? data.itemsList ?? (Array.isArray(data.items) ? data.items : undefined) ?? [];
 
     const itemsList: any[] = Array.isArray(itemsCandidate) ? itemsCandidate : [];
 
@@ -185,30 +184,121 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
   };
 
   useEffect(() => {
+    // reset initialized while mapping to avoid accidental child mount
+    setInitialized(false);
+
     if (initialData) {
       try {
-        setFormData((prev) => {
-          const mapped = mapInitialToForm(initialData);
-          return {
-            step1: { ...prev.step1, ...mapped.step1 },
-            step2: { ...prev.step2, ...mapped.step2 },
-            step3: { ...prev.step3, ...mapped.step3 },
-            step4: { ...prev.step4, ...mapped.step4 },
-          };
-        });
+        const mapped = mapInitialToForm(initialData);
+
+        // Merge with prev so we don't lose defaults (like items array) if mapped part is partial.
+        setFormData((prev) => ({
+          step1: { ...prev.step1, ...mapped.step1 },
+          step2: { ...prev.step2, ...mapped.step2 },
+          step3: { ...prev.step3, ...mapped.step3 },
+          step4: { ...prev.step4, ...mapped.step4 },
+        }));
+
+        // compute a stable-ish id for remount key (use existing ids if present)
+        const editId =
+          initialData?._id ?? initialData?.id ?? initialData?.expenseId ?? initialData?.invoice_id ?? Date.now();
+        setFormKey(`edit-${String(editId)}-${Date.now()}`);
+
+        // ensure child components mount only AFTER formData is set
         setStep(1);
+        // small microtask to ensure state applied (but setInitialized after setFormData above)
+        setTimeout(() => setInitialized(true), 0);
       } catch (err) {
         console.error("Failed to map initialData into form:", err);
+        setInitialized(true); // fallback - don't block rendering forever
       }
+    } else {
+      // If no initialData (creating new) ensure a fresh key so default inputs mount cleanly
+      setFormKey(`new-${Date.now()}`);
+      // ensure we render children for new form too
+      setFormData((prev) => ({
+        ...prev,
+        // keep defaults
+      }));
+      setTimeout(() => setInitialized(true), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
-  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+  // ---------------- Validation helpers ----------------
+
+  // each validator returns a map of fieldPath -> message (e.g. { expenseDate: "required", "items[0].name": "required" })
+  const validateStep1 = (data: ExpenseFormShape["step1"]) => {
+    const e: Record<string, string> = {};
+    // Minimal sensible required fields (adjust later if you want different rules)
+    if (!data?.expenseDate) e.expenseDate = "Expense date is required.";
+    if (!data?.paymentMethod) e.paymentMethod = "Payment method is required.";
+    // currency optional in many flows; comment/remove above if not desired
+    return e;
+  };
+
+  const validateStep2 = (data: ExpenseFormShape["step2"]) => {
+    const e: Record<string, string> = {};
+    if (!data?.vendorName) e.vendorName = "Vendor name is required.";
+    if (!data?.billingAddress) e.billingAddress = "Billing address is required.";
+    return e;
+  };
+
+  const validateStep3 = (data: ExpenseFormShape["step3"]) => {
+    const e: Record<string, string> = {};
+    if (!data?.items || data.items.length === 0) {
+      e["items"] = "At least one item is required.";
+      return e;
+    }
+    data.items.forEach((it, idx) => {
+      if (!it.name || (typeof it.name === "string" && it.name.trim() === "")) {
+        e[`items[${idx}].name`] = "Item name is required.";
+      }
+      // treat numeric strings too
+      const qty = Number(it.qty);
+      if (isNaN(qty) || qty <= 0) {
+        e[`items[${idx}].qty`] = "Quantity must be greater than 0.";
+      }
+      const price = Number(it.price);
+      if (isNaN(price) || price < 0) {
+        e[`items[${idx}].price`] = "Price must be a number (≥ 0).";
+      }
+    });
+    return e;
+  };
+
+  const validateStep4 = (data: ExpenseFormShape["step4"]) => {
+    const e: Record<string, string> = {};
+    // step4 is typically computed; we'll keep it light — require total if present but non-negative
+    if (data?.total !== undefined) {
+      const t = Number(data.total);
+      if (isNaN(t) || t < 0) e.total = "Total must be a valid non-negative number.";
+    }
+    return e;
+  };
+
+  const validateByStepKey = (stepKey: keyof ExpenseFormShape, value: any) => {
+    switch (stepKey) {
+      case "step1":
+        return validateStep1(value);
+      case "step2":
+        return validateStep2(value);
+      case "step3":
+        return validateStep3(value);
+      case "step4":
+        return validateStep4(value);
+      default:
+        return {};
+    }
+  };
+
+  // --------- update & step navigation with validation ---------
 
   const updateStep = <T extends keyof ExpenseFormShape>(stepKey: T, value: ExpenseFormShape[T]) => {
     setFormData((prev) => ({ ...prev, [stepKey]: value }));
+    // live-validate this step and set/clear errors for it
+    const newErrors = validateByStepKey(stepKey, value) as Record<string, string>;
+    setErrors((prev) => ({ ...prev, [stepKey]: newErrors }));
   };
 
   const setItems = (items: Item[]) => {
@@ -219,12 +309,55 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
     try {
       window.dispatchEvent(new CustomEvent(eventName, { detail: payload }));
     } catch (err) {
-      // ignore dispatch errors
       console.warn("Event dispatch failed", eventName, err);
     }
   };
 
+  const nextStep = () => {
+    // validate current step
+    const currentKey = `step${step}` as keyof ExpenseFormShape;
+    const currentValue = formData[currentKey];
+    const validation = validateByStepKey(currentKey, currentValue);
+
+    setErrors((prev) => ({ ...prev, [currentKey]: validation }));
+
+    const hasErrors = Object.keys(validation).length > 0;
+    if (hasErrors) {
+      // do not advance; keep user on same step to fix inline errors
+      return;
+    }
+    setStep((prev) => Math.min(prev + 1, 4));
+  };
+
+  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+
+  // Helper: validate entire form and return errors-per-step
+  const validateAllSteps = () => {
+    const s1 = validateStep1(formData.step1);
+    const s2 = validateStep2(formData.step2);
+    const s3 = validateStep3(formData.step3);
+    const s4 = validateStep4(formData.step4);
+    return { step1: s1, step2: s2, step3: s3, step4: s4 };
+  };
+
+  // on Save: validate all steps; if any errors, jump to first invalid step and set errors
   const handleSaveAndSend = async () => {
+    // validate
+    const allErrors = validateAllSteps();
+    setErrors(allErrors);
+
+    const firstInvalidStep = [allErrors.step1, allErrors.step2, allErrors.step3, allErrors.step4].findIndex(
+      (obj) => Object.keys(obj).length > 0
+    );
+
+    if (firstInvalidStep !== -1) {
+      // steps are 0-indexed in array, but actual step numbers start at 1
+      setStep(firstInvalidStep + 1);
+      // do not submit
+      return;
+    }
+
+    // no validation errors — proceed with existing save flow
     try {
       const payload: any = JSON.parse(JSON.stringify(formData));
 
@@ -238,7 +371,6 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
         if (!isNaN(d2.getTime())) payload.step1.dueDate = d2.toISOString();
       }
 
-      // token handling same as InvoiceForm
       const cookieToken =
         Cookies.get("token") ||
         Cookies.get("authToken") ||
@@ -256,7 +388,6 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
       }
 
       if (isEdit) {
-        // determine id of resource (support different server shapes)
         const id =
           initialData?._id ??
           initialData?.id ??
@@ -276,7 +407,6 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
         if ((res?.status === 200 || res?.status === 204) && (res?.data || res?.status === 204)) {
           const updated = res.data ?? payload;
 
-          // Prefer parent-provided callback. Only fallback to global event if parent did not supply onSaved.
           if (onSaved) {
             try {
               onSaved(updated);
@@ -293,14 +423,12 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
           alert("❌ Failed to update expense. Please try again.");
         }
       } else {
-        // create new expense
         const res = await axios.post(`${API_BASE}/api/expenses`, payload, axiosConfig);
         console.log("Expense created response:", res);
 
         if ((res?.status === 201 || res?.status === 200) && res?.data) {
           const created = res.data ?? payload;
 
-          // Prefer parent-provided callback. Only fallback to global event if parent did not supply onCreated.
           if (onCreated) {
             try {
               onCreated(created);
@@ -325,7 +453,6 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
       if (err?.response) {
         const status = err.response.status;
 
-        // Custom messages by status code
         switch (status) {
           case 400:
             userMessage = "⚠️ Invalid data. Please check the form and try again.";
@@ -344,7 +471,6 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
             break;
         }
 
-        // If backend sends specific error detail
         const detail =
           err.response.data?.detail || err.response.data?.message || err.response.data?.error || undefined;
         if (detail) {
@@ -363,25 +489,42 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
       <StepIndicator currentStep={step} steps={steps} />
 
       <div className="mt-6">
-        {step === 1 && (
+        {/* NOTE: we pass key props derived from formKey so child components remount and
+            pick up initial/default values correctly (fixes edit-prefill issue). */}
+        {/* Also: render children only after we've applied mapped initial data (initialized === true)
+            so uncontrolled inputs using defaultValue mount with correct values. */}
+        {initialized && step === 1 && (
           <Step1Form
+            key={`${formKey}-s1`}
             data={formData.step1}
             onChange={(d) => updateStep("step1", { ...formData.step1, ...d })}
+            errors={errors.step1}
           />
         )}
-        {step === 2 && (
+        {initialized && step === 2 && (
           <Step2Form
+            key={`${formKey}-s2`}
             data={formData.step2}
             onChange={(d) => updateStep("step2", { ...formData.step2, ...d })}
+            errors={errors.step2}
           />
         )}
-        {step === 3 && <Step3Form items={formData.step3.items} setItems={setItems} />}
-        {step === 4 && (
+        {initialized && step === 3 && (
+          <Step3Form
+            key={`${formKey}-s3`}
+            items={formData.step3.items}
+            setItems={setItems}
+            errors={errors.step3}
+          />
+        )}
+        {initialized && step === 4 && (
           <Step4Form
+            key={`${formKey}-s4`}
             items={formData.step3.items}
             setItems={setItems}
             data={formData.step4}
             onChange={(d) => updateStep("step4", { ...formData.step4, ...d })}
+            errors={errors.step4}
           />
         )}
       </div>
@@ -395,7 +538,7 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
         </button>
 
         <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full sm:w-auto">
-          {step > 1 && step < 4 && (
+          {step > 1 && step <= 4 && (
             <button
               onClick={prevStep}
               className="w-full sm:w-auto px-6 py-2 border-2 border-purple-700 text-purple-700 font-semibold rounded-md hover:bg-purple-50 transition duration-200"

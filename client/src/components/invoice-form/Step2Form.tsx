@@ -214,6 +214,8 @@
 
 
 
+// FILE : client/src/components/invoice-form/Step2Form.tsx
+
 import { useContext } from "react";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
@@ -223,6 +225,18 @@ import { InvoiceContext } from "@/contexts/InvoiceContext";
 export default function Step2Form() {
   const ctx = useContext(InvoiceContext) as any | undefined;
   const invoice = ctx?.invoice ?? {};
+  const fieldErrors = ctx?.fieldErrors ?? {};
+
+  const clearField = (path: string) => {
+    if (!ctx) return;
+    if (typeof ctx.clearFieldError === "function") ctx.clearFieldError(path);
+    else if (typeof ctx.setFieldErrors === "function")
+      ctx.setFieldErrors((prev: any) => {
+        const copy = { ...(prev || {}) };
+        delete copy[path];
+        return copy;
+      });
+  };
 
   const setBillFromField = (key: string, value: any) => {
     if (!ctx) return;
@@ -230,6 +244,8 @@ export default function Step2Form() {
       ...prev,
       billFrom: { ...(prev.billFrom || {}), [key]: value },
     }));
+    // clear inline error for this field path if present
+    clearField(`billFrom.${key}`);
   };
 
   const setBillToField = (key: string, value: any) => {
@@ -238,6 +254,8 @@ export default function Step2Form() {
       ...prev,
       billTo: { ...(prev.billTo || {}), [key]: value },
     }));
+    // clear inline error for this field path if present
+    clearField(`billTo.${key}`);
   };
 
   return (
@@ -259,11 +277,15 @@ export default function Step2Form() {
               value={invoice.billFrom?.businessName ?? ""}
               onChange={(e) => setBillFromField("businessName", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billFrom.businessName"]}
             />
             <ChevronDown
               className="absolute right-3 top-[55%] -translate-y-1/2 text-muted-foreground pointer-events-none"
               size={18}
             />
+            {fieldErrors["billFrom.businessName"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.businessName"]}</p>
+            )}
           </div>
 
           {/* Business Address */}
@@ -278,7 +300,11 @@ export default function Step2Form() {
               value={invoice.billFrom?.address ?? ""}
               onChange={(e) => setBillFromField("address", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billFrom.address"]}
             />
+            {fieldErrors["billFrom.address"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.address"]}</p>
+            )}
           </div>
 
           {/* State */}
@@ -293,11 +319,15 @@ export default function Step2Form() {
               value={invoice.billFrom?.state ?? ""}
               onChange={(e) => setBillFromField("state", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billFrom.state"]}
             />
             <ChevronDown
               className="absolute right-3 top-[55%] -translate-y-1/2 text-muted-foreground pointer-events-none"
               size={18}
             />
+            {fieldErrors["billFrom.state"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.state"]}</p>
+            )}
           </div>
 
           {/* Email */}
@@ -313,7 +343,11 @@ export default function Step2Form() {
               value={invoice.billFrom?.email ?? ""}
               onChange={(e) => setBillFromField("email", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billFrom.email"]}
             />
+            {fieldErrors["billFrom.email"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.email"]}</p>
+            )}
           </div>
 
           {/* Phone Number */}
@@ -328,7 +362,11 @@ export default function Step2Form() {
               value={invoice.billFrom?.phone ?? ""}
               onChange={(e) => setBillFromField("phone", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billFrom.phone"]}
             />
+            {fieldErrors["billFrom.phone"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.phone"]}</p>
+            )}
           </div>
 
           {/* GSTIN / Tax ID */}
@@ -340,7 +378,11 @@ export default function Step2Form() {
               className="h-11 px-3 text-sm"
               value={invoice.billFrom?.gst ?? ""}
               onChange={(e) => setBillFromField("gst", e.target.value)}
+              aria-invalid={!!fieldErrors["billFrom.gst"]}
             />
+            {fieldErrors["billFrom.gst"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.gst"]}</p>
+            )}
           </div>
         </div>
 
@@ -360,11 +402,15 @@ export default function Step2Form() {
               value={invoice.billTo?.name ?? ""}
               onChange={(e) => setBillToField("name", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billTo.name"]}
             />
             <ChevronDown
               className="absolute right-3 top-[55%] -translate-y-1/2 text-muted-foreground pointer-events-none"
               size={18}
             />
+            {fieldErrors["billTo.name"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.name"]}</p>
+            )}
           </div>
 
           {/* Company Name */}
@@ -376,7 +422,11 @@ export default function Step2Form() {
               className="h-11 px-3 text-sm"
               value={invoice.billTo?.companyName ?? ""}
               onChange={(e) => setBillToField("companyName", e.target.value)}
+              aria-invalid={!!fieldErrors["billTo.companyName"]}
             />
+            {fieldErrors["billTo.companyName"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.companyName"]}</p>
+            )}
           </div>
 
           {/* Billing Address */}
@@ -391,7 +441,11 @@ export default function Step2Form() {
               value={invoice.billTo?.address ?? ""}
               onChange={(e) => setBillToField("address", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billTo.address"]}
             />
+            {fieldErrors["billTo.address"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.address"]}</p>
+            )}
           </div>
 
           {/* Email */}
@@ -407,7 +461,11 @@ export default function Step2Form() {
               value={invoice.billTo?.email ?? ""}
               onChange={(e) => setBillToField("email", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billTo.email"]}
             />
+            {fieldErrors["billTo.email"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.email"]}</p>
+            )}
           </div>
 
           {/* Phone Number */}
@@ -422,7 +480,11 @@ export default function Step2Form() {
               value={invoice.billTo?.phone ?? ""}
               onChange={(e) => setBillToField("phone", e.target.value)}
               required
+              aria-invalid={!!fieldErrors["billTo.phone"]}
             />
+            {fieldErrors["billTo.phone"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.phone"]}</p>
+            )}
           </div>
 
           {/* GST Number */}
@@ -434,7 +496,11 @@ export default function Step2Form() {
               className="h-11 px-3 text-sm"
               value={invoice.billTo?.gst ?? ""}
               onChange={(e) => setBillToField("gst", e.target.value)}
+              aria-invalid={!!fieldErrors["billTo.gst"]}
             />
+            {fieldErrors["billTo.gst"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.gst"]}</p>
+            )}
           </div>
 
           {/* PAN Number */}
@@ -446,11 +512,14 @@ export default function Step2Form() {
               className="h-11 px-3 text-sm"
               value={invoice.billTo?.pan ?? ""}
               onChange={(e) => setBillToField("pan", e.target.value)}
+              aria-invalid={!!fieldErrors["billTo.pan"]}
             />
+            {fieldErrors["billTo.pan"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.pan"]}</p>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
-
