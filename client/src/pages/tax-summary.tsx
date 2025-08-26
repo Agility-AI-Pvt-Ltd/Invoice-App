@@ -4,6 +4,8 @@ import { MetricCard } from "@/components/MetricCard";
 import { TaxChart } from "@/components/TaxChart";
 import { TaxCollectedChart } from "@/components/TaxCollection";
 import { TaxSummaryTable } from "@/components/TaxSummaryTable";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTaxMetrics, exportTaxSummary } from "@/services/api/tax";
 import { useToast } from "@/hooks/use-toast";
 import Cookies from "js-cookie";
@@ -78,7 +80,46 @@ const TaxSummary = () => {
 
   return (
     <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
-      <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
+      {/* Locked Features Overlay */}
+<div className="flex h-[70vh] items-center justify-center">
+  <Card className="w-full max-w-md rounded-2xl border border-border bg-white shadow-lg">
+    <CardContent className="space-y-4 p-8 text-center">
+      {/* Lock Icon */}
+      <div className="flex justify-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-14 w-14 text-gray-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16.5 10.5V7.5a4.5 4.5 0 00-9 0v3m-3 0h15a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5h-15a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z"
+          />
+        </svg>
+      </div>
+
+      {/* Title */}
+      <h2 className="text-2xl font-semibold">Locked Feature</h2>
+
+      {/* Description */}
+      <p className="text-muted-foreground text-base">
+        This feature is currently unavailable. Please check back later or
+        upgrade to unlock access.
+      </p>
+
+      {/* Action */}
+      <Button disabled variant="secondary" className="w-full mt-4">
+        Coming Soon
+      </Button>
+    </CardContent>
+  </Card>
+</div>
+
+      <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6 hidden">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-row items-center gap-2 sm:gap-3 flex-nowrap">
