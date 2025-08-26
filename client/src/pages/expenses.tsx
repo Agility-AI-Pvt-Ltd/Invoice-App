@@ -2,11 +2,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ExpenseMetricCard } from "@/components/ExpenseMetricCard";
 import { ExpenseTable } from "@/components/ExpenseTable";
 import { useToast } from "@/hooks/use-toast";
 import { format, parse } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
 import ExpenseForm from "@/components/expense-form/ExpenseForm";
 import Cookies from "js-cookie";
 
@@ -36,35 +36,51 @@ type Filters = {
 const transformExpenseData = (apiExpense: any): Expense => {
   return {
     id: apiExpense._id || apiExpense.id || `expense-${Date.now()}`,
-    expenseId: apiExpense.invoiceNumber || apiExpense.expenseId || apiExpense.expense_id || `EX-${Date.now()}`,
+    expenseId:
+      apiExpense.invoiceNumber ||
+      apiExpense.expenseId ||
+      apiExpense.expense_id ||
+      `EX-${Date.now()}`,
     title:
       apiExpense.items?.[0]?.description ||
       apiExpense.step3?.items?.[0]?.name ||
       apiExpense.title ||
       "No Description",
-    vendorName: apiExpense.billFrom?.name || apiExpense.step2?.vendorName || apiExpense.vendorName || "Unknown Vendor",
+    vendorName:
+      apiExpense.billFrom?.name ||
+      apiExpense.step2?.vendorName ||
+      apiExpense.vendorName ||
+      "Unknown Vendor",
     vendorAvatar:
-      (apiExpense.billFrom?.name || apiExpense.step2?.vendorName || apiExpense.vendorName || "V")[0]?.toUpperCase() ||
-      "V",
-    paymentMethod: apiExpense.step2?.paymentMethod || apiExpense.paymentMethod || "Cash",
-    amount: apiExpense.total ?? apiExpense.step4?.total ?? apiExpense.step2?.amount ?? apiExpense.amount ?? 0,
+      (apiExpense.billFrom?.name ||
+        apiExpense.step2?.vendorName ||
+        apiExpense.vendorName ||
+        "V")[0]?.toUpperCase() || "V",
+    paymentMethod:
+      apiExpense.step2?.paymentMethod || apiExpense.paymentMethod || "Cash",
+    amount:
+      apiExpense.total ??
+      apiExpense.step4?.total ??
+      apiExpense.step2?.amount ??
+      apiExpense.amount ??
+      0,
     status:
       apiExpense.status === "paid"
         ? "Paid"
         : apiExpense.step1?.status?.toLowerCase?.() === "paid"
-        ? "Paid"
-        : apiExpense.status === "overdue"
-        ? "Overdue"
-        : apiExpense.step1?.status === "overdue"
-        ? "Overdue"
-        : apiExpense.status === "Paid"
-        ? "Paid"
-        : "Unpaid",
+          ? "Paid"
+          : apiExpense.status === "overdue"
+            ? "Overdue"
+            : apiExpense.step1?.status === "overdue"
+              ? "Overdue"
+              : apiExpense.status === "Paid"
+                ? "Paid"
+                : "Unpaid",
     date: apiExpense.step1?.expenseDate
       ? format(new Date(apiExpense.step1.expenseDate), "dd MMMM yyyy")
       : apiExpense.date
-      ? format(new Date(apiExpense.date), "dd MMMM yyyy")
-      : format(new Date(), "dd MMMM yyyy"),
+        ? format(new Date(apiExpense.date), "dd MMMM yyyy")
+        : format(new Date(), "dd MMMM yyyy"),
     // keep raw payload for any extras that other components might need
     raw: apiExpense,
   };
@@ -98,7 +114,14 @@ const getAuthToken = (): string | null => {
       }
     }
 
-    const cookieCandidates = ["authToken", "token", "access_token", "bearer", "Authorization", "auth_token"];
+    const cookieCandidates = [
+      "authToken",
+      "token",
+      "access_token",
+      "bearer",
+      "Authorization",
+      "auth_token",
+    ];
     for (const k of cookieCandidates) {
       const v = Cookies.get(k);
       if (v && v.trim()) return v.trim();
@@ -132,7 +155,9 @@ const buildFetchOptions = (method: string = "GET", body?: any) => {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) {
-    const normalized = token.toLowerCase().startsWith("bearer ") ? token : `Bearer ${token}`;
+    const normalized = token.toLowerCase().startsWith("bearer ")
+      ? token
+      : `Bearer ${token}`;
     headers["Authorization"] = normalized;
   }
   return {
@@ -196,7 +221,15 @@ export default function Expenses() {
       const s = String(val).replace(/"/g, '""');
       return `"${s}"`;
     };
-    const headers = ["Date", "Expense ID", "Expense Title", "Vendor Name", "Payment Method", "Amount", "Status"];
+    const headers = [
+      "Date",
+      "Expense ID",
+      "Expense Title",
+      "Vendor Name",
+      "Payment Method",
+      "Amount",
+      "Status",
+    ];
     const csvRows = [
       headers.map(escape).join(","),
       ...data.map((expense) =>
@@ -208,7 +241,7 @@ export default function Expenses() {
           escape(expense.paymentMethod),
           escape(expense.amount),
           escape(expense.status),
-        ].join(",")
+        ].join(","),
       ),
     ];
     const csvContent = csvRows.join("\n");
@@ -216,7 +249,10 @@ export default function Expenses() {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", filename || `expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      filename || `expenses_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -236,12 +272,16 @@ export default function Expenses() {
       const res = await fetch(url, opts);
       if (!res.ok) {
         const body = await safeParseJson(res);
-        const message = body?.detail || body?.message || `Failed to fetch expenses (status ${res.status})`;
+        const message =
+          body?.detail ||
+          body?.message ||
+          `Failed to fetch expenses (status ${res.status})`;
         throw new Error(message);
       }
 
       const body = (await safeParseJson(res)) ?? null;
-      const serverExpenses = body?.data?.expenses ?? body?.expenses ?? body ?? [];
+      const serverExpenses =
+        body?.data?.expenses ?? body?.expenses ?? body ?? [];
 
       const mapped = (serverExpenses as []).map((e) => transformExpenseData(e));
       setExpenses(mapped);
@@ -266,7 +306,11 @@ export default function Expenses() {
       const res = await fetch(url, opts);
       if (!res.ok) {
         const body = await safeParseJson(res);
-        throw new Error(body?.detail || body?.message || `Failed to fetch metrics (status ${res.status})`);
+        throw new Error(
+          body?.detail ||
+            body?.message ||
+            `Failed to fetch metrics (status ${res.status})`,
+        );
       }
       const body = (await safeParseJson(res)) ?? null;
       setMetrics(body);
@@ -289,7 +333,10 @@ export default function Expenses() {
   // Simple CSV parse (handles quoted fields; CRLF)
   const parseCSV = (csvText: string): Expense[] => {
     // Normalize line endings and trim
-    const normalized = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+    const normalized = csvText
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .trim();
     if (!normalized) return [];
     // Split lines but handle quoted fields with commas
     const lines: string[] = [];
@@ -315,11 +362,15 @@ export default function Expenses() {
       .map((h) => h.trim().replace(/^"|"$/g, ""));
 
     return lines.slice(1).map((line, index) => {
-      const values = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map((v) => v.trim().replace(/^"|"$/g, ""));
+      const values = line
+        .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
+        .map((v) => v.trim().replace(/^"|"$/g, ""));
 
       const get = (nameVariants: string[]) => {
         for (const n of nameVariants) {
-          const idx = headers.map((h) => h.toLowerCase()).indexOf(n.toLowerCase());
+          const idx = headers
+            .map((h) => h.toLowerCase())
+            .indexOf(n.toLowerCase());
           if (idx >= 0 && values[idx] !== undefined) return values[idx];
         }
         return undefined;
@@ -327,13 +378,19 @@ export default function Expenses() {
 
       return {
         id: `imported-${Date.now()}-${index}`,
-        expenseId: get(["Expense ID", "expense id", "expenseId"]) || generateExpenseId(),
+        expenseId:
+          get(["Expense ID", "expense id", "expenseId"]) || generateExpenseId(),
         title: get(["Expense Title", "title", "description"]) || "-",
         vendorName: get(["Vendor Name", "vendor", "vendorName"]) || "-",
-        vendorAvatar: (get(["Vendor Name", "vendor", "vendorName"])?.[0] || "V") as string,
-        paymentMethod: get(["Payment Method", "payment", "paymentMethod"]) || "-",
+        vendorAvatar: (get(["Vendor Name", "vendor", "vendorName"])?.[0] ||
+          "V") as string,
+        paymentMethod:
+          get(["Payment Method", "payment", "paymentMethod"]) || "-",
         amount: parseInt(get(["Amount", "amount"]) || "0") || 0,
-        status: (get(["Status", "status"]) || "Unpaid") as "Paid" | "Unpaid" | "Overdue",
+        status: (get(["Status", "status"]) || "Unpaid") as
+          | "Paid"
+          | "Unpaid"
+          | "Overdue",
         date: get(["Date", "date"]) || format(new Date(), "dd MMMM yyyy"),
       };
     });
@@ -352,12 +409,15 @@ export default function Expenses() {
 
         // Remove duplicates: items with expenseId already present
         const existingIds = new Set(expenses.map((ex) => ex.expenseId));
-        const uniques = importedExpenses.filter((im) => !existingIds.has(im.expenseId));
+        const uniques = importedExpenses.filter(
+          (im) => !existingIds.has(im.expenseId),
+        );
 
         if (uniques.length === 0) {
           toast?.({
             title: "No new items",
-            description: "Imported file contained no new expenses (duplicates skipped).",
+            description:
+              "Imported file contained no new expenses (duplicates skipped).",
           });
           return;
         }
@@ -392,7 +452,11 @@ export default function Expenses() {
       const res = await fetch(url, opts);
       if (!res.ok) {
         const body = await safeParseJson(res);
-        throw new Error(body?.detail || body?.message || `Failed to delete expense (status ${res.status})`);
+        throw new Error(
+          body?.detail ||
+            body?.message ||
+            `Failed to delete expense (status ${res.status})`,
+        );
       }
 
       toast({
@@ -418,8 +482,12 @@ export default function Expenses() {
       const mapped = transformExpenseData(updated);
       setExpenses((prev) =>
         prev.map((e) =>
-          e.expenseId === mapped.expenseId || e.id === mapped.id || e.id === mapped._id ? mapped : e
-        )
+          e.expenseId === mapped.expenseId ||
+          e.id === mapped.id ||
+          e.id === mapped._id
+            ? mapped
+            : e,
+        ),
       );
       toast?.({
         title: "Expense Updated",
@@ -465,8 +533,12 @@ export default function Expenses() {
         const mapped = transformExpenseData(payload);
         setExpenses((prev) =>
           prev.map((e) =>
-            e.expenseId === mapped.expenseId || e.id === mapped.id || e.id === mapped._id ? mapped : e
-          )
+            e.expenseId === mapped.expenseId ||
+            e.id === mapped.id ||
+            e.id === mapped._id
+              ? mapped
+              : e,
+          ),
         );
         toast?.({
           title: "Expense Updated",
@@ -494,12 +566,15 @@ export default function Expenses() {
       const matchesSearch =
         !term ||
         (expense.title && expense.title.toLowerCase().includes(term)) ||
-        (expense.vendorName && expense.vendorName.toLowerCase().includes(term)) ||
+        (expense.vendorName &&
+          expense.vendorName.toLowerCase().includes(term)) ||
         (expense.expenseId && expense.expenseId.toLowerCase().includes(term)) ||
-        (expense.paymentMethod && expense.paymentMethod.toLowerCase().includes(term)) ||
+        (expense.paymentMethod &&
+          expense.paymentMethod.toLowerCase().includes(term)) ||
         String(expense.amount || "").includes(term);
 
-      const matchesStatus = filters.status === "all" || expense.status === filters.status;
+      const matchesStatus =
+        filters.status === "all" || expense.status === filters.status;
 
       let matchesMonth = true;
       if (filters.month !== "all") {
@@ -508,16 +583,25 @@ export default function Expenses() {
         matchesMonth = parsed ? parsed.getMonth() === monthIndex : false;
       }
 
-      const matchesAmount = !filters.minAmount || expense.amount >= Number(filters.minAmount);
+      const matchesAmount =
+        !filters.minAmount || expense.amount >= Number(filters.minAmount);
 
       // dateRange from filter
       let matchesDate = true;
       if (filters.dateRange.from) {
         const expenseDate = parseExpenseDate(expense.date);
-        if (expenseDate) matchesDate = expenseDate.getTime() >= filters.dateRange.from.getTime();
+        if (expenseDate)
+          matchesDate =
+            expenseDate.getTime() >= filters.dateRange.from.getTime();
       }
 
-      return matchesSearch && matchesStatus && matchesMonth && matchesAmount && matchesDate;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesMonth &&
+        matchesAmount &&
+        matchesDate
+      );
     });
   }, [expenses, searchTerm, filters]);
 
@@ -525,8 +609,10 @@ export default function Expenses() {
   if (isExpenseFormOpen) {
     return (
       <div className="px-2 sm:px-4">
-        <Card className="w-full p-4 sm:p-6 bg-white">
-          <p className="font-semibold text-2xl">{selectedExpense ? "Edit Expense" : "Create Expense Form"}</p>
+        <Card className="w-full bg-white p-4 sm:p-6">
+          <p className="text-2xl font-semibold">
+            {selectedExpense ? "Edit Expense" : "Create Expense Form"}
+          </p>
           <CardContent className="mt-2">
             <ExpenseForm
               onCancel={() => {
@@ -561,10 +647,49 @@ export default function Expenses() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
-      <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
+    <div className="bg-background min-h-screen p-2 sm:p-4 lg:p-6">
+      {/* Locked Features Overlay */}
+      <div className="flex h-[70vh] items-center justify-center">
+        <Card className="border-border w-full max-w-md rounded-2xl border bg-white shadow-lg">
+          <CardContent className="space-y-4 p-8 text-center">
+            {/* Lock Icon */}
+            <div className="flex justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-14 w-14 text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.5 10.5V7.5a4.5 4.5 0 00-9 0v3m-3 0h15a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5h-15a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z"
+                />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-2xl font-semibold">Locked Feature</h2>
+
+            {/* Description */}
+            <p className="text-muted-foreground text-base">
+              This feature is currently unavailable. Please check back later or
+              upgrade to unlock access.
+            </p>
+
+            {/* Action */}
+            <Button disabled variant="secondary" className="mt-4 w-full">
+              Coming Soon
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="max-w-8xl mx-auto hidden space-y-4 sm:space-y-6">
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
           {metrics && (
             <>
               <ExpenseMetricCard
@@ -601,10 +726,10 @@ export default function Expenses() {
 
         {/* Loading & Error */}
         {loading && (
-          <div className="bg-white rounded-lg border border-border p-6 w-full">
+          <div className="border-border w-full rounded-lg border bg-white p-6">
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
                 <p className="text-muted-foreground">Loading expenses...</p>
               </div>
             </div>
@@ -612,11 +737,14 @@ export default function Expenses() {
         )}
 
         {error && !loading && (
-          <div className="bg-white rounded-lg border border-border p-6 w-full">
+          <div className="border-border w-full rounded-lg border bg-white p-6">
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <p className="text-destructive mb-4">{error}</p>
-                <Button onClick={() => window.location.reload()} variant="outline">
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                >
                   Retry
                 </Button>
               </div>

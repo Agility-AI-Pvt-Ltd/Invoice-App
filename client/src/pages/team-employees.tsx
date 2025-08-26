@@ -3,11 +3,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
-import { Search, Download, Upload, Plus, Edit, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Search,
+  Download,
+  Upload,
+  Plus,
+  Edit,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
@@ -57,7 +84,7 @@ export default function TeamManagement() {
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
-    totalItems: 0
+    totalItems: 0,
   });
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [formData, setFormData] = useState<TeamMemberCreate>({
@@ -73,29 +100,41 @@ export default function TeamManagement() {
 
   // Helper function to check if user is authenticated
   const isAuthenticated = () => {
-    const token = Cookies.get('authToken');
+    const token = Cookies.get("authToken");
     return !!token;
   };
 
   // --- API helper functions (direct fetch) ---
   const buildAuthHeaders = (token?: string) => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
   };
 
-  const apiGetTeamMembers = async (token: string | undefined, page = 1, limit = 10, params: { search?: string } = {}) => {
+  const apiGetTeamMembers = async (
+    token: string | undefined,
+    page = 1,
+    limit = 10,
+    params: { search?: string } = {},
+  ) => {
     const q = new URLSearchParams();
     q.append("page", String(page));
     q.append("limit", String(limit));
     if (params.search) q.append("search", params.search);
 
     const url = `${API_BASE}/api/team-members?${q.toString()}`;
-    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     if (!res.ok) {
       // try to parse error body
       let errText = `Failed to fetch team members (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
+      try {
+        const body = await res.json();
+        errText = body.detail || body.message || JSON.stringify(body);
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -104,14 +143,22 @@ export default function TeamManagement() {
   };
 
   const generateRandomPassword = (len = 10) => {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~";
+    const chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~";
     let p = "";
-    for (let i = 0; i < len; i++) p += chars[Math.floor(Math.random() * chars.length)];
+    for (let i = 0; i < len; i++)
+      p += chars[Math.floor(Math.random() * chars.length)];
     return p;
   };
 
-  const apiCreateTeamMember = async (token: string | undefined, member: TeamMemberCreate) => {
-    const username = (member.email && member.email.split("@")[0]) || member.name.replace(/\s+/g, "").toLowerCase() || `user${Date.now()}`;
+  const apiCreateTeamMember = async (
+    token: string | undefined,
+    member: TeamMemberCreate,
+  ) => {
+    const username =
+      (member.email && member.email.split("@")[0]) ||
+      member.name.replace(/\s+/g, "").toLowerCase() ||
+      `user${Date.now()}`;
     const password = generateRandomPassword(12);
 
     const payload: any = {
@@ -123,8 +170,8 @@ export default function TeamManagement() {
       joiningDate: member.joiningDate || undefined,
       credentials: {
         username,
-        password
-      }
+        password,
+      },
     };
     // helpful debug during dev; remove in production
     // console.log("Creating team member payload:", payload);
@@ -138,17 +185,28 @@ export default function TeamManagement() {
     if (!res.ok) {
       if (res.status === 401) {
         await handleAuthError(res);
-
       }
       let errText = `Failed to create team member (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
+      try {
+        const body = await res.json();
+        errText = body.detail || body.message || JSON.stringify(body);
+      } catch (e) {}
       throw new Error(errText);
     }
 
     return await res.json();
   };
 
-  const handleAuthError = async (res: Response | { status?: number; json?: () => Promise<any>; data?: any; statusText?: string }) => {
+  const handleAuthError = async (
+    res:
+      | Response
+      | {
+          status?: number;
+          json?: () => Promise<any>;
+          data?: any;
+          statusText?: string;
+        },
+  ) => {
     // Parse message if possible
     let msg = "Session expired. Please log in again.";
     try {
@@ -165,7 +223,7 @@ export default function TeamManagement() {
             // @ts-ignore
             const text = await (res as Response).text();
             if (text) msg = text;
-          } catch (_) { }
+          } catch (_) {}
         }
       } else if ((res as any).data) {
         // axios error shape
@@ -186,7 +244,11 @@ export default function TeamManagement() {
     });
   };
 
-  const apiUpdateTeamMember = async (token: string | undefined, id: string, update: TeamMemberUpdate) => {
+  const apiUpdateTeamMember = async (
+    token: string | undefined,
+    id: string,
+    update: TeamMemberUpdate,
+  ) => {
     const cleaned: any = {};
     if (update.name) cleaned.name = update.name;
     if (update.role) cleaned.role = update.role;
@@ -201,7 +263,10 @@ export default function TeamManagement() {
 
     if (!res.ok) {
       let errText = `Failed to update team member (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
+      try {
+        const body = await res.json();
+        errText = body.detail || body.message || JSON.stringify(body);
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -216,17 +281,22 @@ export default function TeamManagement() {
 
     if (!res.ok) {
       let errText = `Failed to delete team member (status ${res.status})`;
-      try { const body = await res.json(); errText = body.detail || body.message || JSON.stringify(body); } catch (e) { }
+      try {
+        const body = await res.json();
+        errText = body.detail || body.message || JSON.stringify(body);
+      } catch (e) {}
       throw new Error(errText);
     }
 
     return await res.json();
   };
 
-
-  const apiImportTeamMembers = async (token: string | undefined, file: File) => {
+  const apiImportTeamMembers = async (
+    token: string | undefined,
+    file: File,
+  ) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -242,7 +312,7 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -250,7 +320,7 @@ export default function TeamManagement() {
   };
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
@@ -259,14 +329,20 @@ export default function TeamManagement() {
     window.URL.revokeObjectURL(url);
   };
 
-  const apiExportTeamMembers = async (token: string | undefined, format: 'csv' | 'excel' | 'pdf') => {
+  const apiExportTeamMembers = async (
+    token: string | undefined,
+    format: "csv" | "excel" | "pdf",
+  ) => {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/team-members/export?format=${format}`, {
-      method: "GET",
-      headers: headers,
-    });
+    const res = await fetch(
+      `${API_BASE}/api/team-members/export?format=${format}`,
+      {
+        method: "GET",
+        headers: headers,
+      },
+    );
 
     if (!res.ok) {
       // Handle 204 No Content (no data to export)
@@ -278,21 +354,21 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
     return res; // Return the response object for blob handling
   };
 
-  const getExportFilename = (format: 'csv' | 'excel' | 'pdf') => {
-    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const getExportFilename = (format: "csv" | "excel" | "pdf") => {
+    const timestamp = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     switch (format) {
-      case 'csv':
+      case "csv":
         return `team_members_${timestamp}.csv`;
-      case 'excel':
+      case "excel":
         return `team_members_${timestamp}.xlsx`;
-      case 'pdf':
+      case "pdf":
         return `team_members_${timestamp}.pdf`;
       default:
         return `team_members_${timestamp}.${format}`;
@@ -314,8 +390,10 @@ export default function TeamManagement() {
   const fetchTeamMembers = async () => {
     try {
       setLoading(true);
-      const token = Cookies.get('authToken');
-      const response = await apiGetTeamMembers(token, currentPage, 10, { search: searchTerm || undefined });
+      const token = Cookies.get("authToken");
+      const response = await apiGetTeamMembers(token, currentPage, 10, {
+        search: searchTerm || undefined,
+      });
 
       // Normalize possible response shapes:
       let data: any[] = [];
@@ -329,13 +407,21 @@ export default function TeamManagement() {
         data = response.data;
         const p = response.pagination || response.page || {};
         page = p.currentPage || response.page || currentPage;
-        totalPages = (response.pagination && response.pagination.totalPages) || response.totalPages || 1;
-        total = (response.pagination && response.pagination.totalItems) || response.total || data.length;
+        totalPages =
+          (response.pagination && response.pagination.totalPages) ||
+          response.totalPages ||
+          1;
+        total =
+          (response.pagination && response.pagination.totalItems) ||
+          response.total ||
+          data.length;
       } else if (response.data && Array.isArray(response.data)) {
         data = response.data;
         page = response.page || response.pagination?.currentPage || currentPage;
-        totalPages = response.totalPages || response.pagination?.totalPages || 1;
-        total = response.total || response.pagination?.totalItems || data.length;
+        totalPages =
+          response.totalPages || response.pagination?.totalPages || 1;
+        total =
+          response.total || response.pagination?.totalItems || data.length;
       } else if (response.members && Array.isArray(response.members)) {
         data = response.members;
       } else {
@@ -349,10 +435,17 @@ export default function TeamManagement() {
 
       const mapped = data.map((m: any) => {
         const rawRole = (m.role || "").toString();
-        const roleCapitalized = rawRole ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1) : "";
+        const roleCapitalized = rawRole
+          ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1)
+          : "";
         const rawStatus = (m.status || "active").toString().toLowerCase();
         const status = rawStatus === "active" ? "Active" : "Inactive";
-        const joining = m.dateJoined || m.joiningDate || (m.joiningDate ? new Date(m.joiningDate).toISOString().split("T")[0] : null);
+        const joining =
+          m.dateJoined ||
+          m.joiningDate ||
+          (m.joiningDate
+            ? new Date(m.joiningDate).toISOString().split("T")[0]
+            : null);
         return {
           id: m.id || m._id || m.memberId || String(m._id || m.id || ""),
           name: m.name || m.fullName || "",
@@ -368,14 +461,21 @@ export default function TeamManagement() {
 
       setTeamMembers(mapped);
       console.log(mapped, "TEAM");
-      setPagination({ currentPage: page, totalPages: totalPages || 1, totalItems: total || mapped.length });
+      setPagination({
+        currentPage: page,
+        totalPages: totalPages || 1,
+        totalItems: total || mapped.length,
+      });
     } catch (error: unknown) {
       console.error("Error fetching team members:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
 
       toast({
         title: "Error",
-        description: errorMessage.includes("Authentication") ? "Please log in again to access team members." : "Failed to fetch team members",
+        description: errorMessage.includes("Authentication")
+          ? "Please log in again to access team members."
+          : "Failed to fetch team members",
         variant: "destructive",
       });
     } finally {
@@ -397,14 +497,23 @@ export default function TeamManagement() {
           name: formData.name,
           role: formData.role,
           phone: formData.phone,
-          status: formData.status === "active" || formData.status === "Active" ? "Active" : "Inactive"
+          status:
+            formData.status === "active" || formData.status === "Active"
+              ? "Active"
+              : "Inactive",
         };
         await apiUpdateTeamMember(token, editingMember.id, updateData);
-        toast({ title: "Success", description: "Team member updated successfully!" });
+        toast({
+          title: "Success",
+          description: "Team member updated successfully!",
+        });
       } else {
         // Add new member
         await apiCreateTeamMember(token, formData);
-        toast({ title: "Success", description: "Team member added successfully!" });
+        toast({
+          title: "Success",
+          description: "Team member added successfully!",
+        });
       }
 
       // Reset form and refresh data
@@ -420,10 +529,10 @@ export default function TeamManagement() {
       setEditingMember(null);
       setShowAddForm(false);
       fetchTeamMembers();
-
     } catch (error: unknown) {
-      console.error('Error saving team member:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Error saving team member:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
 
       toast({
         title: "Error",
@@ -452,15 +561,22 @@ export default function TeamManagement() {
 
   // Handle delete member
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this team member?')) {
+    if (window.confirm("Are you sure you want to delete this team member?")) {
       try {
         const token = Cookies.get("authToken") || undefined;
         await apiDeleteTeamMember(token, id);
-        toast({ title: "Success", description: "Team member deleted successfully!" });
+        toast({
+          title: "Success",
+          description: "Team member deleted successfully!",
+        });
         fetchTeamMembers();
       } catch (error) {
-        console.error('Error deleting team member:', error);
-        toast({ title: "Error", description: "Failed to delete team member. Please try again.", variant: "destructive" });
+        console.error("Error deleting team member:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete team member. Please try again.",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -471,13 +587,14 @@ export default function TeamManagement() {
     if (!file) return;
 
     // Validate file type
-    const validTypes = ['.csv', '.xlsx', '.xls'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const validTypes = [".csv", ".xlsx", ".xls"];
+    const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
 
     if (!validTypes.includes(fileExtension)) {
       toast({
         title: "Error",
-        description: "Only CSV and Excel files (.csv, .xlsx, .xls) are supported",
+        description:
+          "Only CSV and Excel files (.csv, .xlsx, .xls) are supported",
         variant: "destructive",
       });
       return;
@@ -514,11 +631,11 @@ export default function TeamManagement() {
       await fetchTeamMembers();
 
       // Reset the file input
-      event.target.value = '';
-
+      event.target.value = "";
     } catch (error) {
-      console.error('Error importing team members:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Error importing team members:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
 
       toast({
         title: "Import Failed",
@@ -527,7 +644,7 @@ export default function TeamManagement() {
       });
 
       // Reset the file input even on error
-      event.target.value = '';
+      event.target.value = "";
     } finally {
       setLoading(false);
     }
@@ -535,7 +652,7 @@ export default function TeamManagement() {
 
   // Handle export
 
-  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
+  const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
       setLoading(true);
       const token = Cookies.get("authToken") || undefined;
@@ -551,13 +668,16 @@ export default function TeamManagement() {
       const blob = await response.blob();
 
       // Get filename from Content-Disposition header or use default
-      const contentDisposition = response.headers.get('content-disposition') || '';
+      const contentDisposition =
+        response.headers.get("content-disposition") || "";
       let filename = getExportFilename(format);
 
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        );
         if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+          filename = filenameMatch[1].replace(/['"]/g, "");
         }
       }
 
@@ -568,14 +688,15 @@ export default function TeamManagement() {
         title: "Export Successful",
         description: `Team members exported as ${format.toUpperCase()} successfully!`,
       });
-
     } catch (error) {
-      console.error('Error exporting team members:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Error exporting team members:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
 
       let userMessage = errorMessage;
       if (errorMessage.includes("No team members found")) {
-        userMessage = "No team members available to export. Add some team members first.";
+        userMessage =
+          "No team members available to export. Add some team members first.";
       }
 
       toast({
@@ -601,36 +722,84 @@ export default function TeamManagement() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   return (
-    <div className="min-h-screen bg-background p-4 lg:p-8">
-      <div className="max-w-8xl mx-auto">
-        <Card className="bg-white border-0 shadow-sm">
+    <div className="bg-background min-h-screen p-4 lg:p-8">
+      {/* Locked Features Overlay */}
+      <div className="flex h-[70vh] items-center justify-center">
+        <Card className="border-border w-full max-w-md rounded-2xl border bg-white shadow-lg">
+          <CardContent className="space-y-4 p-8 text-center">
+            {/* Lock Icon */}
+            <div className="flex justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-14 w-14 text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.5 10.5V7.5a4.5 4.5 0 00-9 0v3m-3 0h15a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5h-15a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z"
+                />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-2xl font-semibold">Locked Feature</h2>
+
+            {/* Description */}
+            <p className="text-muted-foreground text-base">
+              This feature is currently unavailable. Please check back later or
+              upgrade to unlock access.
+            </p>
+
+            {/* Action */}
+            <Button disabled variant="secondary" className="mt-4 w-full">
+              Coming Soon
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="max-w-8xl mx-auto hidden">
+        <Card className="border-0 bg-white shadow-sm">
           {!showAddForm ? (
             <>
               {/* Header */}
-              <div className="p-4 lg:p-6 border-b border-slate-200">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <h2 className="text-xl font-semibold text-slate-800">Team Member List</h2>
+              <div className="border-b border-slate-200 p-4 lg:p-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <h2 className="text-xl font-semibold text-slate-800">
+                    Team Member List
+                  </h2>
 
-                  <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                  <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                     {/* Search */}
                     <div className="relative flex-1 lg:w-80">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
                       <Input
                         placeholder="Search by name, email, or role"
                         value={searchTerm}
                         onChange={(e) => handleSearch(e.target.value)}
-                        className="pl-10 bg-white border-slate-200 text-slate-600 h-10"
+                        className="h-10 border-slate-200 bg-white pl-10 text-slate-600"
                       />
                     </div>
 
                     {/* Desktop/Tablet Actions */}
-                    <div className="hidden sm:flex gap-2 flex-wrap">
+                    <div className="hidden flex-wrap gap-2 sm:flex">
                       <div>
                         <div className="hidden sm:block">
-                          <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} />
+                          <SingleDatePicker
+                            selectedDate={selectedDate}
+                            onDateChange={setSelectedDate}
+                          />
                         </div>
                         <div className="sm:hidden">
-                          <SingleDatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} iconOnly />
+                          <SingleDatePicker
+                            selectedDate={selectedDate}
+                            onDateChange={setSelectedDate}
+                            iconOnly
+                          />
                         </div>
                       </div>
                       {/* Export Dropdown */}
@@ -638,25 +807,29 @@ export default function TeamManagement() {
                         <DropdownMenuTrigger>
                           <Button
                             variant="outline"
-                            className={`border-slate-200 text-slate-600 h-10 px-4 hover:bg-slate-50 hover:text-black`}
+                            className={`h-10 border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black`}
                             disabled={loading}
                           >
-                            <Download className="h-4 w-4 mr-2" />
-                            {'Export'}
+                            <Download className="mr-2 h-4 w-4" />
+                            {"Export"}
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="hover:bg-slate-50 hover:text-black bg-white text-black">
+                        <DropdownMenuContent className="bg-white text-black hover:bg-slate-50 hover:text-black">
                           <DropdownMenuItem
-                            onClick={() => handleExport('csv')}
+                            onClick={() => handleExport("csv")}
                             disabled={loading}
-                            className={loading ? 'opacity-50 cursor-not-allowed' : ''}
+                            className={
+                              loading ? "cursor-not-allowed opacity-50" : ""
+                            }
                           >
                             Export as CSV
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleExport('excel')}
+                            onClick={() => handleExport("excel")}
                             disabled={loading}
-                            className={loading ? 'opacity-50 cursor-not-allowed' : ''}
+                            className={
+                              loading ? "cursor-not-allowed opacity-50" : ""
+                            }
                           >
                             Export as Excel
                           </DropdownMenuItem>
@@ -670,7 +843,6 @@ export default function TeamManagement() {
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-
                       <div className="relative">
                         <label>
                           <input
@@ -682,10 +854,10 @@ export default function TeamManagement() {
                           <Button
                             asChild
                             variant="outline"
-                            className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-black h-10 px-4 cursor-pointer"
+                            className="h-10 cursor-pointer border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black"
                           >
                             <span className="flex items-center">
-                              <Upload className="h-4 w-4 mr-2" />
+                              <Upload className="mr-2 h-4 w-4" />
                               Import
                             </span>
                           </Button>
@@ -693,17 +865,21 @@ export default function TeamManagement() {
                       </div>
 
                       <Button
-                        className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
+                        className="rounded-lg bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] px-4 py-2 text-white"
                         onClick={() => setShowAddForm(true)}
                       >
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                         Add New Member
                       </Button>
                     </div>
 
                     {/* Mobile Actions */}
-                    <div className="sm:hidden flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
-                      <Button variant="outline" size="icon" className="shrink-0">
+                    <div className="no-scrollbar flex flex-nowrap items-center gap-2 overflow-x-auto sm:hidden">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                      >
                         <Calendar className="h-5 w-5" />
                       </Button>
 
@@ -720,19 +896,19 @@ export default function TeamManagement() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           <DropdownMenuItem
-                            onClick={() => handleExport('csv')}
+                            onClick={() => handleExport("csv")}
                             disabled={loading}
                           >
                             CSV
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleExport('excel')}
+                            onClick={() => handleExport("excel")}
                             disabled={loading}
                           >
                             Excel
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleExport('pdf')}
+                            onClick={() => handleExport("pdf")}
                             disabled={loading}
                           >
                             PDF
@@ -749,7 +925,11 @@ export default function TeamManagement() {
                           id="import-file-mobile"
                         />
                         <label htmlFor="import-file-mobile">
-                          <Button variant="outline" size="icon" className="shrink-0 cursor-pointer">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0 cursor-pointer"
+                          >
                             <Upload className="h-5 w-5" />
                           </Button>
                         </label>
@@ -757,7 +937,7 @@ export default function TeamManagement() {
 
                       <Button
                         size="icon"
-                        className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white shrink-0"
+                        className="shrink-0 bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white"
                         onClick={() => setShowAddForm(true)}
                       >
                         <Plus className="h-5 w-5" />
@@ -770,60 +950,106 @@ export default function TeamManagement() {
               {/* Table */}
               <div className="overflow-x-auto">
                 {loading ? (
-                  <div className="p-8 text-center text-slate-500">Loading team members...</div>
+                  <div className="p-8 text-center text-slate-500">
+                    Loading team members...
+                  </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50">
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Name</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Role</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden sm:table-cell">Email</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden md:table-cell">Phone No.</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden lg:table-cell">Date Joined</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6 hidden lg:table-cell">Last Active</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Status</TableHead>
-                        <TableHead className="font-semibold text-slate-700 py-4 px-6">Action</TableHead>
+                        <TableHead className="px-6 py-4 font-semibold text-slate-700">
+                          Name
+                        </TableHead>
+                        <TableHead className="px-6 py-4 font-semibold text-slate-700">
+                          Role
+                        </TableHead>
+                        <TableHead className="hidden px-6 py-4 font-semibold text-slate-700 sm:table-cell">
+                          Email
+                        </TableHead>
+                        <TableHead className="hidden px-6 py-4 font-semibold text-slate-700 md:table-cell">
+                          Phone No.
+                        </TableHead>
+                        <TableHead className="hidden px-6 py-4 font-semibold text-slate-700 lg:table-cell">
+                          Date Joined
+                        </TableHead>
+                        <TableHead className="hidden px-6 py-4 font-semibold text-slate-700 lg:table-cell">
+                          Last Active
+                        </TableHead>
+                        <TableHead className="px-6 py-4 font-semibold text-slate-700">
+                          Status
+                        </TableHead>
+                        <TableHead className="px-6 py-4 font-semibold text-slate-700">
+                          Action
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {teamMembers.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                          <TableCell
+                            colSpan={8}
+                            className="py-8 text-center text-slate-500"
+                          >
                             No team members found
                           </TableCell>
                         </TableRow>
                       ) : (
                         teamMembers.map((member) => (
-                          <TableRow key={member.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <TableCell className="py-4 px-6">
+                          <TableRow
+                            key={member.id}
+                            className="border-b border-slate-100 hover:bg-slate-50"
+                          >
+                            <TableCell className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
-                                  <AvatarImage src={member.avatar} alt={member.name} />
-                                  <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
-                                    {member.name.split(' ').map(n => n[0]).join('')}
+                                  <AvatarImage
+                                    src={member.avatar}
+                                    alt={member.name}
+                                  />
+                                  <AvatarFallback className="bg-indigo-100 font-semibold text-indigo-600">
+                                    {member.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="font-medium text-slate-800">{member.name}</span>
+                                <span className="font-medium text-slate-800">
+                                  {member.name}
+                                </span>
                               </div>
                             </TableCell>
-                            <TableCell className="py-4 px-6 text-slate-600">{member.role}</TableCell>
-                            <TableCell className="py-4 px-6 text-slate-600 hidden sm:table-cell">{member.email}</TableCell>
-                            <TableCell className="py-4 px-6 text-slate-600 hidden md:table-cell">{member.phone}</TableCell>
-                            <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.dateJoined}</TableCell>
-                            <TableCell className="py-4 px-6 text-slate-600 hidden lg:table-cell">{member.lastActive}</TableCell>
-                            <TableCell className="py-4 px-6">
+                            <TableCell className="px-6 py-4 text-slate-600">
+                              {member.role}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 sm:table-cell">
+                              {member.email}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 md:table-cell">
+                              {member.phone}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 lg:table-cell">
+                              {member.dateJoined}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 lg:table-cell">
+                              {member.lastActive}
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
                               <Badge
-                                variant={member.status === "Active" ? "secondary" : "destructive"}
+                                variant={
+                                  member.status === "Active"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
                                 className={
                                   member.status === "Active"
-                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
-                                    : "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
+                                    ? "border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                    : "border-red-200 bg-red-100 text-red-700 hover:bg-red-100"
                                 }
                               >
                                 {member.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="py-4 px-6">
+                            <TableCell className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="ghost"
@@ -853,19 +1079,26 @@ export default function TeamManagement() {
 
               {/* Pagination */}
               {pagination.totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 lg:p-6 border-t border-slate-200">
+                <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 p-4 sm:flex-row lg:p-6">
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <ChevronLeft className="h-4 w-4" />
                     <span className="hidden sm:inline">Previous</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => i + 1).map((page) => (
+                    {Array.from(
+                      { length: Math.min(pagination.totalPages, 5) },
+                      (_, i) => i + 1,
+                    ).map((page) => (
                       <Button
                         key={page}
                         variant={page === currentPage ? "default" : "outline"}
                         size="sm"
-                        className={page === currentPage ? "bg-indigo-500 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50"}
+                        className={
+                          page === currentPage
+                            ? "bg-indigo-500 text-white"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }
                         onClick={() => handlePageChange(page)}
                       >
                         {page}
@@ -884,28 +1117,45 @@ export default function TeamManagement() {
             <>
               {/* Add/Edit Member Form */}
               <div className="p-6 lg:p-8">
-                <h2 className="text-xl font-semibold text-slate-800 mb-8">
-                  {editingMember ? 'Edit Team Member' : 'Add New Member'}
+                <h2 className="mb-8 text-xl font-semibold text-slate-800">
+                  {editingMember ? "Edit Team Member" : "Add New Member"}
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Name and Role Row */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-sm font-medium text-slate-700">Name</Label>
+                      <Label
+                        htmlFor="name"
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        Name
+                      </Label>
                       <Input
                         id="name"
                         placeholder="New Member Name"
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="text-sm font-medium text-slate-700">Role</Label>
-                      <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                        <SelectTrigger className="h-12 border-slate-200 text-slate-600 w-full">
+                      <Label
+                        htmlFor="role"
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        Role
+                      </Label>
+                      <Select
+                        value={formData.role}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, role: value })
+                        }
+                      >
+                        <SelectTrigger className="h-12 w-full border-slate-200 text-slate-600">
                           <SelectValue placeholder="Select Admin/ Manager/ Accountant/ Viewer" />
                         </SelectTrigger>
                         <SelectContent>
@@ -919,26 +1169,43 @@ export default function TeamManagement() {
                   </div>
 
                   {/* Email and Joining Date Row */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email Address</Label>
+                      <Label
+                        htmlFor="email"
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        Email Address
+                      </Label>
                       <Input
                         id="email"
                         type="email"
                         placeholder="EmailAddress@123gmail.com"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="joiningDate" className="text-sm font-medium text-slate-700">Joining Date</Label>
+                      <Label
+                        htmlFor="joiningDate"
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        Joining Date
+                      </Label>
                       <Input
                         id="joiningDate"
                         type="date"
                         value={formData.joiningDate || ""}
-                        onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            joiningDate: e.target.value,
+                          })
+                        }
                         className="h-12 border-slate-200 text-slate-600"
                         required
                       />
@@ -946,22 +1213,39 @@ export default function TeamManagement() {
                   </div>
 
                   {/* Phone and Status Row */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-sm font-medium text-slate-700">Phone Number</Label>
+                      <Label
+                        htmlFor="phone"
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        Phone Number
+                      </Label>
                       <Input
                         id="phone"
                         placeholder="+ 91 855 **** 987"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
                         className="h-12 border-slate-200 text-slate-600 placeholder:text-slate-400"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="status" className="text-sm font-medium text-slate-700">Status</Label>
-                      <Select value={formData.status || ""} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                        <SelectTrigger className="h-12 border-slate-200 text-slate-600 w-full">
+                      <Label
+                        htmlFor="status"
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        Status
+                      </Label>
+                      <Select
+                        value={formData.status || ""}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, status: value })
+                        }
+                      >
+                        <SelectTrigger className="h-12 w-full border-slate-200 text-slate-600">
                           <SelectValue placeholder="Active / Inactive" />
                         </SelectTrigger>
                         <SelectContent>
@@ -974,23 +1258,32 @@ export default function TeamManagement() {
 
                   {/* Profile Picture Upload */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Profile Picture Upload</Label>
-                    <div className="border-2 border-dashed border-slate-300 h-32 flex items-center justify-center text-slate-400 cursor-pointer relative">
+                    <Label className="text-sm font-medium text-slate-700">
+                      Profile Picture Upload
+                    </Label>
+                    <div className="relative flex h-32 cursor-pointer items-center justify-center border-2 border-dashed border-slate-300 text-slate-400">
                       <input
                         type="file"
                         accept=".png,.jpg,.jpeg,.webp,.pdf"
-                        onChange={(e) => setFormData({ ...formData, profilePicture: e.target.files?.[0] || null })}
-                        className="absolute w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            profilePicture: e.target.files?.[0] || null,
+                          })
+                        }
+                        className="absolute h-full w-full cursor-pointer opacity-0"
                       />
                       <div className="text-center">
                         Upload <br />
-                        <span className="text-xs text-slate-400">Only PNG, JPG, PDF, WEBP files are supported</span>
+                        <span className="text-xs text-slate-400">
+                          Only PNG, JPG, PDF, WEBP files are supported
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                  <div className="flex flex-col gap-4 pt-6 sm:flex-row">
                     <Button
                       type="button"
                       variant="outline"
@@ -1007,20 +1300,23 @@ export default function TeamManagement() {
                           profilePicture: null,
                         });
                       }}
-                      className="flex-1 h-12 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-gray-800 cursor-pointer"
+                      className="h-12 flex-1 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-gray-800"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 h-12 bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 cursor-pointer"
+                      className="h-12 flex-1 cursor-pointer bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50"
                     >
-                      {loading ? 'Saving...' : (editingMember ? 'Update' : 'Save')}
+                      {loading
+                        ? "Saving..."
+                        : editingMember
+                          ? "Update"
+                          : "Save"}
                     </Button>
                   </div>
                 </form>
-
               </div>
             </>
           )}
