@@ -5,7 +5,7 @@ import React from "react";
 export const menuComponentMap: Record<string, React.LazyExoticComponent<() => React.JSX.Element>> = {
     'dashboard': lazy(() => import("@/pages/dashboard")),
     "my-customers": lazy(() => import("@/pages/my-customer")),
-    'inventory' : lazy(() => import("@/pages/inventory")),
+    'items' : lazy(() => import("@/pages/inventory")),
     // 'purchases' : lazy(() => import("@/pages/purchase")),
     'expenses' : lazy(() => import("@/pages/expenses")),
     'sales': lazy(() => import("@/pages/invoices")),

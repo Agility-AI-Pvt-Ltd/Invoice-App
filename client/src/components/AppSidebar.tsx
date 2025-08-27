@@ -49,7 +49,7 @@ const menuItems = [
     { label: "My Customers", icon: Users },
     { label: "Sales", icon: BarChart2 },
     // { label: "Products/Services", icon: Package },
-    { label: "Inventory", icon: Boxes },
+    { label: "Items", icon: Boxes },
     // { label: "Sales", icon: BarChart2 },
     { label: "Expenses", icon: WalletMinimal },
     // { label: "Purchases", icon: ShoppingCart },
