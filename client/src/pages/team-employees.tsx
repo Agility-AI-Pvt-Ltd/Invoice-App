@@ -724,10 +724,9 @@ export default function TeamManagement() {
   return (
     <div className="bg-background min-h-screen p-4 lg:p-8">
       {/* Locked Features Overlay */}
-      <div className="flex h-[70vh] items-center justify-center">
+      {/* <div className="flex h-[70vh] items-center justify-center">
         <Card className="border-border w-full max-w-md rounded-2xl border bg-white shadow-lg">
           <CardContent className="space-y-4 p-8 text-center">
-            {/* Lock Icon */}
             <div className="flex justify-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -744,25 +743,21 @@ export default function TeamManagement() {
                 />
               </svg>
             </div>
-
-            {/* Title */}
             <h2 className="text-2xl font-semibold">Locked Feature</h2>
 
-            {/* Description */}
             <p className="text-muted-foreground text-base">
               This feature is currently unavailable. Please check back later or
               upgrade to unlock access.
             </p>
 
-            {/* Action */}
             <Button disabled variant="secondary" className="mt-4 w-full">
               Coming Soon
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
-      <div className="max-w-8xl mx-auto hidden">
+      <div className="max-w-8xl mx-auto">
         <Card className="border-0 bg-white shadow-sm">
           {!showAddForm ? (
             <>
