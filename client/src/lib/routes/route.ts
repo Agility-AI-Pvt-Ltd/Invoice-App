@@ -38,10 +38,10 @@ export const routes = {
         getLast: `${BACKEND_URL}/api/expense-invoices/last`,
     },
     inventory: {
-        getAll: `${BACKEND_URL}/api/inventory`,
-        getById: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
-        update: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
-        delete: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
+        getAll: `${BACKEND_URL}/api/items`,
+        getById: (id: string) => `${BACKEND_URL}/api/items/${id}`,
+        update: (id: string) => `${BACKEND_URL}/api/items/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/items/${id}`,
     },
     scan: {
         invoice: `${BACKEND_URL}/api/scan-invoice`,
