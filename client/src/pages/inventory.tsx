@@ -94,7 +94,7 @@ const Inventory = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <span className="text-lg sm:text-xl font-bold text-gray-800">
-                    Inventory Summary
+                    Items Summary
                 </span>
 
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
