@@ -3,11 +3,11 @@ import { RevenueChart } from "@/components/RevenueChart";
 import { CashFlowCard } from "@/components/CashFlowCard";
 import { InvoiceTable } from "@/components/InvoiceTables";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
-import { Card, CardContent } from "@/components/ui/card";
+// import { Card, CardContent } from "@/components/ui/card";
 import { SalesStatsCard } from "@/components/SalesStatsCard";
 import Cookies from "js-cookie";
 import { getSalesStats } from "@/services/api/sales";
-import type { InvoiceModel } from "@/contexts/InvoiceContext";
+// import type { InvoiceModel } from "@/contexts/InvoiceContext";
 
 type SalesStatsUI = {
   totalSales: number;
@@ -22,7 +22,7 @@ const Index = () => {
   const [selectedDate] = useState<Date>(new Date());
 
   // new state for editing
-  const [editingInvoice, setEditingInvoice] = useState<InvoiceModel | null>(null);
+  // const [editingInvoice, setEditingInvoice] = useState<InvoiceModel | null>(null);
 
   const [stats, setStats] = useState<SalesStatsUI>({
     totalSales: 0,
@@ -33,10 +33,8 @@ const Index = () => {
     averageOrderChange: 0,
   });
 
-  //@ts-ignore
-  const [loading, setLoading] = useState(true);
-  //@ts-ignore
-  const [error, setError] = useState<string | null>(null);
+  // const [loading, setLoading] = useState(true);
+  // const [error, setError] = useState<string | null>(null);
 
 
   // ✅ Wrap stats fetching into a function so we can re-use it
@@ -79,7 +77,7 @@ const Index = () => {
   useEffect(() => {
     const handleInvoiceSaved = () => {
       // clear editing state
-      setEditingInvoice(null);
+      // setEditingInvoice(null);
       // toggle refresh flag so InvoiceTable re-fetches
       setRefreshFlag((f) => f + 1);
       // also refresh aggregated stats
@@ -108,7 +106,7 @@ const Index = () => {
       const custom = e as CustomEvent;
       const detail = custom?.detail;
       if (!detail) return;
-      setEditingInvoice(detail as InvoiceModel);
+      // setEditingInvoice(detail as InvoiceModel);
     };
     window.addEventListener("invoice:edit", handleInvoiceEditEvent as EventListener);
     return () => {
@@ -162,7 +160,7 @@ const Index = () => {
         <InvoiceTable
           selectedDate={selectedDate}
           refreshFlag={refreshFlag}
-          setEditingInvoice={setEditingInvoice}
+          // setEditingInvoice={setEditingInvoice}
         />
       </div>
     </div>
