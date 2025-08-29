@@ -15,6 +15,7 @@ import {
 import { Trash2 } from "lucide-react";
 import { NavbarButton } from "../ui/resizable-navbar";
 import { InvoiceContext } from "@/contexts/InvoiceContext";
+import { fetchInventoryByCode } from "@/services/api/lookup";
 
 type Item = {
   id?: number | string;
@@ -128,6 +129,27 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     if (field === "description") clearField(`items.${index}.description`);
     if (field === "quantity") clearField(`items.${index}.quantity`);
     if (field === "unitPrice") clearField(`items.${index}.unitPrice`);
+  };
+
+  // Auto-fill item details when HSN code is completed/blurred
+  const handleHsnBlur = async (index: number) => {
+    const code = String(items[index]?.hsn || "").trim();
+    if (!code) return;
+    const data = await fetchInventoryByCode(code);
+    if (!data) return;
+    const updated = [...items];
+    const existing = { ...(updated[index] as any) };
+    const price = (data.unit_price ?? data.price) as number | undefined;
+    const gst = (data.gst_rate ?? data.gst) as number | undefined;
+    updated[index] = {
+      ...existing,
+      description: existing.description || (data.name || data.description || ""),
+      hsn: existing.hsn || (data.hsn_code || data.hsn || ""),
+      unitPrice: existing.unitPrice || (typeof price === "number" ? price : existing.unitPrice || 0),
+      gst: existing.gst || (typeof gst === "number" ? gst : existing.gst || 0),
+      discount: existing.discount ?? (typeof data.discount === "number" ? data.discount : existing.discount || 0),
+    } as any;
+    setItems(updated);
   };
 
   const handleNumericFocus = (index: number, field: keyof Item) => {
@@ -250,6 +272,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                     className="w-full"
                     value={item.hsn as string}
                     onChange={(e) => handleChange(index, "hsn", e.target.value)}
+                    onBlur={() => handleHsnBlur(index)}
                     aria-invalid={!!fieldErrors[`items.${index}.hsn`]}
                   />
                   {fieldErrors[`items.${index}.hsn`] && (

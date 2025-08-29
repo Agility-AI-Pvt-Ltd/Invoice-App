@@ -6,6 +6,7 @@ export const menuComponentMap: Record<string, React.LazyExoticComponent<() => Re
     'dashboard': lazy(() => import("@/pages/dashboard")),
     "my-customers": lazy(() => import("@/pages/my-customer")),
     'items' : lazy(() => import("@/pages/inventory")),
+    'invoices' : lazy(() => import("@/pages/Receipts")),
     'reports' : lazy(() => import("@/pages/Reports")),
     // 'purchases' : lazy(() => import("@/pages/purchase")),
     'expenses' : lazy(() => import("@/pages/expenses")),

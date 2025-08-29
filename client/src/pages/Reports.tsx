@@ -459,7 +459,7 @@ export default function Report() {
                         className={`h-10 border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black`}
                         disabled={loading}
                       >
-                        <Download className="mr-2 h-4 w-4" />
+                        <Upload className="mr-2 h-4 w-4" />
                         {"Export"}
                       </Button>
                     </DropdownMenuTrigger>
@@ -495,7 +495,7 @@ export default function Report() {
                         className="h-10 cursor-pointer border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black"
                       >
                         <span className="flex items-center">
-                          <Upload className="mr-2 h-4 w-4" />
+                          <Download className="mr-2 h-4 w-4" />
                           Import
                         </span>
                       </Button>

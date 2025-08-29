@@ -216,16 +216,19 @@
 
 // FILE : client/src/components/invoice-form/Step2Form.tsx
 
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { ChevronDown } from "lucide-react";
 import { InvoiceContext } from "@/contexts/InvoiceContext";
+import { useProfile } from "@/contexts/ProfileContext";
+import { fetchCustomerByName } from "@/services/api/lookup";
 
 export default function Step2Form() {
   const ctx = useContext(InvoiceContext) as any | undefined;
   const invoice = ctx?.invoice ?? {};
   const fieldErrors = ctx?.fieldErrors ?? {};
+  const { profile } = useProfile();
 
   const clearField = (path: string) => {
     if (!ctx) return;
@@ -256,6 +259,50 @@ export default function Step2Form() {
     }));
     // clear inline error for this field path if present
     clearField(`billTo.${key}`);
+  };
+
+  // Prefill seller (billFrom) with logged-in profile
+  useEffect(() => {
+    if (!ctx) return;
+    // profile in context is stored as raw object per ProfileProvider
+    const p: any = (profile as any) || null;
+    const data = (p && (p.data || p)) || null;
+    if (!data) return;
+    ctx.setInvoice((prev: any) => ({
+      ...prev,
+      billFrom: {
+        ...(prev.billFrom || {}),
+        businessName: prev.billFrom?.businessName || data.company || data.name || "",
+        address: prev.billFrom?.address || data.address || "",
+        state: prev.billFrom?.state || (data.state ?? ""),
+        email: prev.billFrom?.email || data.email || "",
+        phone: prev.billFrom?.phone || data.phone || "",
+        gst: prev.billFrom?.gst || data.gstNumber || "",
+      },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
+  // Autofill customer (billTo) when full name entered -> fetch
+  const handleCustomerNameBlur = async () => {
+    const name = invoice.billTo?.name?.trim();
+    if (!name) return;
+    const cust = await fetchCustomerByName(name);
+    if (!cust || !ctx) return;
+    ctx.setInvoice((prev: any) => ({
+      ...prev,
+      billTo: {
+        ...(prev.billTo || {}),
+        name: prev.billTo?.name || cust.name || name,
+        companyName: prev.billTo?.companyName || cust.companyName || "",
+        email: prev.billTo?.email || cust.email || "",
+        phone: prev.billTo?.phone || cust.phone || "",
+        address: prev.billTo?.address || cust.address || "",
+        state: prev.billTo?.state || (cust as any)?.state || "",
+        gst: prev.billTo?.gst || (cust as any)?.gst || "",
+        pan: prev.billTo?.pan || (cust as any)?.pan || "",
+      },
+    }));
   };
 
   return (
@@ -401,6 +448,7 @@ export default function Step2Form() {
               className="h-11 px-3 pr-10 text-sm"
               value={invoice.billTo?.name ?? ""}
               onChange={(e) => setBillToField("name", e.target.value)}
+              onBlur={handleCustomerNameBlur}
               required
               aria-invalid={!!fieldErrors["billTo.name"]}
             />
