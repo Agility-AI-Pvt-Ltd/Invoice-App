@@ -14,7 +14,6 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
-  PlusCircle,
   ScanLine,
   Filter,
   DownloadCloud,
@@ -35,7 +34,6 @@ import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
 
 interface InvoiceTableProps {
   selectedDate: Date;
-  setIsInvoiceFormOpen: (val: boolean) => void;
   refreshFlag?: number;
   // optional setter so parent can receive the selected invoice object directly
   setEditingInvoice?: (inv: any) => void;
@@ -51,7 +49,7 @@ interface FilterState {
   invoiceNumber: string;
 }
 
-export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag = 0, setEditingInvoice }: InvoiceTableProps) {
+export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice }: InvoiceTableProps) {
   const [invoices, setInvoices] = useState<SalesRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +158,6 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
             // ignore if parent doesn't like null
           }
         }
-        setIsInvoiceFormOpen(true);
         // Remove the flag from history so it doesn't retrigger on refresh/back
         navigate(location.pathname, { replace: true, state: {} });
       }
@@ -479,9 +476,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                 </Button>
               ))}
 
-              <Button size="sm" variant="ghost" onClick={() => setIsInvoiceFormOpen(true)}>
-                <PlusCircle className="h-4 w-4 mr-2" /> New Invoice
-              </Button>
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -773,8 +768,7 @@ export function InvoiceTable({ selectedDate, setIsInvoiceFormOpen, refreshFlag =
                             status: (invoice as any).paymentStatus || (invoice as any).status || "draft",
                           };
 
-                          // open form in parent
-                          setIsInvoiceFormOpen(true);
+                          // open form in parent - removed new invoice functionality
 
                           if (setEditingInvoice) {
                             // preferred: directly pass normalized invoice to parent setter

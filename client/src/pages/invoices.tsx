@@ -4,7 +4,6 @@ import { CashFlowCard } from "@/components/CashFlowCard";
 import { InvoiceTable } from "@/components/InvoiceTables";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
-import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import { SalesStatsCard } from "@/components/SalesStatsCard";
 import Cookies from "js-cookie";
 import { getSalesStats } from "@/services/api/sales";
@@ -21,7 +20,6 @@ type SalesStatsUI = {
 
 const Index = () => {
   const [selectedDate] = useState<Date>(new Date());
-  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState<boolean>(false);
 
   // new state for editing
   const [editingInvoice, setEditingInvoice] = useState<InvoiceModel | null>(null);
@@ -77,11 +75,10 @@ const Index = () => {
 
   const [refreshFlag, setRefreshFlag] = useState<number>(0);
 
-  // When an invoice is created/updated/deleted we close the form and refresh the table & stats
+  // When an invoice is created/updated/deleted we clear editing state and refresh the table & stats
   useEffect(() => {
     const handleInvoiceSaved = () => {
-      // close form if open and clear editing state
-      setIsInvoiceFormOpen(false);
+      // clear editing state
       setEditingInvoice(null);
       // toggle refresh flag so InvoiceTable re-fetches
       setRefreshFlag((f) => f + 1);
@@ -105,14 +102,13 @@ const Index = () => {
     };
   }, [fetchStats]);
 
-  // Listen for table's edit event (fallback) — set editing invoice & open form
+  // Listen for table's edit event (fallback) — set editing invoice
   useEffect(() => {
     const handleInvoiceEditEvent = (e: Event) => {
       const custom = e as CustomEvent;
       const detail = custom?.detail;
       if (!detail) return;
       setEditingInvoice(detail as InvoiceModel);
-      setIsInvoiceFormOpen(true);
     };
     window.addEventListener("invoice:edit", handleInvoiceEditEvent as EventListener);
     return () => {
@@ -120,26 +116,7 @@ const Index = () => {
     };
   }, []);
 
-  if (isInvoiceFormOpen) {
-    return (
-      <div className="px-2 sm:px-4">
-        <Card className="w-full p-4 sm:p-6 bg-white">
-          <p className="font-semibold text-2xl">
-            {editingInvoice ? "Edit Invoice" : "Create Purchase Form"}
-          </p>
-          <CardContent className="mt-2">
-            <InvoiceForm
-              onCancel={() => {
-                setIsInvoiceFormOpen(false);
-                setEditingInvoice(null);
-              }}
-              initialData={editingInvoice || undefined}
-            />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -184,7 +161,6 @@ const Index = () => {
         {/* Pass editingInvoice setter to the table so it can directly set edit state */}
         <InvoiceTable
           selectedDate={selectedDate}
-          setIsInvoiceFormOpen={setIsInvoiceFormOpen}
           refreshFlag={refreshFlag}
           setEditingInvoice={setEditingInvoice}
         />

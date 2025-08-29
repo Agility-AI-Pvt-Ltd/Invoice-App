@@ -16,6 +16,7 @@ import {
     LogOut,
     BarChart2,
     User,
+    NotepadText
 } from "lucide-react"
 import {
     Dialog,
@@ -48,6 +49,7 @@ function toTitleCase(input: string = ""): string {
 const menuItems = [
     { label: "Dashboard", icon: Home },
     { label: "My Customers", icon: Users },
+    { label: "Invoices", icon: NotepadText },
     { label: "Sales", icon: BarChart2 },
     // { label: "Products/Services", icon: Package },
     { label: "Items", icon: Boxes },
