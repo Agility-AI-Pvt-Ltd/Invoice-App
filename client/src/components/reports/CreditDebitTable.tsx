@@ -7,15 +7,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, MoreHorizontal } from "lucide-react";
+import { Edit, Trash2, MoreVertical, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import StatusDropdown from "./StatusDropdown";
-import ReasonDropdown from "./ReasonDropdown";
 
 type Note = {
   id: string | number;
@@ -34,26 +32,41 @@ interface CreditDebitTableProps {
   notesData: Note[];
   onEdit?: (note: Note) => void;
   onDelete?: (id: string | number) => void;
-  onStatusUpdate?: (id: string | number, newStatus: string) => void;
-  onReasonUpdate?: (id: string | number, newReason: string) => void;
+  selectedStatus: string;
+  selectedReason: string;
+  onStatusFilterChange: (status: string) => void;
+  onReasonFilterChange: (reason: string) => void;
 }
+
+const statusOptions = {
+  "credit-notes": ["All", "Open", "Adjusted", "Refunded"],
+  "debit-notes": ["All", "Open", "Accepted", "Rejected", "Settled"],
+};
+
+const reasonOptions = {
+  "credit-notes": ["All", "Returned Goods", "Discount", "Overpayment", "Other"],
+  "debit-notes": ["All", "Damaged Goods", "Overcharged", "Quantity Mismatch", "Other"],
+};
+
+const statusColors: Record<string, string> = {
+  Open: "border-blue-200 bg-blue-100 text-blue-700",
+  Refunded: "border-emerald-200 bg-emerald-100 text-emerald-700",
+  Adjusted: "border-amber-200 bg-amber-100 text-amber-700",
+  Accepted: "border-indigo-200 bg-indigo-100 text-indigo-700",
+  Settled: "border-emerald-200 bg-emerald-100 text-emerald-700",
+  Rejected: "border-red-200 bg-red-100 text-red-700",
+};
 
 const CreditDebitTable = ({
   activeTab,
   notesData,
   onEdit,
   onDelete,
-  onStatusUpdate,
-  onReasonUpdate,
+  selectedStatus,
+  selectedReason,
+  onStatusFilterChange,
+  onReasonFilterChange,
 }: CreditDebitTableProps) => {
-  const handleStatusUpdate = (id: string | number, newStatus: string) => {
-    onStatusUpdate?.(id, newStatus);
-  };
-
-  const handleReasonUpdate = (id: string | number, newReason: string) => {
-    onReasonUpdate?.(id, newReason);
-  };
-
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -69,7 +82,36 @@ const CreditDebitTable = ({
               {activeTab === "credit-notes" ? "Customer Name" : "Vendor Name"}
             </TableHead>
             <TableHead className="px-6 py-4 font-semibold text-slate-700">
-              Reason
+
+              <div className="flex items-center justify-between">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:bg-[f5f5f6] hover:text-black"
+                    >
+                      <span>Reason</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    {reasonOptions[activeTab].map((reason) => (
+                      <DropdownMenuItem
+                        key={reason}
+                        onClick={() => onReasonFilterChange(reason)}
+                        className={`cursor-pointer ${
+                          reason === selectedReason
+                            ? "bg-[#8066FF] text-white"
+                            : "bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {reason}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </TableHead>
             <TableHead className="px-6 py-4 font-semibold text-slate-700">
               Date Issued
@@ -78,7 +120,35 @@ const CreditDebitTable = ({
               Amount
             </TableHead>
             <TableHead className="px-6 py-4 font-semibold text-slate-700">
-              Status
+              <div className="flex items-center justify-between">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:bg-[f5f5f6] hover:text-black"
+                    >
+                      <span>Status</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32">
+                    {statusOptions[activeTab].map((status) => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => onStatusFilterChange(status)}
+                        className={`cursor-pointer ${
+                          status === selectedStatus
+                            ? "bg-[#8066FF] text-white"
+                            : "bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {status}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </TableHead>
             <TableHead className="px-6 py-4 font-semibold text-slate-700">
               Action
@@ -108,45 +178,33 @@ const CreditDebitTable = ({
                   {activeTab === "credit-notes" ? note.customerName : note.vendorName}
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  <ReasonDropdown
-                    currentReason={note.reason}
-                    noteId={String(note.id)}
-                    noteType={activeTab}
-                    onReasonUpdate={(newReason) => handleReasonUpdate(note.id, newReason)}
-                  />
+                  <span className="text-sm text-slate-700">{note.reason}</span>
                 </TableCell>
                 <TableCell className="px-6 py-4">{note.dateIssued}</TableCell>
                 <TableCell className="px-6 py-4">{note.amount}</TableCell>
                 <TableCell className="px-6 py-4">
-                  <StatusDropdown
-                    currentStatus={note.status}
-                    noteId={String(note.id)}
-                    noteType={activeTab}
-                    onStatusUpdate={(newStatus) => handleStatusUpdate(note.id, newStatus)}
-                  />
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColors[note.status] || 'border-gray-200 bg-gray-100 text-gray-700'}`}>
+                    {note.status}
+                  </span>
                 </TableCell>
                 <TableCell className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                    <button
+                      className="h-8 w-8 p-0 text-black hover:text-white hover:bg-gray-700 flex items-center justify-center rounded-[8px]"
                       onClick={() => onEdit?.(note)}
                     >
                       <Edit className="h-4 w-4" />
-                    </Button>
+                    </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                        <button
+                          className="h-8 w-8 p-0 text-black hover:text-white hover:bg-gray-700 flex items-center justify-center rounded-[8px]"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onDelete?.(note.id)}>
+                        <DropdownMenuItem className="text-black" onClick={() => onDelete?.(note.id)}>
                           <Trash2 className="mr-2 h-4 w-4 text-red-500" />
                           Delete
                         </DropdownMenuItem>

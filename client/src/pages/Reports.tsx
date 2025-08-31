@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/card";
+import Invoices from "@/pages/invoices"
 import {
   Search,
   Download,
@@ -21,16 +22,29 @@ import CreditDebitTable from "@/components/reports/CreditDebitTable";
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
-type Tab = "credit-notes" | "debit-notes";
+type Tab = "sales" | "credit-notes" | "debit-notes";
+
+const statusOptions = {
+  "credit-notes": ["All", "Open", "Adjusted", "Refunded"],
+  "debit-notes": ["All", "Open", "Accepted", "Rejected", "Settled"],
+};
+
+const reasonOptions = {
+  "credit-notes": ["All", "Returned Goods", "Discount", "Overpayment", "Other"],
+  "debit-notes": ["All", "Damaged Goods", "Overcharged", "Quantity Mismatch", "Other"],
+};
 
 export default function Report() {
-  const [activeTab, setActiveTab] = useState<Tab>("credit-notes");
+  const [activeTab, setActiveTab] = useState<Tab>("sales");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [creditNotes, setCreditNotes] = useState<any[]>([]);
   const [debitNotes, setDebitNotes] = useState<any[]>([]);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0, perPage: 10 });
+  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [selectedReason, setSelectedReason] = useState("All");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 
   // Helper function to check if user is authenticated
@@ -146,7 +160,14 @@ export default function Report() {
     try {
       setLoading(true);
       const token = Cookies.get("authToken") || undefined;
-      const params = new URLSearchParams({ page: String(currentPage), perPage: String(pagination.perPage) });
+      const params = new URLSearchParams({ 
+        page: String(currentPage), 
+        perPage: String(pagination.perPage),
+        ...(selectedStatus !== "All" && { status: selectedStatus }),
+        ...(selectedReason !== "All" && { reason: selectedReason }),
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
+      });
       const res = await fetch(`${API_BASE}/api/credit-notes?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -177,13 +198,20 @@ export default function Report() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pagination.perPage, toast]);
+  }, [currentPage, pagination.perPage, selectedStatus, selectedReason, searchTerm, selectedDate, toast]);
 
   const fetchDebitNotes = useCallback(async () => {
     try {
       setLoading(true);
       const token = Cookies.get("authToken") || undefined;
-      const params = new URLSearchParams({ page: String(currentPage), perPage: String(pagination.perPage) });
+      const params = new URLSearchParams({ 
+        page: String(currentPage), 
+        perPage: String(pagination.perPage),
+        ...(selectedStatus !== "All" && { status: selectedStatus }),
+        ...(selectedReason !== "All" && { reason: selectedReason }),
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
+      });
       const res = await fetch(`${API_BASE}/api/debit-notes?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -214,7 +242,15 @@ export default function Report() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pagination.perPage, toast]);
+  }, [currentPage, pagination.perPage, selectedStatus, selectedReason, searchTerm, selectedDate, toast]);
+
+  // Reset filters when changing tabs
+  useEffect(() => {
+    setSelectedStatus("All");
+    setSelectedReason("All");
+    setSelectedDate(undefined);
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // Fetch notes
   useEffect(() => {
@@ -347,8 +383,6 @@ export default function Report() {
     setCurrentPage(1);
   };
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-
   const filteredNotes = (activeTab === "credit-notes" ? creditNotes : debitNotes).filter((n) => {
     const term = (searchTerm || "").toLowerCase();
     const matchesTerm = !term || [n.noteNo, n.invoiceNo, n.customerName, n.vendorName, n.reason]
@@ -360,30 +394,15 @@ export default function Report() {
     return matchesTerm && matchesDate;
   });
 
-  // Handle status update
-  const handleStatusUpdate = (id: string | number, newStatus: string) => {
-    if (activeTab === "credit-notes") {
-      setCreditNotes(prev => prev.map(note => 
-        note.id === id ? { ...note, status: newStatus } : note
-      ));
-    } else {
-      setDebitNotes(prev => prev.map(note => 
-        note.id === id ? { ...note, status: newStatus } : note
-      ));
-    }
+  // Handle filter changes
+  const handleStatusFilterChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+    setCurrentPage(1);
   };
 
-  // Handle reason update
-  const handleReasonUpdate = (id: string | number, newReason: string) => {
-    if (activeTab === "credit-notes") {
-      setCreditNotes(prev => prev.map(note => 
-        note.id === id ? { ...note, reason: newReason } : note
-      ));
-    } else {
-      setDebitNotes(prev => prev.map(note => 
-        note.id === id ? { ...note, reason: newReason } : note
-      ));
-    }
+  const handleReasonFilterChange = (newReason: string) => {
+    setSelectedReason(newReason);
+    setCurrentPage(1);
   };
 
   return (
@@ -395,7 +414,20 @@ export default function Report() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-6">
                    <button
-                    className={`pb-2 text-sm font-medium transition-colors ${
+                    className={`pb-2 font-medium transition-colors ${
+                      activeTab === "sales"
+                        ? "border-b-3 border-[#b5a3ff]"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    onClick={() => {
+                      setActiveTab("sales");
+                      setCurrentPage(1);
+                    }}
+                  >
+                    Sales
+                  </button>
+                   <button
+                    className={`pb-2 font-medium transition-colors ${
                       activeTab === "credit-notes"
                         ? "border-b-3 border-[#b5a3ff]"
                         : "text-gray-500 hover:text-gray-700"
@@ -408,7 +440,7 @@ export default function Report() {
                     Credit Note
                   </button>
                   <button
-                    className={`pb-2 text-sm font-medium transition-colors ${
+                    className={`pb-2 font-medium transition-colors ${
                       activeTab === "debit-notes"
                         ? "border-b-3 border-[#b5a3ff]"
                         : "text-gray-500 hover:text-gray-700"
@@ -422,7 +454,10 @@ export default function Report() {
                   </button>
                 </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+              {activeTab === "sales" ? (
+                <></>
+              ) : (
+                <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                 {/* Search */}
                 <div className="relative flex-1 lg:w-80">
                   <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
@@ -433,6 +468,8 @@ export default function Report() {
                     className="h-10 border-slate-200 bg-white pl-10 text-slate-600"
                   />
                 </div>
+
+
 
                 {/* Desktop/Tablet Actions */}
                 <div className="hidden flex-wrap gap-2 sm:flex">
@@ -562,18 +599,25 @@ export default function Report() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
-          
-          <CreditDebitTable 
+
+          {activeTab === "sales" ? (
+                <Invoices />
+              ) : (
+                <CreditDebitTable 
             activeTab={activeTab} 
             notesData={filteredNotes}
-            onStatusUpdate={handleStatusUpdate}
-            onReasonUpdate={handleReasonUpdate}
+            selectedStatus={selectedStatus}
+            selectedReason={selectedReason}
+            onStatusFilterChange={handleStatusFilterChange}
+            onReasonFilterChange={handleReasonFilterChange}
           />
+        )}
 
           {/* No Data State */}
-          {!loading && filteredNotes.length === 0 && (
+          {/* {activeTab !== "sales" && !loading && filteredNotes.length === 0 && (
             <div className="flex items-center justify-center border-t border-slate-200 px-4 py-12">
               <div className="text-center text-slate-500">
                 <div className="mb-2 text-4xl">📄</div>
@@ -581,20 +625,20 @@ export default function Report() {
                 <p className="text-sm">Try adjusting your search or filters</p>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Loading State */}
-          {loading && (
+          {/* {loading && (
             <div className="flex items-center justify-center border-t border-slate-200 px-4 py-8">
               <div className="flex items-center gap-2 text-slate-500">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[#8066FF]"></div>
                 <span>Loading...</span>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Page Info */}
-          {pagination.totalItems > 0 && (
+          {activeTab !== "sales" && pagination.totalItems > 0 && (
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-500">
               <span>
                 {`${(pagination.currentPage - 1) * pagination.perPage + 1}-${Math.min(
@@ -606,7 +650,7 @@ export default function Report() {
           )}
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {activeTab !== "sales" && pagination.totalPages > 1 && (
             <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 p-4 sm:flex-row lg:p-6">
               <button
                 className={`flex items-center gap-2 text-sm ${pagination.currentPage <= 1 ? "cursor-not-allowed text-slate-300" : "text-slate-600 hover:text-slate-800"}`}

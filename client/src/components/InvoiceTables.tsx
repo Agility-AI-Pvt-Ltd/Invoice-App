@@ -14,7 +14,7 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
-  ScanLine,
+  // ScanLine,
   Filter,
   DownloadCloud,
   X,
@@ -26,7 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { CameraScanner } from "./CameraScanner";
-import Cookies from "js-cookie";
+// import Cookies from "js-cookie";
 import { getSalesData, type SalesRecord } from "@/services/api/sales";
 import autoTable from "jspdf-autotable";
 import jsPDF from "jspdf";
@@ -69,8 +69,8 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
   });
 
   // Camera scanner states
-  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
-  const [isProcessingScannedImage, setIsProcessingScannedImage] = useState(false);
+  // const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  // const [isProcessingScannedImage, setIsProcessingScannedImage] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -90,54 +90,54 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     }
   };
 
-  const handleScanInvoice = () => {
-    setIsCameraScannerOpen(true);
-  };
+  // const handleScanInvoice = () => {
+  //   setIsCameraScannerOpen(true);
+  // };
 
-  const handleImageCapture = async (imageFile: File) => {
-    console.log("Image captured:", imageFile.name, imageFile.size);
-    setIsProcessingScannedImage(true);
-    setIsCameraScannerOpen(false); // Close the scanner
+  // const handleImageCapture = async (imageFile: File) => {
+  //   console.log("Image captured:", imageFile.name, imageFile.size);
+  //   setIsProcessingScannedImage(true);
+  //   setIsCameraScannerOpen(false); // Close the scanner
 
-    try {
-      const formData = new FormData();
-      formData.append('file', imageFile);
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('file', imageFile);
 
-      const authToken = Cookies.get('authToken');
+  //     const authToken = Cookies.get('authToken');
 
-      if (!authToken) {
-        throw new Error('Authentication token not found. Please login again.');
-      }
+  //     if (!authToken) {
+  //       throw new Error('Authentication token not found. Please login again.');
+  //     }
 
-      const response = await fetch('https://invoice-backend-604217703209.asia-south1.run.app/api/scan-invoice', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: formData
-      });
+  //     const response = await fetch('https://invoice-backend-604217703209.asia-south1.run.app/api/scan-invoice', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${authToken}`,
+  //       },
+  //       body: formData
+  //     });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+  //     }
 
-      const result = await response.json();
+  //     const result = await response.json();
 
-      if (result.success) {
-        alert(`${result.message}\nInvoice ID: ${result.invoiceId}\nType: ${result.invoiceType}`);
-        fetchInvoices();
-      } else {
-        throw new Error('Failed to process invoice');
-      }
+  //     if (result.success) {
+  //       alert(`${result.message}\nInvoice ID: ${result.invoiceId}\nType: ${result.invoiceType}`);
+  //       fetchInvoices();
+  //     } else {
+  //       throw new Error('Failed to process invoice');
+  //     }
 
-    } catch (err: any) {
-      console.error('Error processing scanned invoice:', err);
-      alert(err.message || 'Failed to process the scanned invoice. Please try again.');
-    } finally {
-      setIsProcessingScannedImage(false);
-    }
-  };
+  //   } catch (err: any) {
+  //     console.error('Error processing scanned invoice:', err);
+  //     alert(err.message || 'Failed to process the scanned invoice. Please try again.');
+  //   } finally {
+  //     setIsProcessingScannedImage(false);
+  //   }
+  // };
 
   // Initial fetch (mount) and re-fetch when selectedDate or external refreshFlag change
   useEffect(() => {
@@ -477,7 +477,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
               ))}
 
 
-              <Button
+              {/* <Button
                 size="sm"
                 variant="ghost"
                 onClick={handleScanInvoice}
@@ -485,7 +485,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
               >
                 <ScanLine className="h-4 w-4 mr-2" />
                 {isProcessingScannedImage ? "Processing..." : "Scan Invoice"}
-              </Button>
+              </Button> */}
               <Button
                 size="sm"
                 variant="ghost"
@@ -688,14 +688,14 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
           )}
 
           {/* Processing Banner */}
-          {isProcessingScannedImage && (
+          {/* {isProcessingScannedImage && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-2">
                 <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
                 <p className="text-blue-800">Processing scanned invoice...</p>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Table */}
           <div className="overflow-x-auto">
@@ -844,11 +844,11 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       </Card>
 
       {/* Camera Scanner Modal */}
-      <CameraScanner
+      {/* <CameraScanner
         isOpen={isCameraScannerOpen}
         onClose={() => setIsCameraScannerOpen(false)}
         onImageCapture={handleImageCapture}
-      />
+      /> */}
     </>
   );
 }
