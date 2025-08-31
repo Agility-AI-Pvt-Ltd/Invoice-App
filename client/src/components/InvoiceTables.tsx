@@ -11,7 +11,6 @@ import {
   Download,
   Trash,
   MoreVertical,
-  Edit,
   ChevronLeft,
   ChevronRight,
   // ScanLine,
@@ -726,7 +725,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                     <td className="py-3 px-2">{(invoice as any).dateOfSale || (invoice as any).date}</td>
                     <td className="py-3 px-2">{getStatusBadge(invoice.paymentStatus)}</td>
                     <td className="py-3 px-2 flex items-center space-x-2">
-                      <Button
+                      {/* <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
@@ -780,7 +779,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                         }}
                       >
                         <Edit className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm">
@@ -819,7 +818,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
               }
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+              <Button className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
                 <ChevronLeft className="h-4 w-4 mr-1" /> Previous
               </Button>
               <div className="flex items-center gap-1">
@@ -835,7 +834,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                   </Button>
                 ))}
               </div>
-              <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
+              <Button className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
                 Next <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
