@@ -14,7 +14,6 @@ import {
     UserCog,
     WalletMinimal,
     LogOut,
-    BarChart2,
     User,
     NotepadText
 } from "lucide-react"

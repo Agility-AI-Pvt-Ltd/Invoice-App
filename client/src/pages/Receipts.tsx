@@ -11,14 +11,7 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Calendar,
-  TrendingUp,
-  FileText,
-  CreditCard,
-  Receipt,
-  Bell,
   ChevronDown,
-  ScanLine,
   X,
 } from "lucide-react";
 import {
@@ -30,22 +23,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
-import { invoicesAPI } from "@/services/api/dashboard";
-import { getSalesData, type SalesRecord } from "@/services/api/sales";
 import { useLocation, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
-import { CameraScanner } from "@/components/CameraScanner";
+
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
@@ -91,14 +75,13 @@ export default function Receipts() {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNoteData[]>([]);
   const [debitNotes, setDebitNotes] = useState<DebitNoteData[]>([]);
-  const [pagination, setPagination] = useState({
+  const [pagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
     perPage: 10,
   });
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [activeCreditForm, setActiveCreditForm] = useState(false);
   const [activeDebitForm, setActiveDebitForm] = useState(false);
@@ -108,14 +91,7 @@ export default function Receipts() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Summary data state
-  const [summaryData, setSummaryData] = useState({
-    totalInvoices: 23345,
-    paidInvoices: 23345,
-    pendingInvoices: 23345,
-    totalReceivables: 23345,
-    overdueAmount: 23345,
-  });
+
 
   // Helper function to check if user is authenticated
   const isAuthenticated = () => {
@@ -176,69 +152,7 @@ export default function Receipts() {
     fetchDebitNotes(); // Refresh data after form close
   };
 
-  // Scan invoice functionality
-  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
-  const [isProcessingScannedImage, setIsProcessingScannedImage] =
-    useState(false);
 
-  const handleScanInvoice = () => {
-    setIsCameraScannerOpen(true);
-  };
-
-  const handleImageCapture = async (imageFile: File) => {
-    console.log("Image captured:", imageFile.name, imageFile.size);
-    setIsProcessingScannedImage(true);
-    setIsCameraScannerOpen(false);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", imageFile);
-
-      const authToken = Cookies.get("authToken");
-
-      if (!authToken) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
-
-      const response = await fetch(`${API_BASE}/api/scan-invoice`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.detail || `HTTP error! status: ${response.status}`,
-        );
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: `${result.message}\nInvoice ID: ${result.invoiceId}\nType: ${result.invoiceType}`,
-        });
-        fetchInvoices();
-      } else {
-        throw new Error("Failed to process invoice");
-      }
-    } catch (err: any) {
-      console.error("Error processing scanned invoice:", err);
-      toast({
-        title: "Error",
-        description:
-          err.message ||
-          "Failed to process the scanned invoice. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessingScannedImage(false);
-    }
-  };
 
   // Fetch invoices data
   const fetchInvoices = useCallback(async () => {
@@ -561,17 +475,13 @@ export default function Receipts() {
   // Get filtered data based on active tab
   const getFilteredData = () => {
     let data: any[] = [];
-    let type: "invoice" | "credit" | "debit" = "invoice";
 
     if (activeTab === "invoices") {
       data = invoices;
-      type = "invoice";
     } else if (activeTab === "credit-notes") {
       data = creditNotes;
-      type = "credit";
     } else if (activeTab === "debit-notes") {
       data = debitNotes;
-      type = "debit";
     }
 
     return data.filter((item) => {
@@ -1317,22 +1227,7 @@ export default function Receipts() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Scan Invoice Button */}
-                {activeTab === "invoices" && (
-                  <Button
-                    // variant="outline"
-                    className="flex items-center gap-2 border-1 border-gray-200 bg-white text-black hover:bg-gray-100"
-                    onClick={handleScanInvoice}
-                    disabled={isProcessingScannedImage}
-                  >
-                    <ScanLine className="h-4 w-4 text-black" />
-                    <span className="hidden text-black sm:inline">
-                      {isProcessingScannedImage
-                        ? "Processing..."
-                        : "Scan Invoice"}
-                    </span>
-                  </Button>
-                )}
+
 
                 {/* New Invoice Button */}
                 {activeTab === "invoices" ? (
@@ -1498,7 +1393,7 @@ export default function Receipts() {
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((item, index) => (
+                  filteredData.map((item) => (
                     <tr
                       key={item.id}
                       className="border-b border-gray-100 hover:bg-gray-50"
@@ -1775,12 +1670,7 @@ export default function Receipts() {
         </Card>
       </div>
 
-      {/* Camera Scanner Modal */}
-      <CameraScanner
-        isOpen={isCameraScannerOpen}
-        onClose={() => setIsCameraScannerOpen(false)}
-        onImageCapture={handleImageCapture}
-      />
+
 
 
     </div>

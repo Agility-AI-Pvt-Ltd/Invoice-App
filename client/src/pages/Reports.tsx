@@ -24,15 +24,7 @@ const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
 type Tab = "sales" | "credit-notes" | "debit-notes";
 
-const statusOptions = {
-  "credit-notes": ["All", "Open", "Adjusted", "Refunded"],
-  "debit-notes": ["All", "Open", "Accepted", "Rejected", "Settled"],
-};
 
-const reasonOptions = {
-  "credit-notes": ["All", "Returned Goods", "Discount", "Overpayment", "Other"],
-  "debit-notes": ["All", "Damaged Goods", "Overcharged", "Quantity Mismatch", "Other"],
-};
 
 export default function Report() {
   const [activeTab, setActiveTab] = useState<Tab>("sales");
