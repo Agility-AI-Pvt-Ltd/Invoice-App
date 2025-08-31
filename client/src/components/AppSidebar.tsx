@@ -50,7 +50,7 @@ const menuItems = [
     { label: "Dashboard", icon: Home },
     { label: "My Customers", icon: Users },
     { label: "Invoices", icon: NotepadText },
-    { label: "Sales", icon: BarChart2 },
+    // { label: "Sales", icon: BarChart2 },
     // { label: "Products/Services", icon: Package },
     { label: "Items", icon: Boxes },
     { label: "Reports", icon: ChartBar },
