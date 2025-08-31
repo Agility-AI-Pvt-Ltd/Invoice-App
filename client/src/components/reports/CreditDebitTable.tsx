@@ -7,13 +7,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, MoreVertical, ChevronDown } from "lucide-react";
+import { Trash2, MoreVertical, ChevronDown, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type Note = {
   id: string | number;
@@ -30,7 +32,6 @@ type Note = {
 interface CreditDebitTableProps {
   activeTab: "credit-notes" | "debit-notes";
   notesData: Note[];
-  onEdit?: (note: Note) => void;
   onDelete?: (id: string | number) => void;
   selectedStatus: string;
   selectedReason: string;
@@ -60,13 +61,65 @@ const statusColors: Record<string, string> = {
 const CreditDebitTable = ({
   activeTab,
   notesData,
-  onEdit,
   onDelete,
   selectedStatus,
   selectedReason,
   onStatusFilterChange,
   onReasonFilterChange,
 }: CreditDebitTableProps) => {
+  
+  // Handle download functionality
+  const handleDownload = (note: Note) => {
+    try {
+      const doc = new jsPDF();
+
+      // Title
+      doc.setFontSize(16);
+      doc.text(activeTab === "credit-notes" ? "Credit Note" : "Debit Note", 14, 20);
+
+      // Note details
+      doc.setFontSize(12);
+      doc.text(`${activeTab === "credit-notes" ? "Credit Note" : "Debit Note"} Number: ${note.noteNo}`, 14, 35);
+      doc.text(`Invoice Number: ${note.invoiceNo}`, 14, 45);
+      doc.text(`${activeTab === "credit-notes" ? "Customer" : "Vendor"}: ${activeTab === "credit-notes" ? note.customerName : note.vendorName}`, 14, 55);
+      doc.text(`Date Issued: ${note.dateIssued}`, 14, 65);
+      doc.text(`Status: ${note.status}`, 14, 75);
+      doc.text(`Reason: ${note.reason}`, 14, 85);
+
+      // Amount Table
+      autoTable(doc, {
+        startY: 100,
+        head: [["Description", "Amount"]],
+        body: [
+          ["Total Amount", `₹${note.amount}`],
+        ],
+      });
+
+      // Save the file
+      doc.save(`${note.noteNo}.pdf`);
+    } catch (err: any) {
+      alert(err.message || `Failed to generate ${activeTab === "credit-notes" ? "credit note" : "debit note"} PDF`);
+    }
+  };
+
+  // Handle delete functionality
+  const handleDelete = async (noteId: string | number) => {
+    if (!confirm(`Are you sure you want to delete this ${activeTab === "credit-notes" ? "credit note" : "debit note"}?`)) return;
+    
+    try {
+      // TODO: Add API call here to delete the note
+      // Example: await deleteNoteAPI(noteId);
+      
+      // For now, just call the onDelete callback if provided
+      onDelete?.(noteId);
+      
+      // TODO: Remove this line when API is implemented and data is refreshed from parent
+      console.log(`Delete ${activeTab === "credit-notes" ? "credit note" : "debit note"} with ID:`, noteId);
+    } catch (err: any) {
+      alert(err.message || `Failed to delete ${activeTab === "credit-notes" ? "credit note" : "debit note"}`);
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -189,24 +242,24 @@ const CreditDebitTable = ({
                 </TableCell>
                 <TableCell className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <button
+                    {/* <button
                       className="h-8 w-8 p-0 text-black hover:text-white hover:bg-gray-700 flex items-center justify-center rounded-[8px]"
                       onClick={() => onEdit?.(note)}
                     >
                       <Edit className="h-4 w-4" />
-                    </button>
+                    </button> */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button
-                          className="h-8 w-8 p-0 text-black hover:text-white hover:bg-gray-700 flex items-center justify-center rounded-[8px]"
-                        >
+                        <Button variant="ghost" size="sm">
                           <MoreVertical className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="text-black" onClick={() => onDelete?.(note.id)}>
-                          <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                          Delete
+                      <DropdownMenuContent className="bg-gray-900 text-white" align="end">
+                        <DropdownMenuItem onClick={() => handleDownload(note)}>
+                          <Download className="mr-2 h-4 w-4" /> Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(note.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

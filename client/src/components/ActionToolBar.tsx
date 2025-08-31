@@ -6,7 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useNavigate } from "react-router-dom";
 
 const ActionToolbar = () => {
-  //@ts-ignore
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 

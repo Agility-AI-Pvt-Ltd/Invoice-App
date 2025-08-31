@@ -7,6 +7,8 @@ import {
   Search,
   Download,
   Upload,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -398,7 +400,7 @@ export default function Report() {
   };
 
   return (
-    <div className="bg-background min-h-screen p-4 lg:p-8">
+    <div className="bg-background min-h-screen p-4 lg:p-6">
       <div className="max-w-8xl mx-auto">
         <Card className="border-0 bg-white shadow-sm">
           {/* Header */}
@@ -629,55 +631,48 @@ export default function Report() {
             </div>
           )} */}
 
-          {/* Page Info */}
-          {activeTab !== "sales" && pagination.totalItems > 0 && (
-            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-500">
-              <span>
-                {`${(pagination.currentPage - 1) * pagination.perPage + 1}-${Math.min(
-                  pagination.currentPage * pagination.perPage,
-                  pagination.totalItems
-                )} of ${pagination.totalItems} items`}
-              </span>
-            </div>
-          )}
-
           {/* Pagination */}
           {activeTab !== "sales" && pagination.totalPages > 1 && (
-            <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 p-4 sm:flex-row lg:p-6">
-              <button
-                className={`flex items-center gap-2 text-sm ${pagination.currentPage <= 1 ? "cursor-not-allowed text-slate-300" : "text-slate-600 hover:text-slate-800"}`}
-                disabled={pagination.currentPage <= 1 || loading}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              >
-                <span>←</span>
-                <span className="hidden sm:inline">Previous</span>
-              </button>
-
+            <div className="flex items-center justify-between pt-4">
+              <p className="text-sm text-muted-foreground ml-4 sm:ml-6">
+                Showing {pagination.totalItems === 0 ? 0 : (pagination.currentPage - 1) * pagination.perPage + 1}-{Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)} of {pagination.totalItems} results
+              </p>
               <div className="flex items-center gap-2">
-                {getPaginationRange(pagination.currentPage, pagination.totalPages).map((item, idx) =>
-                  item === "..." ? (
-                    <span key={`dots-${idx}`} className="px-2 text-slate-400">...</span>
-                  ) : (
-                    <button
-                      key={item as number}
-                      className={`h-8 w-8 rounded ${item === pagination.currentPage ? "bg-[#8066FF] text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
-                      onClick={() => setCurrentPage(item as number)}
-                      disabled={loading}
-                    >
-                      {item}
-                    </button>
-                  ),
-                )}
+                <Button 
+                  className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                  size="sm" 
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} 
+                  disabled={pagination.currentPage <= 1 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {getPaginationRange(pagination.currentPage, pagination.totalPages).map((item, idx) =>
+                    item === "..." ? (
+                      <span key={`dots-${idx}`} className="px-2 text-slate-400">...</span>
+                    ) : (
+                      <Button
+                        key={item as number}
+                        variant={item === pagination.currentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(item as number)}
+                        disabled={loading}
+                        className="w-8 h-8 p-0"
+                      >
+                        {item}
+                      </Button>
+                    ),
+                  )}
+                </div>
+                <Button 
+                  className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                  size="sm" 
+                  onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))} 
+                  disabled={pagination.currentPage >= pagination.totalPages || loading}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
               </div>
-
-              <button
-                className={`flex items-center gap-2 text-sm ${pagination.currentPage >= pagination.totalPages ? "cursor-not-allowed text-slate-300" : "text-slate-600 hover:text-slate-800"}`}
-                disabled={pagination.currentPage >= pagination.totalPages || loading}
-                onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-              >
-                <span className="hidden sm:inline">Next</span>
-                <span>→</span>
-              </button>
             </div>
           )}
         </Card>

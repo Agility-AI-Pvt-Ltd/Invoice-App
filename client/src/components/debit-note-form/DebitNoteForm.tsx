@@ -13,12 +13,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
 import Cookies from "js-cookie";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
 interface DebitNoteFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 interface FormData {
@@ -55,7 +58,7 @@ interface FormData {
   remark: string;
 }
 
-export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps) {
+export default function DebitNoteForm({ onClose, onSuccess, initialData }: DebitNoteFormProps) {
   const [formData, setFormData] = useState<FormData>({
     debitNoteNumber: "",
     debitNoteDate: new Date().toISOString().split('T')[0],
@@ -81,8 +84,8 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
   });
 
   const [loading, setLoading] = useState(false);
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [purchaseInvoices, setPurchaseInvoices] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [purchaseInvoices, setPurchaseInvoices] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const { toast } = useToast();
 
   // Fetch vendors and purchase invoices on component mount
@@ -90,6 +93,36 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
     fetchVendors();
     fetchPurchaseInvoices();
   }, []);
+
+  // Populate form with initial data if provided
+  useEffect(() => {
+    if (initialData) {
+      console.log("DebitNoteForm initialData:", initialData); // Debug log
+      setFormData({
+        debitNoteNumber: initialData.debitNoteNumber || initialData.noteNo || initialData.debitNoteId || "",
+        debitNoteDate: initialData.debitNoteDate || initialData.dateIssued || initialData.date || new Date().toISOString().split('T')[0],
+        againstInvoiceNumber: initialData.againstInvoiceNumber || initialData.invoiceNo || initialData.againstInvoice || "",
+        againstInvoiceDate: initialData.againstInvoiceDate || initialData.invoiceDate || "",
+        reason: initialData.reason || initialData.noteReason || "",
+        vendorName: initialData.vendorName || initialData.supplierName || initialData.businessName || "",
+        businessName: initialData.businessName || initialData.companyName || "",
+        address: initialData.address || initialData.vendorAddress || "",
+        contactNumber: initialData.contactNumber || initialData.phone || initialData.mobile || "",
+        isGstRegistered: initialData.isGstRegistered !== undefined ? initialData.isGstRegistered : true,
+        gstNumber: initialData.gstNumber || initialData.gstin || "",
+        items: initialData.items || initialData.itemDetails || [],
+        termsAndConditions: initialData.termsAndConditions || initialData.terms || "",
+        subtotal: initialData.subtotal || initialData.amount || 0,
+        cgst: initialData.cgst || 0,
+        sgst: initialData.sgst || 0,
+        igst: initialData.igst || 0,
+        total: initialData.total || initialData.amount || 0,
+        applyToNextInvoice: initialData.applyToNextInvoice || false,
+        refund: initialData.refund || false,
+        remark: initialData.remark || initialData.notes || "",
+      });
+    }
+  }, [initialData]);
 
   const fetchVendors = async () => {
     try {
@@ -121,14 +154,14 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
     }
   };
 
-  const handleInputChange = (field: keyof FormData, value: any) => {
+  const handleInputChange = (field: keyof FormData, value: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleItemChange = (index: number, field: string, value: any) => {
+  const handleItemChange = (index: number, field: string, value: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     const updatedItems = [...formData.items];
     updatedItems[index] = {
       ...updatedItems[index],
@@ -221,6 +254,93 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
     }
   };
 
+  const handlePrint = () => {
+    const doc = new jsPDF();
+    
+    // Add company header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("DEBIT NOTE", 105, 20, { align: "center" });
+    
+    // Add debit note details
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Debit Note Number: ${formData.debitNoteNumber}`, 20, 40);
+    doc.text(`Debit Note Date: ${formData.debitNoteDate}`, 20, 50);
+    doc.text(`Against Invoice: ${formData.againstInvoiceNumber}`, 20, 60);
+    doc.text(`Against Invoice Date: ${formData.againstInvoiceDate}`, 20, 70);
+    doc.text(`Reason: ${formData.reason}`, 20, 80);
+    
+    // Add party information
+    doc.setFont("helvetica", "bold");
+    doc.text("Party Information", 20, 100);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Vendor Name: ${formData.vendorName}`, 20, 110);
+    doc.text(`Business Name: ${formData.businessName}`, 20, 120);
+    doc.text(`Address: ${formData.address}`, 20, 130);
+    doc.text(`Contact: ${formData.contactNumber}`, 20, 140);
+    doc.text(`GST Number: ${formData.gstNumber}`, 20, 150);
+    
+    // Add items table
+    if (formData.items.length > 0) {
+      const tableData = formData.items.map(item => [
+        item.serialNo,
+        item.itemName,
+        item.hsnCode,
+        item.quantity,
+        `₹${item.unitPrice.toFixed(2)}`,
+        `${item.gstPercentage}%`,
+        `₹${item.taxableValue.toFixed(2)}`,
+        `₹${item.grossTotal.toFixed(2)}`
+      ]);
+      
+      autoTable(doc, {
+        startY: 170,
+        head: [['S.No', 'Item Name', 'HSN Code', 'Qty', 'Unit Price', 'GST%', 'Taxable Value', 'Gross Total']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [101, 75, 205] },
+        styles: { fontSize: 8 }
+      });
+    }
+    
+    // Add summary
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFont("helvetica", "bold");
+    doc.text("Summary", 20, finalY);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Subtotal: ₹${formData.subtotal.toFixed(2)}`, 120, finalY);
+    doc.text(`CGST: ₹${formData.cgst.toFixed(2)}`, 120, finalY + 10);
+    doc.text(`SGST: ₹${formData.sgst.toFixed(2)}`, 120, finalY + 20);
+    doc.text(`IGST: ₹${formData.igst.toFixed(2)}`, 120, finalY + 30);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total: ₹${formData.total.toFixed(2)}`, 120, finalY + 40);
+    
+    // Add additional information
+    doc.setFont("helvetica", "normal");
+    doc.text(`Apply to Next Invoice: ${formData.applyToNextInvoice ? 'Yes' : 'No'}`, 20, finalY + 60);
+    doc.text(`Refund: ${formData.refund ? 'Yes' : 'No'}`, 20, finalY + 70);
+    doc.text(`Remark: ${formData.remark}`, 20, finalY + 80);
+    
+    // Add terms and conditions
+    if (formData.termsAndConditions) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Terms & Conditions", 20, finalY + 100);
+      doc.setFont("helvetica", "normal");
+      const splitTerms = doc.splitTextToSize(formData.termsAndConditions, 170);
+      doc.text(splitTerms, 20, finalY + 110);
+    }
+    
+    // Save the PDF
+    const filename = `DebitNote_${formData.debitNoteNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+    
+    toast({
+      title: "Success",
+      description: "Debit note PDF generated successfully!",
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -244,8 +364,13 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
         }
       });
 
-      const response = await fetch(`${API_BASE}/api/debit-notes`, {
-        method: 'POST',
+      // Determine if this is a create or update operation
+      const isUpdate = initialData && initialData._id;
+      const method = isUpdate ? 'PUT' : 'POST';
+      const url = isUpdate ? `${API_BASE}/api/debit-notes/${initialData._id}` : `${API_BASE}/api/debit-notes`;
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -260,16 +385,16 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
       await response.json();
       toast({
         title: "Success",
-        description: "Debit note created successfully!",
+        description: isUpdate ? "Debit note updated successfully!" : "Debit note created successfully!",
       });
 
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("Error creating debit note:", error);
+      console.error("Error saving debit note:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create debit note",
+        description: error instanceof Error ? error.message : "Failed to save debit note",
         variant: "destructive",
       });
     } finally {
@@ -700,7 +825,7 @@ export default function DebitNoteForm({ onClose, onSuccess }: DebitNoteFormProps
           <Button type="submit" disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Save as Draft
           </Button>
-          <Button type="button" className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
+          <Button type="button" onClick={handlePrint} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Print
           </Button>
           <Button type="submit" disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
