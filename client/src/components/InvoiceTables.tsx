@@ -25,7 +25,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CameraScanner } from "./CameraScanner";
+
 // import Cookies from "js-cookie";
 import { getSalesData, type SalesRecord } from "@/services/api/sales";
 import autoTable from "jspdf-autotable";
