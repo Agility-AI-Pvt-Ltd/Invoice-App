@@ -697,110 +697,57 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
           )} */}
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="w-full overflow-x-auto rounded-md border">
+            <table className="min-w-[900px]">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Invoice Number</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Customer Name</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Product</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Quantity</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Unit Price</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Total Amount</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Date of Sale</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Payment Status</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Actions</th>
+                <tr className="border-b border-gray-200">
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Invoice Number</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Product</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Quantity</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Unit Price</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Total Amount</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Date of Sale</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Payment Status</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {currentInvoices && currentInvoices.map((invoice) => (
-                  <tr key={invoice.id || (invoice as any)._id} className="border-b border-border hover:bg-muted/20">
-                    <td className="py-3 px-2 text-sm text-foreground">{invoice.invoiceNumber}</td>
-                    <td className="py-3 px-2">{invoice.customerName}</td>
-                    <td className="py-3 px-2">{invoice.product}</td>
-                    <td className="py-3 px-2">{invoice.quantity}</td>
-                    <td className="py-3 px-2">₹{(invoice as any).unitPrice?.toLocaleString?.()}</td>
-                    <td className="py-3 px-2">₹{(invoice as any).totalAmount?.toLocaleString?.()}</td>
-                    <td className="py-3 px-2">{(invoice as any).dateOfSale || (invoice as any).date}</td>
-                    <td className="py-3 px-2">{getStatusBadge(invoice.paymentStatus)}</td>
-                    <td className="py-3 px-2 flex items-center space-x-2">
-                      {/* <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          // Normalize the invoice row into a shape the InvoiceForm expects.
-                          const normalized: any = {
-                            // copy raw fields
-                            ...invoice,
-                            // ensure we have _id and id for detection
-                            _id: (invoice as any)._id || invoice.id || undefined,
-                            id: invoice.id || (invoice as any)._id || undefined,
-                            // map dateOfSale -> date (use as any to satisfy TS)
-                            date: (invoice as any).dateOfSale || (invoice as any).date || new Date().toISOString().slice(0,10),
-                            // map customer -> billTo
-                            billTo: {
-                              name: invoice.customerName || "",
-                              email: (invoice as any).customerEmail || "",
-                              address: (invoice as any).customerAddress || "",
-                              phone: (invoice as any).customerPhone || "",
-                              gst: (invoice as any).customerGst || "",
-                              pan: (invoice as any).customerPan || "",
-                            },
-                            // ensure items array exists (fallback to single-item from row)
-                            items: (invoice as any).items && Array.isArray((invoice as any).items) && (invoice as any).items.length > 0
-                              ? (invoice as any).items
-                              : [
-                                  {
-                                    description: invoice.product || "",
-                                    hsn: (invoice as any).hsn || "",
-                                    quantity: invoice.quantity || 1,
-                                    unitPrice: (invoice as any).unitPrice || 0,
-                                    gst: (invoice as any).gst || 0,
-                                    discount: (invoice as any).discount || 0,
-                                    amount: (invoice as any).totalAmount || 0,
-                                  }
-                                ],
-                            total: (invoice as any).totalAmount || (invoice as any).total || 0,
-                            subtotal: (invoice as any).subtotal || (invoice as any).totalAmount || 0,
-                            currency: (invoice as any).currency || "INR",
-                            status: (invoice as any).paymentStatus || (invoice as any).status || "draft",
-                          };
-
-                          // open form in parent - removed new invoice functionality
-
-                          if (setEditingInvoice) {
-                            // preferred: directly pass normalized invoice to parent setter
-                            setEditingInvoice(normalized);
-                          } else {
-                            // fallback: emit event for older code paths
-                            window.dispatchEvent(new CustomEvent("invoice:edit", { detail: normalized }));
-                          }
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button> */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-gray-900 text-white" align="end">
-                          <DropdownMenuItem onClick={() => handleDownload(invoice)}>
-                            <Download className="mr-2 h-4 w-4" /> Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(invoice.id || (invoice as any)._id)}>
-                            <Trash className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  <tr key={invoice.id || (invoice as any)._id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{invoice.invoiceNumber}</td>
+                    <td className="px-3 py-4 sm:px-6">{invoice.customerName}</td>
+                    <td className="px-3 py-4 sm:px-6">{invoice.product}</td>
+                    <td className="px-3 py-4 sm:px-6">{invoice.quantity}</td>
+                    <td className="px-3 py-4 sm:px-6">₹{(invoice as any).unitPrice?.toLocaleString?.()}</td>
+                    <td className="px-3 py-4 sm:px-6">₹{(invoice as any).totalAmount?.toLocaleString?.()}</td>
+                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{(invoice as any).dateOfSale || (invoice as any).date}</td>
+                    <td className="px-3 py-4 sm:px-6">{getStatusBadge(invoice.paymentStatus)}</td>
+                    <td className="px-3 py-4 sm:px-6">
+                      <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-gray-900 text-white" align="end">
+                            <DropdownMenuItem onClick={() => handleDownload(invoice)}>
+                              <Download className="mr-2 h-4 w-4" /> Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(invoice.id || (invoice as any)._id)}>
+                              <Trash className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </td>
                   </tr>
                 ))}
                 {currentInvoices && currentInvoices.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-4 text-center text-muted-foreground">
+                    <td colSpan={9} className="px-3 py-8 text-center text-gray-500 sm:px-6">
                       No invoices found for selected filter.
                     </td>
                   </tr>
@@ -810,35 +757,50 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {filteredInvoices.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
-              {(hasActiveFilters() && filteredInvoices.length !== invoices.length) &&
-                ` (filtered from ${invoices.length} total)`
-              }
-            </p>
-            <div className="flex items-center gap-2">
-              <Button className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
-                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => goToPage(page)}
-                    className="w-8 h-8 p-0"
+          {filteredInvoices.length > 0 && (
+            <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                <div className="text-center text-sm text-gray-700 sm:text-left">
+                  Showing {filteredInvoices.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
+                  {(hasActiveFilters() && filteredInvoices.length !== invoices.length) &&
+                    ` (filtered from ${invoices.length} total)`
+                  }
+                </div>
+
+                <div className="flex items-center justify-center gap-2">
+                  <Button 
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                    size="sm" 
+                    onClick={() => goToPage(currentPage - 1)} 
+                    disabled={currentPage === 1}
                   >
-                    {page}
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
                   </Button>
-                ))}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToPage(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button 
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                    size="sm" 
+                    onClick={() => goToPage(currentPage + 1)} 
+                    disabled={currentPage === totalPages}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               </div>
-              <Button className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
-                Next <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
             </div>
-          </div>
+          )}
         </div>
       </Card>
 

@@ -406,11 +406,8 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Debit Note Details */}
       <div className="bg-white rounded-lg p-6">
-        <div className="flex items-center justify-between mb-8 bg-[#e8e5f5] w-full rounded-[8px] py-2 px-4">
+        <div className="flex items-center justify-between mb-8 bg-[#e8e5f5] w-full rounded-[8px] py-3 px-4">
           <h3 className="text-lg font-semibold text-gray-900">Debit Note Details</h3>
-          <Button type="button" variant="ghost" size="sm" className="text-purple-600">
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -486,9 +483,6 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
                 required
                 className="w-full"
               />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-              </div>
             </div>
           </div>
         </div>
@@ -496,15 +490,8 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
 
       {/* Party Information */}
       <div className="bg-white rounded-lg p-6">
-        <div className="flex items-center justify-between mb-6 bg-[#e8e5f5] w-full rounded-[8px] py-2 px-4">
+        <div className="flex items-center justify-between mb-6 bg-[#e8e5f5] w-full rounded-[8px] py-3 px-4">
           <h3 className="text-lg font-semibold text-gray-900">Party Information</h3>
-          <Button 
-            type="button" 
-            className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Vendor
-          </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

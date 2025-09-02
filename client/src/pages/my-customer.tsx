@@ -4,23 +4,8 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-} from "@/components/ui/pagination";
 import { Download, MoreVertical, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
 import MultiStepForm from "./add-customer";
 import axios from "axios";
@@ -42,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
+import { useLocation, useNavigate } from "react-router-dom";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -60,8 +45,8 @@ export default function CustomerDashboard() {
   // file input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const location = useLocation(); // <-- ADDED
-  const navigate = useNavigate(); // <-- ADDED
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // ------------------ Fetch customers (extracted so we can call it from event handler) ------------------
   const fetchCustomers = useCallback(
@@ -75,16 +60,13 @@ export default function CustomerDashboard() {
             withCredentials: true,
           }
         );
-        // console.log(res.data)
-        //@ts-ignore
-        // console.log(res)
         setCustomers(res.data.data || []);
         setTotalPages(res.data.pagination?.totalPages || 1);
       } catch (err) {
         console.error("Failed to fetch customers:", err);
       }
     },
-    [] // no internal deps — we'll pass page param explicitly when calling
+    []
   );
 
   // call fetch on page change
@@ -462,258 +444,248 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <Card className="max-w-full p-4 sm:p-6 bg-white mx-2 sm:mx-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 sm:mt-6 ml-2 sm:ml-6 mr-2 sm:mr-6">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-semibold">Customers List</h2>
-          <p className="text-gray-500 text-sm">Total {filteredCustomers.length}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            className="text-blue-500 hover:text-blue-600 shadow-sm"
-            onClick={() => setShowAddCustomerForm(true)}
-          >
-            Add Customer
-          </Button>
-
-          {/* 🔹 Filter Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">Filter</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 p-4 space-y-3 bg-white text-black">
-              {/* Status */}
+    <div className="bg-background min-h-screen p-2 sm:p-4 lg:p-8">
+      <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
+        <Card className="bg-white">
+          {/* Header */}
+          <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div>
-                <p className="text-sm font-medium mb-1">Status</p>
-                <Select onValueChange={setStatusFilter} defaultValue="__all">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all">All</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+                <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Customers List</h2>
+                <p className="text-sm text-gray-500 mt-1">Total {filteredCustomers.length} customers</p>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700"
+                  onClick={() => setShowAddCustomerForm(true)}
+                >
+                  Add Customer
+                </Button>
 
-              {/* Last Invoice Date */}
-              <div>
-                <p className="text-sm font-medium mb-1">Last Invoice Date</p>
-                <Select onValueChange={setDateFilter} defaultValue="__any">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__any">Any</SelectItem>
-                    <SelectItem value="7">Last 7 days</SelectItem>
-                    <SelectItem value="30">Last 30 days</SelectItem>
-                    <SelectItem value="365">Last 1 year</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Outstanding Balance */}
-              <div>
-                <p className="text-sm font-medium mb-1">Outstanding Balance</p>
-                <Select onValueChange={setBalanceFilter} defaultValue="__any">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select balance" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__any">Any</SelectItem>
-                    <SelectItem value="low">Less than 10k</SelectItem>
-                    <SelectItem value="medium">10k - 50k</SelectItem>
-                    <SelectItem value="high">More than 50k</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* 🔹 Export / Import Dropdown (replaces previous MoreVertical single button) */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              {/* kept same visual as before */}
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="w-5 h-5" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent className="w-48 p-2 bg-white text-black">
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportCompanyWise(); }}>
-                Export as Company wise
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportExcel(); }}>
-                Export as Excel
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportPDF(); }}>
-                Export as PDF
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); triggerFileSelect(); }}>
-                Import (Excel/CSV)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* hidden file input for import */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              handleImportFile(f);
-            }}
-          />
-        </div>
-      </div>
-
-      <CardContent className="overflow-x-auto mt-4">
-        <div className="min-w-[750px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Company Name</TableHead>
-                <TableHead>Customer Name</TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Invoice Date</TableHead>
-                <TableHead>Outstanding Balance</TableHead>
-                <TableHead>Download</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.map((c, i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar>
-                        <AvatarImage src={c.company?.logo} />
-                        <AvatarFallback>
-                          {c.company?.name?.[0] || "C"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{c.company?.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {c.company?.email}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar>
-                        <AvatarImage src={c.customer?.avatar} />
-                        <AvatarFallback>
-                          {c.customer?.name?.[0] || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <p>{c.customer?.name || "Unknown"}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{c.phone}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${c.status === "Active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-300 text-red-800"
-                        }`}
-                    >
-                      {c.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{c.lastInvoice}</TableCell>
-                  <TableCell className="font-semibold">{c.balance}</TableCell>
-                  <TableCell className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 p-1 hover:text-black cursor-pointer"
-                      onClick={() => handleDownloadCustomerPDF(c)}
-                    >
-                      <Download className="h-4 w-4" />
+                {/* Filter Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Filter
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 p-4 space-y-3 bg-white text-black">
+                    {/* Status */}
+                    <div>
+                      <p className="text-sm font-medium mb-1">Status</p>
+                      <Select onValueChange={setStatusFilter} defaultValue="__all">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all">All</SelectItem>
+                          <SelectItem value="Active">Active</SelectItem>
+                          <SelectItem value="Inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-        {/* Pagination */}
-        <Pagination className="mt-6 justify-center sm:justify-end">
-          <PaginationContent className="gap-2 px-2 sm:px-4 py-2">
-            {/* Previous */}
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                isActive={false}
-                className={`px-6 sm:px-14 py-2 ${page === 1 ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-              >
-                <MoveLeft /> Previous
-              </PaginationLink>
-            </PaginationItem>
+                    {/* Last Invoice Date */}
+                    <div>
+                      <p className="text-sm font-medium mb-1">Last Invoice Date</p>
+                      <Select onValueChange={setDateFilter} defaultValue="__any">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__any">Any</SelectItem>
+                          <SelectItem value="7">Last 7 days</SelectItem>
+                          <SelectItem value="30">Last 30 days</SelectItem>
+                          <SelectItem value="365">Last 1 year</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-            {[page, page + 1, page + 2].map((pageNum) => {
-              if (pageNum > totalPages) return null;
-              return (
-                <PaginationItem key={pageNum}>
-                  <PaginationLink
-                    href="#"
-                    isActive={page === pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`px-4 py-2 ${page === pageNum
-                      ? "bg-blue-500 text-white rounded"
-                      : ""
-                      } hover:bg-blue-600 hover:text-black`}
+                    {/* Outstanding Balance */}
+                    <div>
+                      <p className="text-sm font-medium mb-1">Outstanding Balance</p>
+                      <Select onValueChange={setBalanceFilter} defaultValue="__any">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select balance" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__any">Any</SelectItem>
+                          <SelectItem value="low">Less than 10k</SelectItem>
+                          <SelectItem value="medium">10k - 50k</SelectItem>
+                          <SelectItem value="high">More than 50k</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Export / Import Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Export/Import
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-48 p-2 bg-white text-black">
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportCompanyWise(); }}>
+                      Export as Company wise
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportExcel(); }}>
+                      Export as Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportPDF(); }}>
+                      Export as PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); triggerFileSelect(); }}>
+                      Import (Excel/CSV)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* hidden file input for import */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    handleImportFile(f);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="w-full overflow-x-auto rounded-md border">
+            <table className="min-w-[900px]">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Company Name</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Phone Number</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Status</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Last Invoice Date</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Outstanding Balance</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map((c, i) => (
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-4 sm:px-6">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={c.company?.logo} />
+                          <AvatarFallback className="text-xs">
+                            {c.company?.name?.[0] || "C"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900">{c.company?.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {c.company?.email}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 sm:px-6">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={c.customer?.avatar} />
+                          <AvatarFallback className="text-xs">
+                            {c.customer?.name?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-gray-900">{c.customer?.name || "Unknown"}</p>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.phone}</td>
+                    <td className="px-3 py-4 sm:px-6">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${c.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                          }`}
+                      >
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.lastInvoice}</td>
+                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{c.balance}</td>
+                    <td className="px-3 py-4 sm:px-6">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:bg-gray-100"
+                          onClick={() => handleDownloadCustomerPDF(c)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredCustomers.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-gray-500 sm:px-6">
+                      No customers found for selected filter.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filteredCustomers.length > 0 && (
+            <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                <div className="text-center text-sm text-gray-700 sm:text-left">
+                  Showing {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length} results
+                  {totalPages > 1 && ` (Page ${page} of ${totalPages})`}
+                </div>
+
+                <div className="flex items-center justify-center gap-2">
+                  <Button 
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                    size="sm" 
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))} 
+                    disabled={page === 1}
                   >
-                    {pageNum}
-                  </PaginationLink>
-                </PaginationItem>
-              );
-            })}
-
-            {page + 2 < totalPages && (
-              <>
-                <PaginationItem>
-                  <PaginationEllipsis className="px-3 py-2" />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink
-                    href="#"
-                    isActive={page === totalPages}
-                    onClick={() => setPage(totalPages)}
-                    className="px-4 py-2"
+                    <MoveLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <Button
+                        key={pageNum}
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(pageNum)}
+                        className={`w-8 h-8 p-0 ${page !== pageNum ? "hover:text-black" : ""}`}
+                      >
+                        {pageNum}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button 
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                    size="sm" 
+                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))} 
+                    disabled={page === totalPages}
                   >
-                    {totalPages}
-                  </PaginationLink>
-                </PaginationItem>
-              </>
-            )}
-
-            {/* Next */}
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-                className={`px-4 sm:px-6 py-2 ${page === totalPages ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-              >
-                Next <MoveRight />
-              </PaginationLink>
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </CardContent>
-    </Card>
+                    Next <MoveRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
   );
 }

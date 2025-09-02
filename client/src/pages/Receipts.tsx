@@ -164,6 +164,7 @@ export default function Receipts() {
 
   // Fetch invoices data
   const fetchInvoices = useCallback(async () => {
+    console.log("🔄 fetchInvoices called with currentPage:", currentPage, "activeTab:", activeTab);
     try {
       setLoading(true);
       const token = Cookies.get("authToken") || undefined;
@@ -186,7 +187,7 @@ export default function Receipts() {
         invoiceNumber:
           invoice.invoiceNumber || invoice.number || "INV-2024/001",
         customerName:
-          invoice.billTo.name || invoice.customerName || invoice.clientName || "Customer Name",
+          invoice.billTo?.name || invoice.customerName || invoice.clientName || "Customer Name",
         status: invoice.paymentStatus || invoice.status || "Pending",
         date: formatDate(
           invoice.dateOfSale || invoice.date || invoice.createdAt || "",
@@ -194,14 +195,36 @@ export default function Receipts() {
         dueDate: formatDate(invoice.dueDate || ""),
         amount: invoice.totalAmount || invoice.amount || 2000,
       }));
+      // Update pagination state with server response
+      // Handle both pagination object and root-level pagination properties
       const pg = data.pagination || {};
-      console.log("Pagination data:", pg); // Debug log
-      setPagination((p) => ({
-        currentPage: pg.currentPage || currentPage,
-        totalPages: pg.totalPages || 1,
-        totalItems: pg.total || mapped.length,
-        perPage: pg.perPage || p.perPage || 10,
-      }));
+      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
+      const serverTotalPages = pg.totalPages || data.totalPages || 1;
+      const serverTotalItems = pg.total || data.total || 0;
+      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+      
+      console.log("Full API response:", data);
+      console.log("Pagination data:", pg);
+      console.log("Server pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
+      console.log("Invoice pagination state after update:", {
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+      
+      setPagination({
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+      
+      // Update current page if server returned different page
+      if (serverCurrentPage !== currentPage) {
+        setCurrentPage(serverCurrentPage);
+      }
+      
       setInvoices(mapped);
     } catch (err) {
       console.error("Error fetching invoices:", err);
@@ -265,13 +288,29 @@ export default function Receipts() {
         amount: n.total ?? n.amount ?? 25000,
         status: n.refund === true ? "Refunded" : n.status || "Open",
       }));
+      // Update pagination state with server response
+      // Handle both pagination object and root-level pagination properties
       const pg = data.pagination || {};
-      setPagination((p) => ({
-        currentPage: pg.currentPage || currentPage,
-        totalPages: pg.totalPages || 1,
-        totalItems: pg.total || mapped.length,
-        perPage: pg.perPage || p.perPage || 10,
-      }));
+      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
+      const serverTotalPages = pg.totalPages || data.totalPages || 1;
+      const serverTotalItems = pg.total || data.total || 0;
+      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+      
+      console.log("Credit notes API response:", data);
+      console.log("Credit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
+      
+      setPagination({
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+      
+      // Update current page if server returned different page
+      if (serverCurrentPage !== currentPage) {
+        setCurrentPage(serverCurrentPage);
+      }
+      
       setCreditNotes(mapped);
     } catch (e) {
       console.error(e);
@@ -347,13 +386,30 @@ export default function Receipts() {
         amount: n.total ?? n.amount ?? 25000,
         status: n.status || "Open",
       }));
+      
+      // Update pagination state with server response
+      // Handle both pagination object and root-level pagination properties
       const pg = data.pagination || {};
-      setPagination((p) => ({
-        currentPage: pg.currentPage || currentPage,
-        totalPages: pg.totalPages || 1,
-        totalItems: pg.total || mapped.length,
-        perPage: pg.perPage || p.perPage || 10,
-      }));
+      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
+      const serverTotalPages = pg.totalPages || data.totalPages || 1;
+      const serverTotalItems = pg.total || data.total || 0;
+      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+      
+      console.log("Debit notes API response:", data);
+      console.log("Debit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
+      
+      setPagination({
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+      
+      // Update current page if server returned different page
+      if (serverCurrentPage !== currentPage) {
+        setCurrentPage(serverCurrentPage);
+      }
+      
       setDebitNotes(mapped);
     } catch (e) {
       console.error(e);
@@ -531,6 +587,17 @@ export default function Receipts() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedDate]);
+
+  // Debug pagination state
+  useEffect(() => {
+    console.log("📊 Pagination state changed:", { 
+      currentPage, 
+      totalPages: pagination.totalPages, 
+      totalItems: pagination.totalItems,
+      activeTab,
+      filteredDataLength: filteredData.length 
+    });
+  }, [currentPage, pagination.totalPages, pagination.totalItems, activeTab, filteredData.length]);
 
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, pagination.totalPages)));
 
@@ -1758,6 +1825,7 @@ export default function Receipts() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 <div className="text-center text-sm text-gray-700 sm:text-left">
                   Showing {pagination.totalItems === 0 ? 0 : (pagination.currentPage - 1) * pagination.perPage + 1}-{Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)} of {pagination.totalItems} results
+                  {pagination.totalPages > 1 && ` (Page ${pagination.currentPage} of ${pagination.totalPages})`}
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
@@ -1776,7 +1844,7 @@ export default function Receipts() {
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => goToPage(page)}
-                        className="w-8 h-8 p-0"
+                        className={`w-8 h-8 p-0 ${page !== currentPage ? "hover:text-black" : ""}`}
                       >
                         {page}
                       </Button>
@@ -1796,10 +1864,6 @@ export default function Receipts() {
           )}
         </Card>
       </div>
-
-
-
-
     </div>
   );
 }
