@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import ActionToolbar from '@/components/ActionToolBar';
+// import ActionToolbar from '@/components/ActionToolBar';
 import RecentActivityTable from '@/components/RecentActivity';
 import SalesReportCard from '@/components/SalesReport';
 import StatCard from '@/components/StatCard';
@@ -75,15 +75,15 @@ const Dashboard = () => {
     <>
       <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 ">
         {/* Header */}
-        <section className="flex flex-wrap justify-between items-center gap-4">
+        {/* <section className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-lg sm:text-xl font-semibold">
-            {/* Hello! <span className="text-blue-600">{profile?.data?.name || 'User'}</span> */}
+            Hello! <span className="text-blue-600">{profile?.data?.name || 'User'}</span>
           </h1>
           <ActionToolbar />
-        </section>
+        </section> */}
 
         {/* Stats Grid */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 ">
           {stats.map((stat, index) => (
             // @ts-expect-error - StatCard props type mismatch
             <StatCard

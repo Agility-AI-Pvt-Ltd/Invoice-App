@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar } from "@/components/ui/calendar";
+// import { Calendar } from "@/components/ui/calendar";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
 import CreditDebitTable from "@/components/reports/CreditDebitTable";
@@ -25,8 +25,6 @@ import CreditDebitTable from "@/components/reports/CreditDebitTable";
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
 type Tab = "sales" | "credit-notes" | "debit-notes";
-
-
 
 export default function Report() {
   const [activeTab, setActiveTab] = useState<Tab>("sales");
@@ -133,8 +131,6 @@ export default function Report() {
         return `credit_notes_${timestamp}.${format}`;
     }
   };
-
-
 
   const formatDate = (d: any) => {
     if (!d) return "";
@@ -399,279 +395,202 @@ export default function Report() {
     setCurrentPage(1);
   };
 
-  return (
-    <div className="bg-background min-h-screen p-4 lg:p-6">
-      <div className="max-w-8xl mx-auto">
-        <Card className="border-0 bg-white shadow-sm">
-          {/* Header */}
-          <div className="border-b border-slate-200 p-4 lg:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-6">
-                   <button
-                    className={`pb-2 font-medium transition-colors ${
-                      activeTab === "sales"
-                        ? "border-b-3 border-[#b5a3ff]"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => {
-                      setActiveTab("sales");
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Sales
-                  </button>
-                   <button
-                    className={`pb-2 font-medium transition-colors ${
-                      activeTab === "credit-notes"
-                        ? "border-b-3 border-[#b5a3ff]"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => {
-                      setActiveTab("credit-notes");
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Credit Note
-                  </button>
-                  <button
-                    className={`pb-2 font-medium transition-colors ${
-                      activeTab === "debit-notes"
-                        ? "border-b-3 border-[#b5a3ff]"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => {
-                      setActiveTab("debit-notes");
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Debit Note
-                  </button>
-                </div>
+  // Pagination navigation
+  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, pagination.totalPages)));
 
-              {activeTab === "sales" ? (
-                <></>
-              ) : (
-                <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                {/* Search */}
-                <div className="relative flex-1 lg:w-80">
-                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
-                  <Input
-                    placeholder="Search by name, email, or role"
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="h-10 border-slate-200 bg-white pl-10 text-slate-600"
+  return (
+    <div className="bg-background min-h-screen p-2 sm:p-4 lg:p-8">
+      <div className="max-w-8xl mx-auto space-y-4 sm:space-y-6">
+        {/* Main Content */}
+        <Card className="bg-white">
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <div className="flex space-x-4 px-4 sm:space-x-8 sm:px-6">
+              <button
+                className={`border-b-2 px-1 py-4 font-medium ${
+                  activeTab === "sales"
+                    ? "border-[#b5a3ff]"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("sales")}
+              >
+                <span className="hidden sm:inline">Sales</span>
+                <span className="sm:hidden">Sales</span>
+              </button>
+              <button
+                className={`border-b-2 px-1 py-4 font-medium ${
+                  activeTab === "credit-notes"
+                    ? "border-[#b5a3ff]"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("credit-notes")}
+              >
+                <span className="hidden sm:inline">Credit Note</span>
+                <span className="sm:hidden">CN</span>
+              </button>
+              <button
+                className={`border-b-2 px-1 py-4 font-medium ${
+                  activeTab === "debit-notes"
+                    ? "border-[#b5a3ff]"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("debit-notes")}
+              >
+                <span className="hidden sm:inline">Debit Note</span>
+                <span className="sm:hidden">DN</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table Controls */}
+          {activeTab !== "sales" && (
+            <div className="border-b border-gray-200 p-4 sm:p-6">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row">
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      placeholder="Search by name, email, or role..."
+                      className="w-48 pl-10 sm:w-64"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Enhanced Date Filter */}
+                  <SingleDatePicker
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
                   />
                 </div>
 
-
-
-                {/* Desktop/Tablet Actions */}
-                <div className="hidden flex-wrap gap-2 sm:flex">
-                  <div>
-                    <div className="hidden sm:block">
-                      <SingleDatePicker
-                        selectedDate={selectedDate}
-                        onDateChange={setSelectedDate}
-                      />
-                    </div>
-                    <div className="sm:hidden">
-                      <SingleDatePicker
-                        selectedDate={selectedDate}
-                        onDateChange={setSelectedDate}
-                        iconOnly
-                      />
-                    </div>
-                  </div>
-                  {/* Export Dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <Button
-                        variant="outline"
-                        className={`h-10 border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black`}
-                        disabled={loading}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {"Export"}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-white text-black hover:bg-slate-50 hover:text-black">
-                      <DropdownMenuItem
-                        onClick={() => handleExport("csv")}
-                        disabled={loading}
-                        className={loading ? "cursor-not-allowed opacity-50" : ""}
-                      >
-                        Export as CSV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleExport("excel")}
-                        disabled={loading}
-                        className={loading ? "cursor-not-allowed opacity-50" : ""}
-                      >
-                        Export as Excel
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <div className="relative">
-                    <label>
-                      <input
-                        type="file"
-                        accept=".csv,.xlsx"
-                        onChange={handleImport}
-                        className="hidden"
-                      />
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="h-10 cursor-pointer border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black"
-                      >
-                        <span className="flex items-center">
-                          <Download className="mr-2 h-4 w-4" />
-                          Import
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Mobile Actions */}
-                <div className="no-scrollbar flex flex-nowrap items-center gap-2 overflow-x-auto sm:hidden">
-                  <Button variant="outline" size="icon" className="shrink-0">
-                    <Calendar className="h-5 w-5" />
-                  </Button>
-
+                <div className="flex flex-wrap gap-2">
+                  {/* Import Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className={`shrink-0`}
-                        disabled={loading}
-                      >
-                        <Download className="h-5 w-5" />
+                      <Button className="flex items-center gap-2 border-1 border-gray-200 bg-white text-black hover:bg-gray-100">
+                        <Download className="h-4 w-4" />
+                        <span className="hidden sm:inline">Import</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
+                    <DropdownMenuContent className="bg-white text-black">
                       <DropdownMenuItem
-                        onClick={() => handleExport("csv")}
-                        disabled={loading}
+                        onClick={() =>
+                          document.getElementById("import-csv")?.click()
+                        }
                       >
                         CSV
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => handleExport("excel")}
-                        disabled={loading}
+                        onClick={() =>
+                          document.getElementById("import-excel")?.click()
+                        }
                       >
                         Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleExport("pdf")}
-                        disabled={loading}
-                      >
-                        PDF
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept=".csv,.xlsx"
-                      onChange={handleImport}
-                      className="hidden"
-                      id="import-file-mobile"
-                    />
-                    <label htmlFor="import-file-mobile">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="shrink-0 cursor-pointer"
-                      >
-                        <Upload className="h-5 w-5" />
+                  {/* Export Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="flex items-center gap-2 border-1 border-gray-200 bg-white text-black hover:bg-gray-100">
+                        <Upload className="h-4 w-4" />
+                        <span className="hidden sm:inline">Export</span>
                       </Button>
-                    </label>
-                  </div>
+                    </DropdownMenuTrigger>
+                    {loading && (
+                      <div className="absolute top-full left-0 mt-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded shadow-lg">
+                        Processing...
+                      </div>
+                    )}
+                    <DropdownMenuContent className="bg-white text-black">
+                      <DropdownMenuItem onClick={() => handleExport("csv")}>
+                        CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExport("excel")}>
+                        Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                        PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
-              )}
             </div>
-          </div>
+          )}
 
-          {activeTab === "sales" ? (
-                <Invoices />
-              ) : (
-                <CreditDebitTable 
-            activeTab={activeTab} 
-            notesData={filteredNotes}
-            selectedStatus={selectedStatus}
-            selectedReason={selectedReason}
-            onStatusFilterChange={handleStatusFilterChange}
-            onReasonFilterChange={handleReasonFilterChange}
+          {/* Hidden file inputs */}
+          <input
+            id="import-csv"
+            type="file"
+            accept=".csv"
+            onChange={handleImport}
+            className="hidden"
           />
-        )}
+          <input
+            id="import-excel"
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImport}
+            className="hidden"
+          />
 
-          {/* No Data State */}
-          {/* {activeTab !== "sales" && !loading && filteredNotes.length === 0 && (
-            <div className="flex items-center justify-center border-t border-slate-200 px-4 py-12">
-              <div className="text-center text-slate-500">
-                <div className="mb-2 text-4xl">📄</div>
-                <p className="text-lg font-medium">No {activeTab === "credit-notes" ? "Credit" : "Debit"} Notes Found</p>
-                <p className="text-sm">Try adjusting your search or filters</p>
-              </div>
-            </div>
-          )} */}
-
-          {/* Loading State */}
-          {/* {loading && (
-            <div className="flex items-center justify-center border-t border-slate-200 px-4 py-8">
-              <div className="flex items-center gap-2 text-slate-500">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[#8066FF]"></div>
-                <span>Loading...</span>
-              </div>
-            </div>
-          )} */}
+          {/* Content */}
+          {activeTab === "sales" ? (
+            <Invoices />
+          ) : (
+            <CreditDebitTable 
+              activeTab={activeTab} 
+              notesData={filteredNotes}
+              selectedStatus={selectedStatus}
+              selectedReason={selectedReason}
+              onStatusFilterChange={handleStatusFilterChange}
+              onReasonFilterChange={handleReasonFilterChange}
+            />
+          )}
 
           {/* Pagination */}
-          {activeTab !== "sales" && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4">
-              <p className="text-sm text-muted-foreground ml-4 sm:ml-6">
-                Showing {pagination.totalItems === 0 ? 0 : (pagination.currentPage - 1) * pagination.perPage + 1}-{Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)} of {pagination.totalItems} results
-              </p>
-              <div className="flex items-center gap-2">
-                <Button 
-                  className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                  size="sm" 
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} 
-                  disabled={pagination.currentPage <= 1 || loading}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {getPaginationRange(pagination.currentPage, pagination.totalPages).map((item, idx) =>
-                    item === "..." ? (
-                      <span key={`dots-${idx}`} className="px-2 text-slate-400">...</span>
-                    ) : (
+          {activeTab !== "sales" && filteredNotes.length > 0 && (
+            <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                <div className="text-center text-sm text-gray-700 sm:text-left">
+                  Showing {pagination.totalItems === 0 ? 0 : (pagination.currentPage - 1) * pagination.perPage + 1}-{Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)} of {pagination.totalItems} results
+                </div>
+
+                <div className="flex items-center justify-center gap-2">
+                  <Button 
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                    size="sm" 
+                    onClick={() => goToPage(currentPage - 1)} 
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
                       <Button
-                        key={item as number}
-                        variant={item === pagination.currentPage ? "default" : "outline"}
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setCurrentPage(item as number)}
-                        disabled={loading}
+                        onClick={() => goToPage(page)}
                         className="w-8 h-8 p-0"
                       >
-                        {item}
+                        {page}
                       </Button>
-                    ),
-                  )}
+                    ))}
+                  </div>
+                  <Button 
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
+                    size="sm" 
+                    onClick={() => goToPage(currentPage + 1)} 
+                    disabled={currentPage === pagination.totalPages}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
                 </div>
-                <Button 
-                  className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                  size="sm" 
-                  onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))} 
-                  disabled={pagination.currentPage >= pagination.totalPages || loading}
-                >
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
               </div>
             </div>
           )}
@@ -679,35 +598,4 @@ export default function Report() {
       </div>
     </div>
   );
-}
-
-// Create a compact pagination sequence like: 1 … 5 6 [7] 8 9 … 68
-function getPaginationRange(current: number, total: number) {
-  const delta = 2; // pages around current
-  const range: (number | string)[] = [];
-  const rangeWithDots: (number | string)[] = [];
-  const left = Math.max(2, current - delta);
-  const right = Math.min(total - 1, current + delta);
-
-  range.push(1);
-  for (let i = left; i <= right; i++) range.push(i);
-  if (total > 1) range.push(total);
-
-  let l: number | undefined;
-  for (const i of range) {
-    if (typeof i === "number") {
-      if (l) {
-        if (i - l === 2) {
-          rangeWithDots.push(l + 1);
-        } else if (i - l > 2) {
-          rangeWithDots.push("...");
-        }
-      }
-      rangeWithDots.push(i);
-      l = i;
-    } else {
-      rangeWithDots.push(i);
-    }
-  }
-  return Array.from(new Set(rangeWithDots));
 }
