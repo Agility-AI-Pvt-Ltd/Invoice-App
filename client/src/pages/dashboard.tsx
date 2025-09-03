@@ -110,10 +110,10 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-4 h-full">
+          <div className="col-span-12 2xl:col-span-4 h-full">
             <TopProductsCard />
           </div>
-          <div className="col-span-12 lg:col-span-8 h-full">
+          <div className="col-span-12 2xl:col-span-8 h-full">
             <TopCustomersCard />
           </div>
         </div>
