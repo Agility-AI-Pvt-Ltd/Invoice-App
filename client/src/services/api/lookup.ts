@@ -146,4 +146,45 @@ export async function searchInventory(searchTerm: string): Promise<InventoryLook
   }
 }
 
+// Vendor search functionality
+export type VendorLookup = {
+  _id?: string;
+  name?: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  gstNumber?: string;
+  pan?: string;
+  isGstRegistered?: boolean;
+  status?: string;
+};
+
+export async function searchVendors(searchTerm: string): Promise<VendorLookup[]> {
+  if (!searchTerm || searchTerm.trim().length < 2) return [];
+  
+  try {
+    const res = await api.get(`/api/vendors/search/${encodeURIComponent(searchTerm.trim())}`);
+    const data = res?.data;
+    if (!data) return [];
+    
+    // Handle both response formats
+    if (data.vendors && Array.isArray(data.vendors)) {
+      return data.vendors as VendorLookup[];
+    } else if (data._id) {
+      // Single vendor response, wrap in array
+      return [data as VendorLookup];
+    }
+    
+    return [];
+  } catch (err) {
+    console.error("searchVendors error", err);
+    return [];
+  }
+}
+
 

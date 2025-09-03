@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,10 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Search, Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useProfile } from "@/contexts/ProfileContext";
+import { searchInventory } from "@/services/api/lookup";
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
@@ -59,7 +61,8 @@ interface FormData {
 }
 
 export default function DebitNoteForm({ onClose, onSuccess, initialData }: DebitNoteFormProps) {
-  const [formData, setFormData] = useState<FormData>({
+  try {
+    const [formData, setFormData] = useState<FormData>({
     debitNoteNumber: "",
     debitNoteDate: new Date().toISOString().split('T')[0],
     againstInvoiceNumber: "",
@@ -71,7 +74,16 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     contactNumber: "",
     isGstRegistered: true,
     gstNumber: "",
-    items: [],
+    items: [{
+      serialNo: 1,
+      itemName: "",
+      hsnCode: "",
+      quantity: 1,
+      unitPrice: 0,
+      gstPercentage: 18,
+      taxableValue: 0,
+      grossTotal: 0,
+    }],
     termsAndConditions: "",
     subtotal: 0,
     cgst: 0,
@@ -87,17 +99,86 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
   const [vendors, setVendors] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [purchaseInvoices, setPurchaseInvoices] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const { toast } = useToast();
+  const { profile, loading: profileLoading } = useProfile();
 
-  // Fetch vendors and purchase invoices on component mount
+
+
+  // Product search state
+  const [productSearchTerms, setProductSearchTerms] = useState<{ [key: number]: string }>({});
+  const [productSuggestions, setProductSuggestions] = useState<{ [key: number]: any[] }>({});
+  const [isSearchingProduct, setIsSearchingProduct] = useState<{ [key: number]: boolean }>({});
+  const [showProductSuggestions, setShowProductSuggestions] = useState<{ [key: number]: boolean }>({});
+  const productSearchTimeoutRefs = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
+
+
+
+  // Enhanced product search with debouncing
+  const performProductSearch = useCallback(async (searchTerm: string, rowIndex: number) => {
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+      return;
+    }
+
+    setIsSearchingProduct(prev => ({ ...prev, [rowIndex]: true }));
+    try {
+      const products = await searchInventory(searchTerm);
+      setProductSuggestions(prev => ({ ...prev, [rowIndex]: products }));
+    } catch (error) {
+      console.error("Product search error:", error);
+      setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+    } finally {
+      setIsSearchingProduct(prev => ({ ...prev, [rowIndex]: false }));
+    }
+  }, []);
+
+  // Debounced search effect for each row
+  useEffect(() => {
+    Object.entries(productSearchTerms).forEach(([rowIndexStr, searchTerm]) => {
+      const rowIndex = parseInt(rowIndexStr);
+      
+      if (productSearchTimeoutRefs.current[rowIndex]) {
+        clearTimeout(productSearchTimeoutRefs.current[rowIndex]);
+      }
+
+      if (searchTerm.trim().length >= 2) {
+        productSearchTimeoutRefs.current[rowIndex] = setTimeout(() => {
+          performProductSearch(searchTerm, rowIndex);
+        }, 300); // 300ms debounce
+      } else {
+        setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+      }
+    });
+
+    return () => {
+      Object.values(productSearchTimeoutRefs.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, [productSearchTerms, performProductSearch]);
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.product-search-container')) {
+        setShowProductSuggestions({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fetch vendors and invoices on component mount
   useEffect(() => {
     fetchVendors();
     fetchPurchaseInvoices();
-  }, []);
+  }, [fetchVendors, fetchPurchaseInvoices]);
 
   // Populate form with initial data if provided
   useEffect(() => {
     if (initialData) {
-      console.log("DebitNoteForm initialData:", initialData); // Debug log
+
       setFormData({
         debitNoteNumber: initialData.debitNoteNumber || initialData.noteNo || initialData.debitNoteId || "",
         debitNoteDate: initialData.debitNoteDate || initialData.dateIssued || initialData.date || new Date().toISOString().split('T')[0],
@@ -124,7 +205,66 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     }
   }, [initialData]);
 
-  const fetchVendors = async () => {
+
+
+  // Handle product selection and autofill
+  const handleProductSelect = (product: any, rowIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === rowIndex 
+          ? {
+              ...item,
+              itemName: product.name || product.description || "",
+              hsnCode: product.hsn_code || product.hsn || "",
+              unitPrice: product.unit_price || product.price || 0,
+              gstPercentage: product.gst_rate || product.gst || 0,
+            }
+          : item
+      )
+    }));
+
+    // Clear search and suggestions for this row
+    setProductSearchTerms(prev => ({ ...prev, [rowIndex]: product.name || product.description || "" }));
+    setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+    setShowProductSuggestions(prev => ({ ...prev, [rowIndex]: false }));
+  };
+
+  // Handle product HSN input change
+  const handleProductHsnChange = (rowIndex: number, value: string) => {
+    setProductSearchTerms(prev => ({ ...prev, [rowIndex]: value }));
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === rowIndex ? { ...item, hsnCode: value } : item
+      )
+    }));
+    
+    // Show suggestions if there are any
+    if (productSuggestions[rowIndex] && productSuggestions[rowIndex].length > 0) {
+      setShowProductSuggestions(prev => ({ ...prev, [rowIndex]: true }));
+    }
+  };
+
+  // Autofill vendor details with logged-in user profile
+  useEffect(() => {
+    if (!profile?.data) return;
+    
+    const userProfile = profile.data;
+    if (userProfile) {
+      setFormData(prev => ({
+        ...prev,
+        vendorName: userProfile.name || "",
+        businessName: userProfile.company || "",
+        address: userProfile.address || "",
+        contactNumber: userProfile.phone || "",
+        gstNumber: userProfile.gstNumber || "",
+        isGstRegistered: userProfile.isGstRegistered || false,
+      }));
+    }
+  }, [profile]);
+
+  const fetchVendors = useCallback(async () => {
     try {
       const token = Cookies.get("authToken");
       const response = await fetch(`${API_BASE}/api/vendors`, {
@@ -137,22 +277,41 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     } catch (error) {
       console.error("Error fetching vendors:", error);
     }
-  };
+  }, []);
 
-  const fetchPurchaseInvoices = async () => {
+  const fetchPurchaseInvoices = useCallback(async () => {
     try {
       const token = Cookies.get("authToken");
-      const response = await fetch(`${API_BASE}/api/purchase-invoices`, {
+      const response = await fetch(`${API_BASE}/api/invoices`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (response.ok) {
         const data = await response.json();
-        setPurchaseInvoices(Array.isArray(data) ? data : data.data || []);
+
+        
+        // Handle different possible response structures
+        let invoices = [];
+        if (Array.isArray(data)) {
+          invoices = data;
+        } else if (data && data.data && Array.isArray(data.data)) {
+          invoices = data.data;
+        } else if (data && data.invoices && Array.isArray(data.invoices)) {
+          invoices = data.invoices;
+        } else if (data && data.results && Array.isArray(data.results)) {
+          invoices = data.results;
+        }
+        
+
+        setPurchaseInvoices(invoices);
+      } else {
+        console.error("Failed to fetch invoices:", response.status, response.statusText);
+        setPurchaseInvoices([]);
       }
     } catch (error) {
-      console.error("Error fetching purchase invoices:", error);
+      console.error("Error fetching invoices:", error);
+      setPurchaseInvoices([]);
     }
-  };
+  }, []);
 
   const handleInputChange = (field: keyof FormData, value: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     setFormData(prev => ({
@@ -402,6 +561,16 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     }
   };
 
+  // Show loading state while profile is being fetched
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading form...</span>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Debit Note Details */}
@@ -447,16 +616,24 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
                   <SelectValue placeholder="INXXXXX (Searchable from purchase invoice)" />
                 </SelectTrigger>
                 <SelectContent>
-                  {purchaseInvoices.map((invoice) => (
-                    <SelectItem key={invoice._id} value={invoice.invoiceNumber}>
-                      {invoice.invoiceNumber}
+
+                  {purchaseInvoices.length > 0 ? (
+                    purchaseInvoices.map((invoice) => {
+
+                      const invoiceNumber = invoice.invoiceNumber || invoice.invoice_number || invoice.number || invoice.id || "Unknown";
+                      return (
+                        <SelectItem key={invoice._id || invoice.id} value={invoiceNumber}>
+                          {invoiceNumber}
+                        </SelectItem>
+                      );
+                    })
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No invoices found
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-              </div>
             </div>
           </div>
           <div>
@@ -498,26 +675,40 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Vendor Name
             </label>
-            <div className="relative">
-              <Select
-                value={formData.vendorName}
-                onValueChange={(value) => handleInputChange('vendorName', value)}
+            <Input
+              type="text"
+              placeholder="Enter vendor name or use logged-in user details..."
+              value={formData.vendorName}
+              onChange={(e) => handleInputChange('vendorName', e.target.value)}
+              required
+              className="w-full"
+            />
+            
+            {/* Auto-fill with logged-in user profile button */}
+            {profile?.data && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const userProfile = profile.data;
+                  if (userProfile) {
+                    setFormData(prev => ({
+                      ...prev,
+                      vendorName: userProfile.name || "",
+                      businessName: userProfile.company || "",
+                      address: userProfile.address || "",
+                      contactNumber: userProfile.phone || "",
+                      gstNumber: userProfile.gstNumber || "",
+                      isGstRegistered: userProfile.isGstRegistered || false,
+                    }));
+                  }
+                }}
+                className="mt-2 text-xs hover:text-black hover:bg-slate-100"
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Name (Searchable from vendor list)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor._id} value={vendor.name}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-              </div>
-            </div>
+                Use My Details
+              </Button>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -637,12 +828,36 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
                       placeholder="Item name"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 relative product-search-container">
                     <Input
                       value={item.hsnCode}
-                      onChange={(e) => handleItemChange(index, 'hsnCode', e.target.value)}
+                      onChange={(e) => handleProductHsnChange(index, e.target.value)}
                       placeholder="HSN code"
+                      className="pr-10"
                     />
+                    {isSearchingProduct[index] && (
+                      <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                    )}
+                    {!isSearchingProduct[index] && productSearchTerms[index] && (
+                      <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    )}
+                    
+                    {/* Product Suggestions Dropdown */}
+                    {showProductSuggestions[index] && productSuggestions[index] && productSuggestions[index].length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {productSuggestions[index].map((product) => (
+                          <div
+                            key={product._id}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                            onClick={() => handleProductSelect(product, index)}
+                          >
+                            <div className="font-medium">{product.name || product.description}</div>
+                            <div className="text-sm text-gray-600">HSN: {product.hsn_code || product.hsn}</div>
+                            <div className="text-sm text-gray-500">₹{product.unit_price || product.price}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Input
@@ -694,10 +909,6 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
           <Button type="button" onClick={addItem} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
             <Plus className="h-4 w-4 mr-2" />
             Add Item
-          </Button>
-          <Button type="button" variant="outline" className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
-            <Plus className="h-4 w-4 mr-2" />
-            Add from Inventory
           </Button>
         </div>
       </div>
@@ -822,4 +1033,16 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
       </div>
     </form>
   );
+  } catch (error) {
+    console.error("Error in DebitNoteForm:", error);
+    return (
+      <div className="p-6 text-center">
+        <h3 className="text-lg font-semibold text-red-600 mb-2">Something went wrong</h3>
+        <p className="text-gray-600 mb-4">There was an error loading the form. Please try refreshing the page.</p>
+        <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
+          Refresh Page
+        </Button>
+      </div>
+    );
+  }
 }

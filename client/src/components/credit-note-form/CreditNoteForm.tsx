@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,10 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Search, Loader2 } from "lucide-react";
 import Cookies from "js-cookie";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useProfile } from "@/contexts/ProfileContext";
+import { searchCustomers, searchInventory } from "@/services/api/lookup";
 
 const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
 
@@ -71,7 +73,16 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     contactNumber: "",
     isGstRegistered: true,
     gstNumber: "",
-    items: [],
+    items: [{
+      serialNo: 1,
+      itemName: "",
+      hsnCode: "",
+      quantity: 1,
+      unitPrice: 0,
+      gstPercentage: 18,
+      taxableValue: 0,
+      grossTotal: 0,
+    }],
     termsAndConditions: "",
     subtotal: 0,
     cgst: 0,
@@ -87,6 +98,121 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
   const [customers, setCustomers] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [invoices, setInvoices] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const { toast } = useToast();
+  const { profile, loading: profileLoading } = useProfile();
+
+  // Customer search state
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const customerSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Product search state
+  const [productSearchTerms, setProductSearchTerms] = useState<{ [key: number]: string }>({});
+  const [productSuggestions, setProductSuggestions] = useState<{ [key: number]: any[] }>({});
+  const [isSearchingProduct, setIsSearchingProduct] = useState<{ [key: number]: boolean }>({});
+  const [showProductSuggestions, setShowProductSuggestions] = useState<{ [key: number]: boolean }>({});
+  const productSearchTimeoutRefs = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
+
+  // Enhanced customer search with debouncing
+  const performCustomerSearch = useCallback(async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    setIsSearchingCustomer(true);
+    try {
+      const customers = await searchCustomers(searchTerm);
+      setCustomerSuggestions(customers);
+    } catch (error) {
+      console.error("Customer search error:", error);
+      setCustomerSuggestions([]);
+    } finally {
+      setIsSearchingCustomer(false);
+    }
+  }, []);
+
+  // Debounced search effect
+  useEffect(() => {
+    if (customerSearchTimeoutRef.current) {
+      clearTimeout(customerSearchTimeoutRef.current);
+    }
+
+    if (customerSearchTerm.trim().length >= 2) {
+      customerSearchTimeoutRef.current = setTimeout(() => {
+        performCustomerSearch(customerSearchTerm);
+      }, 300); // 300ms debounce
+    } else {
+      setCustomerSuggestions([]);
+    }
+
+    return () => {
+      if (customerSearchTimeoutRef.current) {
+        clearTimeout(customerSearchTimeoutRef.current);
+      }
+    };
+  }, [customerSearchTerm, performCustomerSearch]);
+
+  // Enhanced product search with debouncing
+  const performProductSearch = useCallback(async (searchTerm: string, rowIndex: number) => {
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+      return;
+    }
+
+    setIsSearchingProduct(prev => ({ ...prev, [rowIndex]: true }));
+    try {
+      const products = await searchInventory(searchTerm);
+      setProductSuggestions(prev => ({ ...prev, [rowIndex]: products }));
+    } catch (error) {
+      console.error("Product search error:", error);
+      setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+    } finally {
+      setIsSearchingProduct(prev => ({ ...prev, [rowIndex]: false }));
+    }
+  }, []);
+
+  // Debounced search effect for each row
+  useEffect(() => {
+    Object.entries(productSearchTerms).forEach(([rowIndexStr, searchTerm]) => {
+      const rowIndex = parseInt(rowIndexStr);
+      
+      if (productSearchTimeoutRefs.current[rowIndex]) {
+        clearTimeout(productSearchTimeoutRefs.current[rowIndex]);
+      }
+
+      if (searchTerm.trim().length >= 2) {
+        productSearchTimeoutRefs.current[rowIndex] = setTimeout(() => {
+          performProductSearch(searchTerm, rowIndex);
+        }, 300); // 300ms debounce
+      } else {
+        setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+      }
+    });
+
+    return () => {
+      Object.values(productSearchTimeoutRefs.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, [productSearchTerms, performProductSearch]);
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.customer-search-container')) {
+        setShowCustomerSuggestions(false);
+      }
+      if (!target.closest('.product-search-container')) {
+        setShowProductSuggestions({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch customers and invoices on component mount
   useEffect(() => {
@@ -97,7 +223,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
   // Populate form with initial data if provided
   useEffect(() => {
     if (initialData) {
-      console.log("CreditNoteForm initialData:", initialData); // Debug log
+
       setFormData({
         creditNoteNumber: initialData.creditNoteNumber || initialData.noteNo || initialData.creditNoteId || "",
         creditNoteDate: initialData.creditNoteDate || initialData.dateIssued || initialData.date || new Date().toISOString().split('T')[0],
@@ -123,6 +249,75 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
       });
     }
   }, [initialData]);
+
+  // Handle customer selection and autofill
+  const handleCustomerSelect = (customer: any) => {
+    setFormData(prev => ({
+      ...prev,
+      customerName: customer.fullName || customer.name || "",
+      businessName: customer.companyName || "",
+      address: customer.billingAddress || customer.address || "",
+      contactNumber: customer.phone || "",
+      gstNumber: customer.gstNumber || customer.gst || "",
+      isGstRegistered: customer.gstRegistered === "Yes" || customer.isGstRegistered || true,
+    }));
+
+    // Clear search and suggestions
+    setCustomerSearchTerm(customer.fullName || customer.name || "");
+    setCustomerSuggestions([]);
+    setShowCustomerSuggestions(false);
+  };
+
+  // Handle customer name input change
+  const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomerSearchTerm(value);
+    setFormData(prev => ({ ...prev, customerName: value }));
+    
+    // Show suggestions if there are any
+    if (customerSuggestions.length > 0) {
+      setShowCustomerSuggestions(true);
+    }
+  };
+
+  // Handle product selection and autofill
+  const handleProductSelect = (product: any, rowIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === rowIndex 
+          ? {
+              ...item,
+              itemName: product.name || product.description || "",
+              hsnCode: product.hsn_code || product.hsn || "",
+              unitPrice: product.unit_price || product.price || 0,
+              gstPercentage: product.gst_rate || product.gst || 0,
+            }
+          : item
+      )
+    }));
+
+    // Clear search and suggestions for this row
+    setProductSearchTerms(prev => ({ ...prev, [rowIndex]: product.name || product.description || "" }));
+    setProductSuggestions(prev => ({ ...prev, [rowIndex]: [] }));
+    setShowProductSuggestions(prev => ({ ...prev, [rowIndex]: false }));
+  };
+
+  // Handle product HSN input change
+  const handleProductHsnChange = (rowIndex: number, value: string) => {
+    setProductSearchTerms(prev => ({ ...prev, [rowIndex]: value }));
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === rowIndex ? { ...item, hsnCode: value } : item
+      )
+    }));
+    
+    // Show suggestions if there are any
+    if (productSuggestions[rowIndex] && productSuggestions[rowIndex].length > 0) {
+      setShowProductSuggestions(prev => ({ ...prev, [rowIndex]: true }));
+    }
+  };
 
   const fetchCustomers = async () => {
     try {
@@ -402,6 +597,16 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     }
   };
 
+  // Show loading state while profile is being fetched
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading form...</span>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Credit Note Details */}
@@ -454,9 +659,6 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
                   ))}
                 </SelectContent>
               </Select>
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-              </div>
             </div>
           </div>
           <div>
@@ -501,27 +703,48 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
           </Button> */}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+          <div className="relative customer-search-container">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Customer Name
             </label>
             <div className="relative">
-              <Select
-                value={formData.customerName}
-                onValueChange={(value) => handleInputChange('customerName', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Name (Searchable from customer list)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer._id} value={customer.name}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                type="text"
+                placeholder="Search customer..."
+                value={customerSearchTerm}
+                onChange={handleCustomerNameChange}
+                className="pr-10"
+              />
+              {isSearchingCustomer && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+              )}
+              {!isSearchingCustomer && customerSearchTerm && (
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              )}
             </div>
+            
+            {/* Customer Suggestions Dropdown */}
+            {showCustomerSuggestions && customerSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {customerSuggestions.map((customer) => (
+                  <div
+                    key={customer._id}
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                    onClick={() => handleCustomerSelect(customer)}
+                  >
+                    <div className="font-medium">{customer.fullName || customer.name}</div>
+                    {customer.companyName && (
+                      <div className="text-sm text-gray-600">{customer.companyName}</div>
+                    )}
+                    {customer.email && (
+                      <div className="text-sm text-gray-500">{customer.email}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -641,12 +864,36 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
                       placeholder="Item name"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 relative product-search-container">
                     <Input
                       value={item.hsnCode}
-                      onChange={(e) => handleItemChange(index, 'hsnCode', e.target.value)}
+                      onChange={(e) => handleProductHsnChange(index, e.target.value)}
                       placeholder="HSN code"
+                      className="pr-10"
                     />
+                    {isSearchingProduct[index] && (
+                      <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                    )}
+                    {!isSearchingProduct[index] && productSearchTerms[index] && (
+                      <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    )}
+                    
+                    {/* Product Suggestions Dropdown */}
+                    {showProductSuggestions[index] && productSuggestions[index] && productSuggestions[index].length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {productSuggestions[index].map((product) => (
+                          <div
+                            key={product._id}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                            onClick={() => handleProductSelect(product, index)}
+                          >
+                            <div className="font-medium">{product.name || product.description}</div>
+                            <div className="text-sm text-gray-600">HSN: {product.hsn_code || product.hsn}</div>
+                            <div className="text-sm text-gray-500">₹{product.unit_price || product.price}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Input

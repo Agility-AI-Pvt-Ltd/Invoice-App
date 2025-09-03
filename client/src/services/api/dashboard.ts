@@ -94,8 +94,8 @@ export interface TopProductsData {
     datasets: {
         data: number[];
         backgroundColor: string[];
-        borderWidth: number;
-        cutout: string;
+        borderWidth?: number;
+        cutout?: string;
     }[];
 }
 
