@@ -96,7 +96,6 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
   });
 
   const [loading, setLoading] = useState(false);
-  const [vendors, setVendors] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [purchaseInvoices, setPurchaseInvoices] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const { toast } = useToast();
   const { profile, loading: profileLoading } = useProfile();
@@ -110,7 +109,45 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
   const [showProductSuggestions, setShowProductSuggestions] = useState<{ [key: number]: boolean }>({});
   const productSearchTimeoutRefs = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
 
+  // Fetch vendors and invoices functions
+  const fetchVendors = useCallback(async () => {
+    // This function is kept for future use but currently not needed
+    // as we're not displaying vendor suggestions
+  }, []);
 
+  const fetchPurchaseInvoices = useCallback(async () => {
+    try {
+      const token = Cookies.get("authToken");
+      const response = await fetch(`${API_BASE}/api/invoices`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (response.ok) {
+        const data = await response.json();
+
+        
+        // Handle different possible response structures
+        let invoices = [];
+        if (Array.isArray(data)) {
+          invoices = data;
+        } else if (data && data.data && Array.isArray(data.data)) {
+          invoices = data.data;
+        } else if (data && data.invoices && Array.isArray(data.invoices)) {
+          invoices = data.invoices;
+        } else if (data && data.results && Array.isArray(data.results)) {
+          invoices = data.results;
+        }
+        
+
+        setPurchaseInvoices(invoices);
+      } else {
+        console.error("Failed to fetch invoices:", response.status, response.statusText);
+        setPurchaseInvoices([]);
+      }
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      setPurchaseInvoices([]);
+    }
+  }, []);
 
   // Enhanced product search with debouncing
   const performProductSearch = useCallback(async (searchTerm: string, rowIndex: number) => {
@@ -263,55 +300,6 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
       }));
     }
   }, [profile]);
-
-  const fetchVendors = useCallback(async () => {
-    try {
-      const token = Cookies.get("authToken");
-      const response = await fetch(`${API_BASE}/api/vendors`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setVendors(Array.isArray(data) ? data : data.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
-    }
-  }, []);
-
-  const fetchPurchaseInvoices = useCallback(async () => {
-    try {
-      const token = Cookies.get("authToken");
-      const response = await fetch(`${API_BASE}/api/invoices`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (response.ok) {
-        const data = await response.json();
-
-        
-        // Handle different possible response structures
-        let invoices = [];
-        if (Array.isArray(data)) {
-          invoices = data;
-        } else if (data && data.data && Array.isArray(data.data)) {
-          invoices = data.data;
-        } else if (data && data.invoices && Array.isArray(data.invoices)) {
-          invoices = data.invoices;
-        } else if (data && data.results && Array.isArray(data.results)) {
-          invoices = data.results;
-        }
-        
-
-        setPurchaseInvoices(invoices);
-      } else {
-        console.error("Failed to fetch invoices:", response.status, response.statusText);
-        setPurchaseInvoices([]);
-      }
-    } catch (error) {
-      console.error("Error fetching invoices:", error);
-      setPurchaseInvoices([]);
-    }
-  }, []);
 
   const handleInputChange = (field: keyof FormData, value: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     setFormData(prev => ({

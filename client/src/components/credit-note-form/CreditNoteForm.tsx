@@ -95,10 +95,9 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
   });
 
   const [loading, setLoading] = useState(false);
-  const [customers, setCustomers] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [invoices, setInvoices] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const { toast } = useToast();
-  const { profile, loading: profileLoading } = useProfile();
+  const { loading: profileLoading } = useProfile();
 
   // Customer search state
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
@@ -214,9 +213,8 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch customers and invoices on component mount
+  // Fetch invoices on component mount
   useEffect(() => {
-    fetchCustomers();
     fetchInvoices();
   }, []);
 
@@ -319,20 +317,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     }
   };
 
-  const fetchCustomers = async () => {
-    try {
-      const token = Cookies.get("authToken");
-      const response = await fetch(`${API_BASE}/api/customers`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(Array.isArray(data) ? data : data.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching customers:", error);
-    }
-  };
+
 
   const fetchInvoices = async () => {
     try {
