@@ -616,7 +616,7 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
                       );
                     })
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="no-invoices" disabled>
                       No invoices found
                     </SelectItem>
                   )}
