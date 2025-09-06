@@ -411,7 +411,7 @@ const AboutUs = () => {
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 rounded-lg overflow-hidden">
-                    <img src="/agility.jpg" alt="Agility Logo" className="w-full h-full object-cover" />
+                    <img src="/Invoicely_logo_Final.png" alt="Agility Logo" className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold">Agility AI Invoicely</h3>

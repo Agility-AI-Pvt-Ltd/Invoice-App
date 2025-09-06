@@ -21,7 +21,7 @@ const ProfileAvatar = ({ loading = false, error = "" }: Props) => {
 
     return (
         <img
-            src={"/agility.jpg"}
+            src={"/Invoicely_logo_Final.png"}
             alt="Profile"
             className="w-10 h-10 rounded-full object-cover border"
             onError={(e) => {
