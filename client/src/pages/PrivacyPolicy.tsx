@@ -76,7 +76,7 @@ const PrivacyPolicy = () => {
                           <img
                             src="/Invoicely_logo_Final.png"
                             alt="Agility Logo"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover rounded-lg"
                           />
                         </div>
                         <div>
