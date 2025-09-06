@@ -9,7 +9,7 @@ const testimonials = [
     role: "Freelance Designer",
     content: "This app makes client management easy. Creating and sending invoices is fast, and real-time updates keep me in control. Simple, professional, and efficient!",
     date: "Invoice user, 2021.03.02",
-    avatar: "/agility.jpg",
+    avatar: "/Invoicely_logo_Final.png",
     position: "top-0 left-1/2 -translate-x-1/2",
     opacity: "opacity-100",
     // zIndex: "z-50",

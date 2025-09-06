@@ -95,7 +95,7 @@ const NavbarUpdated = () => {
           }}>
             <div className="w-12 h-10 rounded-lg overflow-hidden">
               <img
-                src="/agility.jpg"
+                src="/Invoicely_logo_Final.png"
                 alt="Agility Logo"
                 className="w-full h-full object-cover cursor-pointer"
 
