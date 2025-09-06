@@ -177,7 +177,7 @@ export const MobileNavToggle = ({ isOpen, onClick }: { isOpen: boolean; onClick:
 export const NavbarLogo = () => {
   return (
     <a href="#" className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal">
-      <img src="/Invoicely_logo_Final.png" alt="logo" width={30} height={30} />
+      <img src="/Invoicely_logo_Final.png" className="rounded-lg" alt="logo" width={30} height={30} />
       <span className="font-medium text-black dark:text-white">Agility AI Invoicely</span>
     </a>
   );
