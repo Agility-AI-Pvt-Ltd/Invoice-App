@@ -8,8 +8,9 @@ type FloatingInputProps = {
   type?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  isImportant?: boolean; 
-  disabled? : boolean;
+  isImportant?: boolean;
+  disabled?: boolean;
+  required?: boolean;
 };
 
 const FloatingInput: React.FC<FloatingInputProps> = ({
@@ -20,6 +21,7 @@ const FloatingInput: React.FC<FloatingInputProps> = ({
   onChange,
   isImportant = false,
   disabled = false,
+  required = false
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +45,7 @@ const FloatingInput: React.FC<FloatingInputProps> = ({
           'transition-all duration-200 font-semibold'
         )}
         disabled={disabled}
+        required={required}
       />
 
       <label

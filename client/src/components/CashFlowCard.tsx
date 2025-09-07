@@ -1,62 +1,61 @@
-// import { Card } from "@/components/ui/card";
-
-// export function CashFlowCard() {
-//   return (
-//     <Card className="p-6 bg-white">
-//       <div className="space-y-4">
-//         <div>
-//           <p className="text-sm text-muted-foreground">Cash as on 21/07/2023</p>
-//           <p className="text-2xl font-bold text-foreground">₹ 23,345</p>
-//         </div>
-        
-//         <div className="space-y-3">
-//           <div>
-//             <p className="text-sm text-muted-foreground">Incoming</p>
-//             <p className="text-lg font-semibold text-success">₹ 23,345</p>
-//           </div>
-          
-//           <div>
-//             <p className="text-sm text-muted-foreground">Outgoing</p>
-//             <p className="text-lg font-semibold text-destructive">₹ 23,345</p>
-//           </div>
-//         </div>
-//       </div>
-//     </Card>
-//   );
-// }
-
-
-
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
+import { getCashFlow, type CashFlowResponse } from "@/services/api/dashboard";
+import Cookies from "js-cookie";
 
-interface CashFlowCardProps {
-  selectedDate: Date;
-}
+// interface CashFlowCardProps {
+//   selectedDate: Date;
+// }
 
-export function CashFlowCard({ selectedDate }: CashFlowCardProps) {
-  const monthMultiplier = selectedDate.getMonth() + 1;
-  const cashAmount = 23345 + monthMultiplier * 1000;
-  const incomingAmount = 12000 + monthMultiplier * 800;
-  const outgoingAmount = 8000 + monthMultiplier * 300;
+export function CashFlowCard() {
+  const [cashFlow, setCashFlow] = useState<CashFlowResponse | null>(null);
+  const token = Cookies.get("authToken") || " ";
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getCashFlow(token);
+        setCashFlow(data);
+      } catch (error) {
+        console.error("Failed to load cash flow:", error);
+      }
+    })();
+  }, [token]);
+
+  if (!cashFlow) {
+    return (
+      <Card className="p-6 bg-white">
+        <p>Loading...</p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-6 bg-white">
       <div className="space-y-4">
         <div>
-          <p className="text-sm text-muted-foreground">Cash as on {format(selectedDate, "dd/MM/yyyy")}</p>
-          <p className="text-2xl font-bold text-foreground">₹ {cashAmount.toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground">
+            Cash as on {cashFlow.asOfDate ? format(new Date(cashFlow.asOfDate), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")}
+          </p>
+          <p className="text-2xl font-bold text-foreground">
+            ₹ {cashFlow.cashPosition.toLocaleString()}
+          </p>
         </div>
-        
+
         <div className="space-y-3">
           <div>
             <p className="text-sm text-muted-foreground">Incoming</p>
-            <p className="text-lg font-semibold text-success">₹ {incomingAmount.toLocaleString()}</p>
+            <p className="text-lg font-semibold text-success">
+              ₹ {cashFlow.incoming.toLocaleString()}
+            </p>
           </div>
-          
+
           <div>
             <p className="text-sm text-muted-foreground">Outgoing</p>
-            <p className="text-lg font-semibold text-destructive">₹ {outgoingAmount.toLocaleString()}</p>
+            <p className="text-lg font-semibold text-destructive">
+              ₹ {cashFlow.outgoing.toLocaleString()}
+            </p>
           </div>
         </div>
       </div>

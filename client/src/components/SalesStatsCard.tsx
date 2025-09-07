@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown } from "lucide-react";
+// import { TrendingUp, TrendingDown } from "lucide-react";
 import { GreenUp, RedDown } from "./ui/ArrowSVG"; // 👈 important import
 
 interface SalesStatsCardProps {
@@ -14,7 +14,7 @@ export const SalesStatsCard = ({
   title, 
   value, 
   changePercentage,
-  currency = true,
+  // currency = true,
 }: SalesStatsCardProps) => {
   const isPositive = changePercentage >= 0;
 
@@ -34,11 +34,11 @@ export const SalesStatsCard = ({
                 {formatValue(value)}
               </div>
               <div className="flex items-center gap-1 text-sm">
-                {isPositive ? (
+                {/* {isPositive ? (
                   <TrendingUp className="w-4 h-4 text-green-500" />
                 ) : (
                   <TrendingDown className="w-4 h-4 text-red-500" />
-                )}
+                )} */}
                 <span className={isPositive ? "text-green-500" : "text-red-500"}>
                   {Math.abs(changePercentage)}%
                 </span>

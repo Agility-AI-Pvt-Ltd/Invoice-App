@@ -29,7 +29,10 @@ export function MetricCard({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-sm text-muted-foreground font-medium">{title}</h3>
-            <p className="text-3xl font-bold text-blue-800 mt-1">{amount}</p>
+            <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-blue-800 mt-1">
+              {amount}
+            </p>
+
           </div>
           <div className="h-12 w-20">
             {trend === "up" ? <GreenUp /> : trend === "down" ? <RedDown /> : null}
@@ -41,9 +44,8 @@ export function MetricCard({
           <div className="mt-4">
             <p className="text-xs text-muted-foreground">{subtitle}</p>
             <p
-              className={`text-sm font-medium ${
-                subtitleColor === "success" ? "text-green-600" : "text-red-600"
-              }`}
+              className={`text-sm font-medium ${subtitleColor === "success" ? "text-green-600" : "text-red-600"
+                }`}
             >
               {subtitleAmount}
             </p>

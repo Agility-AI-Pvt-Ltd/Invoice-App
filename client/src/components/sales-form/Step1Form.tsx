@@ -1,10 +1,38 @@
+// File: client/src/components/sales-form/Step1Form.tsx
+
 "use client";
 
+import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/Input";
 import { ChevronDown } from "lucide-react";
 
-export default function Step1Form() {
+type StepProps = {
+  data?: Record<string, any>;
+  onChange?: (partial: Record<string, any>) => void;
+};
+
+function formatDateForInput(value: any) {
+  if (!value) return "";
+  try {
+    if (typeof value === "string") {
+      // already YYYY-MM-DD or ISO
+      if (value.includes("T")) return value.split("T")[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      return "";
+    }
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+export default function Step1Form({ data = {}, onChange }: StepProps) {
   return (
     <div className="space-y-6 w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -16,6 +44,8 @@ export default function Step1Form() {
           <Input
             id="invoiceNumber"
             placeholder="INXXXX"
+            value={data?.invoiceNumber ?? ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.({ invoiceNumber: e.target.value })}
             className="h-11 px-3 py-2 text-sm border border-input bg-background placeholder:text-slate-400"
           />
         </div>
@@ -29,7 +59,8 @@ export default function Step1Form() {
             <select
               id="paymentTerms"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
-              defaultValue=""
+              value={data?.paymentTerms ?? ""}
+              onChange={(e) => onChange?.({ paymentTerms: e.target.value })}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -54,6 +85,8 @@ export default function Step1Form() {
             id="salesDate"
             type="date"
             placeholder="Pick the Date"
+            value={formatDateForInput(data?.salesDate)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.({ salesDate: e.target.value })}
             className="h-11 px-3 py-2 text-sm border border-input bg-background placeholder:text-slate-400"
           />
         </div>
@@ -67,6 +100,8 @@ export default function Step1Form() {
             id="salesDueDate"
             type="date"
             placeholder="date"
+            value={formatDateForInput(data?.salesDueDate)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.({ salesDueDate: e.target.value })}
             className="h-11 px-3 py-2 text-sm border border-input bg-background placeholder:text-slate-400"
           />
         </div>
@@ -80,7 +115,8 @@ export default function Step1Form() {
             <select
               id="salesperson"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
-              defaultValue=""
+              value={data?.salesperson ?? ""}
+              onChange={(e) => onChange?.({ salesperson: e.target.value })}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -104,6 +140,8 @@ export default function Step1Form() {
           <Input
             id="salesChannel"
             placeholder="Online, POS etc."
+            value={data?.salesChannel ?? ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.({ salesChannel: e.target.value })}
             className="h-11 px-3 py-2 text-sm border border-input bg-background placeholder:text-slate-400"
           />
         </div>
@@ -117,7 +155,8 @@ export default function Step1Form() {
             <select
               id="status"
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
-              defaultValue=""
+              value={data?.status ?? ""}
+              onChange={(e) => onChange?.({ status: e.target.value })}
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -141,6 +180,8 @@ export default function Step1Form() {
           <Input
             id="currency"
             placeholder="INR"
+            value={data?.currency ?? ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.({ currency: e.target.value })}
             className="h-11 px-3 py-2 text-sm border border-input bg-background placeholder:text-slate-400"
           />
         </div>

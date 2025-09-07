@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
     Select,
@@ -6,7 +7,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-
 import {
     Chart as ChartJS,
     LineElement,
@@ -20,6 +20,8 @@ import {
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import { Calendar } from "lucide-react";
+import Cookies from "js-cookie";
+import { getSalesReport, type SalesReportData } from "@/services/api/dashboard";
 
 ChartJS.register(
     LineElement,
@@ -31,35 +33,6 @@ ChartJS.register(
     Legend
 );
 
-// Chart Data
-const chartData = {
-    labels: [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ],
-    datasets: [
-        {
-            label: "Total Sales",
-            data: [200, 300, 250, 650, 400, 600, 300, 500, 600, 550, 752, 450],
-            borderColor: "#22c55e",
-            backgroundColor: "#22c55e",
-            tension: 0.4,
-            fill: false,
-            pointRadius: 4,
-        },
-        {
-            label: "Total Expenses",
-            data: [650, 400, 500, 300, 450, 350, 550, 400, 450, 420, 200, 350],
-            borderColor: "#f87171",
-            backgroundColor: "#f87171",
-            tension: 0.4,
-            fill: false,
-            pointRadius: 4,
-        },
-    ],
-};
-
-// Chart Options
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -82,11 +55,6 @@ const chartOptions = {
     },
     scales: {
         y: {
-            min: 100,
-            max: 800,
-            ticks: {
-                stepSize: 100,
-            },
             grid: {
                 color: "#e5e7eb",
                 drawBorder: false,
@@ -101,26 +69,59 @@ const chartOptions = {
 };
 
 const SalesReportCard = () => {
+    const [chartData, setChartData] = useState<SalesReportData | null>(null);
+    const [period, setPeriod] = useState("this-year");
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await getSalesReport(period);
+                // Ensure Chart.js expected format is preserved
+                setChartData({
+                    labels: data.labels,
+                    datasets: data.datasets.map(ds => ({
+                        ...ds,
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 4,
+                    })),
+                });
+            } catch (err) {
+                console.error("Failed to fetch sales report:", err);
+            }
+        };
+        fetchData();
+    }, [period]);
+
     return (
         <Card className="w-full h-full flex flex-col bg-white">
             <CardContent className="flex flex-col flex-1 px-4 py-4">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-semibold text-gray-800">Sales Report</h2>
-                    <Select defaultValue="this-year">
+                    <Select value={period} onValueChange={setPeriod}>
                         <SelectTrigger className="w-[140px] text-sm justify-start">
                             <Calendar className="h-4 w-4 mr-2" />
                             <SelectValue placeholder="Select Period" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="this-year">This Year</SelectItem>
+                            <SelectItem value="this-month">This Month</SelectItem>
+                            <SelectItem value="last-month">Last Month</SelectItem>
+                            <SelectItem value="last-year">Last Year</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
                 {/* Chart */}
                 <div className="flex-1 min-h-[300px]">
-                    <Line data={chartData} options={chartOptions} />
+                    {chartData ? (
+                        <Line data={chartData} options={chartOptions} />
+                    ) : (
+                        <div className="flex justify-center items-center h-full">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

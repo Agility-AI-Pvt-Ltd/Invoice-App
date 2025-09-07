@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import SearchBar from "./ui/SearchBar";
 import ProfileAvatar from "./ui/ProfileAvatar";
-import Notification from "./ui/Notification";
-import { DateRangePicker } from "./ui/DateRangePicker";
-import { getProfile } from "@/services/api/auth";
+import { fetchBusinessLogo } from "./setting";
+import Cookies from "js-cookie";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useNavigate } from "react-router-dom";
 
 const Header: React.FC<any> = ({ label }: { label: string }) => {
-    const [avatarUrl, setAvatarUrl] = useState<string>("/default-avatar.png"); // fallback
+    const [avatarUrl, setAvatarUrl] = useState<any>(); // fallback
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
     function toTitleCase(input: string = ""): string {
@@ -21,10 +21,9 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const profile = await getProfile();
-                if (profile.businessLogo) {
-                    setAvatarUrl(profile.businessLogo);
-                }
+                const logo = await fetchBusinessLogo();
+                console.log(logo)
+                setAvatarUrl(logo);
             } catch (err: any) {
                 console.error("Failed to fetch profile:", err.message);
                 setError("Failed to load profile");
@@ -35,7 +34,8 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
 
         fetchProfile();
     }, []);
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+    const navigate = useNavigate();
     return (
         <div className="bg-white px-4 py-3 shadow-sm rounded-md m-2 sm:m-4">
             <div className="flex items-center sm:flex-row sm:items-center sm:justify-between gap-10 justify-between">
@@ -43,17 +43,24 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
 
                 {/* Desktop */}
                 <div className="hidden sm:flex flex-row items-center gap-4">
-                    <DateRangePicker date={selectedDate} onDateChange={setSelectedDate} />
-                    <SearchBar />
-                    <Notification />
-                    <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
+                    {/* <DateRangePicker
+                    date={selectedDate} onDateChange={setSelectedDate}  //TODO - Uncomment when DateRangePicker is implemented
+                    /> */}
+                    {/* <SearchBar /> */}
+                    {/* <Notification /> */}
+                    <>
+                        <Avatar className="w-6 h-6 sm:w-10 sm:h-10 cursor-pointer" onClick={() => navigate('/app/profile')}>
+                            <AvatarImage src={avatarUrl} alt="Profile" />
+                            <AvatarFallback>{"U"}</AvatarFallback>
+                        </Avatar>
+                    </>
                 </div>
 
                 {/* Mobile */}
                 <div className="flex sm:hidden items-center gap-3">
                     {/* <DateRangePicker iconOnly /> */}
-                    <SearchBar iconOnly />
-                    <Notification />
+                    {/* <SearchBar iconOnly /> */}
+                    {/* <Notification /> */}
                     <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
                 </div>
             </div>

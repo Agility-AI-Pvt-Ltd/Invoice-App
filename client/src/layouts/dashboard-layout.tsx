@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 import { AppSidebar } from "@/components/AppSidebar";
 import Header from "@/components/Header";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ProfileProvider, useProfile } from "@/contexts/ProfileContext";
+import { ProfileProvider} from "@/contexts/ProfileContext";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
@@ -17,7 +17,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const token = Cookies.get("authToken");
-
         if (!token) {
             navigate("/login");
         } else {

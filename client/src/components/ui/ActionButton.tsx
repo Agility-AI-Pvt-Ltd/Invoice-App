@@ -4,7 +4,9 @@ interface ActionButtonProps {
     label: string;
     onClick?: () => void;
     iconOnly?: boolean;
+    className?: string;
 }
+
 
 const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, iconOnly = false }) => {
     return (

@@ -5,37 +5,15 @@ const Invoice = require('../models/Invoice');
 const Inventory = require('../models/Inventory');
 
 // Middleware to verify JWT token
-const auth = (req, res, next) => {
-    try {
-        const authHeader = req.header('Authorization');
-        if (!authHeader) {
-            return res.status(401).json({ error: 'No authorization header' });
-        }
-
-        const token = authHeader.replace('Bearer ', '');
-        if (!token) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        if (!decoded.userId) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
-
-        req.userId = decoded.userId;
-        next();
-    } catch (err) {
-        console.error('Authentication error:', err);
-        res.status(401).json({ error: 'Please authenticate' });
-    }
-};
+const authModule = require('../middleware/auth');
+const auth = authModule && authModule.default ? authModule.default : authModule;
 
 // Helper function to update inventory
 async function updateInventory(userId, items) {
     for (const item of items) {
         try {
             const inventoryItem = await Inventory.findOneAndUpdate(
-                { 
+                {
                     user: userId,
                     description: item.description
                 },
@@ -44,7 +22,7 @@ async function updateInventory(userId, items) {
                     price: item.unitPrice,
                     gst: item.gst
                 },
-                { 
+                {
                     upsert: true,
                     new: true
                 }
@@ -64,15 +42,15 @@ router.post('/', auth, async (req, res) => {
             user: req.userId
         });
         await invoice.save();
-        
+
         // Update inventory with new items
         await updateInventory(req.userId, invoice.items);
-        
+
         console.log('Invoice created successfully:', invoice);
         res.status(201).json(invoice);
     } catch (err) {
         console.error('Error creating invoice:', err);
-        res.status(400).json({ 
+        res.status(400).json({
             error: err.message,
             details: err.errors
         });
@@ -110,11 +88,11 @@ router.get('/clients/:name', auth, async (req, res) => {
             user: req.userId,
             'billTo.name': req.params.name
         }).sort({ date: -1 });
-        
+
         if (!invoice || !invoice.billTo) {
             return res.status(404).json({ error: 'Client not found' });
         }
-        
+
         res.json(invoice.billTo);
     } catch (err) {
         console.error('Error fetching client details:', err);
@@ -162,7 +140,7 @@ router.put('/:id', auth, async (req, res) => {
         res.json(invoice);
     } catch (err) {
         console.error('Error updating invoice:', err);
-        res.status(400).json({ 
+        res.status(400).json({
             error: err.message,
             details: err.errors
         });

@@ -1,7 +1,7 @@
+//@ts-nocheck
 import { useState, useEffect } from "react"
 import { Search, Calendar, Download, Upload, Plus, Edit, MoreVertical, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/Input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -17,10 +17,12 @@ import {
     PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import type { PurchaseItem, PaginatedResponse, PurchaseTableFilters } from "@/types/purchase"
-import { getPurchaseItems } from "@/lib/mock/purchase-data"
+// import type { PurchaseItem, PaginatedResponse, PurchaseTableFilters } from "@/types/purchase"
+import { getPurchaseItems } from "@/services/api/purchase";
 import { NavbarButton } from "./ui/resizable-navbar"
-import PurchaseForm from "./purchase-form/PurchaseForm"
+import Cookies from "js-cookie"
+import type { PurchaseItem, PurchaseTableFilters } from "@/types/purchase"
+import { Input } from "./ui/Input"
 
 const PaymentStatusBadge = ({ status }: { status: PurchaseItem["paymentStatus"] }) => {
     const variants = {
@@ -44,25 +46,34 @@ const formatCurrency = (amount: number) => {
     }).format(amount)
 }
 
-export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseFormOn : (val:boolean)=> void}) {
-    const [data, setData] = useState<PaginatedResponse<PurchaseItem> | null>(null)
+export default function PurchaseTable({ setIsPurchaseFormOn }: { setIsPurchaseFormOn: (val: boolean) => void }) {
+    const [data, setData] = useState<{
+        items: PurchaseItem[];
+        total: number;
+        page: number;
+        totalPages: number;
+    } | null>(null);
+
     const [loading, setLoading] = useState(true)
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
     const [filters, setFilters] = useState<PurchaseTableFilters>({})
-    
+
 
     const fetchData = async () => {
-        setLoading(true)
+        setLoading(true);
         try {
-            const result = await getPurchaseItems(currentPage, itemsPerPage, filters)
-            setData(result)
+            const token = Cookies.get("authToken");
+            const result = await getPurchaseItems(token || "", currentPage, itemsPerPage, filters);
+            setData(result);
         } catch (error) {
-            console.error("Failed to fetch purchase items:", error)
+            console.error("Failed to fetch purchase items:", error);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
+
+
 
     useEffect(() => {
         fetchData()
@@ -83,8 +94,8 @@ export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseForm
 
     const renderPaginationItems = () => {
         if (!data) return null
+        const { page, totalPages } = data;
 
-        const { page, totalPages } = data.pagination
         const items = []
 
         // Previous button
@@ -171,7 +182,7 @@ export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseForm
     }
 
 
-    
+
 
     return (
         <Card className="w-full shadow-sm bg-white">
@@ -220,9 +231,9 @@ export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseForm
                             </Button>
 
                             <NavbarButton className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg flex"
-                            onClick={()=>{
-                                setIsPurchaseFormOn(true);
-                            }}>
+                                onClick={() => {
+                                    setIsPurchaseFormOn(true);
+                                }}>
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add New Purchase
                             </NavbarButton>
@@ -289,7 +300,7 @@ export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseForm
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {data?.data.map((item) => (
+                            {data?.items.map((item) => (
                                 <TableRow key={item.id} className="hover:bg-gray-50">
                                     <TableCell>
                                         <Avatar className="h-8 w-8">
@@ -321,7 +332,7 @@ export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseForm
                                                 <DropdownMenuContent
                                                     align="end"
                                                     sideOffset={4}
-                                                    className="z-50 bg-white border border-gray-200 shadow-lg text-black" 
+                                                    className="z-50 bg-white border border-gray-200 shadow-lg text-black"
                                                 >
                                                     <DropdownMenuItem className="hover:bg-slate-500 cursor-pointer">View Details</DropdownMenuItem>
                                                     <DropdownMenuItem className="hover:bg-gray-100 cursor-pointer">Delete</DropdownMenuItem>
@@ -352,8 +363,9 @@ export default function PurchaseTable({setIsPurchaseFormOn} : {setIsPurchaseForm
                         </Select>
                         <span>
                             {data
-                                ? `${(data.pagination.page - 1) * data.pagination.limit + 1}-${Math.min(data.pagination.page * data.pagination.limit, data.pagination.total)} of ${data.pagination.total} items`
+                                ? `${(data.page - 1) * itemsPerPage + 1}-${Math.min(data.page * itemsPerPage, data.total)} of ${data.total} items`
                                 : ""}
+
                         </span>
                     </div>
 

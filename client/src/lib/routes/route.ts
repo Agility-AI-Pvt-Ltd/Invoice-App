@@ -1,11 +1,20 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { getApiBaseUrl } from '../api-config';
+
+const BACKEND_URL = getApiBaseUrl();
 
 export const routes = {
     auth: {
-        signup: `${BACKEND_URL}/api/auth/register`,
-        login: `${BACKEND_URL}/api/auth/login`,
-        getProfile: `${BACKEND_URL}/api/auth/profile`,
-        updateProfile: `${BACKEND_URL}/api/auth/profile/update`,
+        sendOtpRegister: `${BACKEND_URL}/api/send-otp-register`,
+        verifyOtpAndRegister: `${BACKEND_URL}/api/verify-otp-register`,
+        login: `${BACKEND_URL}/api/login`,
+        getProfile: `${BACKEND_URL}/api/profile`,
+        updateProfile: `${BACKEND_URL}/api/profile/update`,
+    },
+    tax: {
+        metrics: `${BACKEND_URL}/api/tax/metrics`,
+        collectedTimeseries: `${BACKEND_URL}/api/tax/collected-timeseries`,
+        summary: `${BACKEND_URL}/api/tax/summary`,
+        exportSummary: `${BACKEND_URL}/api/tax/summary/export`,
     },
     users: {
         getUserProfile: `${BACKEND_URL}/api/users/profile`,
@@ -30,12 +39,19 @@ export const routes = {
         getLast: `${BACKEND_URL}/api/expense-invoices/last`,
     },
     inventory: {
-        getAll: `${BACKEND_URL}/api/inventory`,
-        getById: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
-        update: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
-        delete: (id: string) => `${BACKEND_URL}/api/inventory/${id}`,
+        getAll: `${BACKEND_URL}/api/items`,
+        getById: (id: string) => `${BACKEND_URL}/api/items/${id}`,
+        update: (id: string) => `${BACKEND_URL}/api/items/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/items/${id}`,
     },
     scan: {
         invoice: `${BACKEND_URL}/api/scan-invoice`,
+    },
+    customers: {
+        getAll: `${BACKEND_URL}/api/customers`,
+        create: `${BACKEND_URL}/api/customers`,
+        getById: (id: string) => `${BACKEND_URL}/api/customers/${id}`,
+        update: (id: string) => `${BACKEND_URL}/api/customers/${id}`,
+        delete: (id: string) => `${BACKEND_URL}/api/customers/${id}`,
     },
 } as const;

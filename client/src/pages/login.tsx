@@ -23,10 +23,10 @@ export default function LoginPage() {
                 {/* Left - Form */}
                 <div className="p-8">
                     <div className="mb-8 flex items-center space-x-3">
-                        <img src="/agility.jpg" alt="Logo" width={60} height={60} />
+                        <img src="/Invoicely_logo_Final.png" className="rounded-lg" alt="Logo" width={60} height={60} />
                         <div>
-                            <h1 className="font-bold text-lg">Invoice App</h1>
-                            <p className="text-xs text-gray-500">Powered by AgilityAI</p>
+                            <h1 className="font-bold text-lg">Agility AI Invoicely</h1>
+                            {/* <p className="text-xs text-gray-500">Powered by AgilityAI</p> */}
                         </div>
                     </div>
                     {!forgotPassword ? (

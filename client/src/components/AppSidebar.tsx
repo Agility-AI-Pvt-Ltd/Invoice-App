@@ -8,20 +8,28 @@ import {
 import {
     Home,
     Users,
-    FileText,
-    Package,
     Boxes,
-    BarChart2,
-    ShoppingCart,
     Receipt,
-    CreditCard,
+    ChartBar,
     UserCog,
     WalletMinimal,
-    Settings,
     LogOut,
+    User,
+    NotepadText
 } from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useProfile } from "@/contexts/ProfileContext"
 
@@ -40,16 +48,18 @@ function toTitleCase(input: string = ""): string {
 const menuItems = [
     { label: "Dashboard", icon: Home },
     { label: "My Customers", icon: Users },
-    { label: "Invoices", icon: FileText },
-    { label: "Products/Services", icon: Package },
-    { label: "Inventory", icon: Boxes },
-    { label: "Sales", icon: BarChart2 }, //Sales & Revenue phle tha
-    { label: "Expenses", icon: WalletMinimal }, //Expenses/ Purchases --> Expenses & Purchases 2 pages
-    { label: "Purchases", icon: ShoppingCart }, //Expenses/ Purchases --> Expenses & Purchases 2 pages
+    { label: "Invoices", icon: NotepadText },
+    // { label: "Sales", icon: BarChart2 },
+    // { label: "Products/Services", icon: Package },
+    { label: "Items", icon: Boxes },
+    { label: "Reports", icon: ChartBar },
+    // { label: "Sales", icon: BarChart2 },
+    { label: "Expenses", icon: WalletMinimal },
+    // { label: "Purchases", icon: ShoppingCart },
     { label: "Tax Summary", icon: Receipt },
-    { label: "Accounts", icon: CreditCard },
-    { label: "Team/Employees", icon: UserCog },
-    { label: "Settings", icon: Settings },
+    // { label: "Accounts", icon: CreditCard },
+    { label: "Team", icon: UserCog },
+    { label: "Profile", icon: User },
 ]
 
 export function AppSidebar() {
@@ -64,14 +74,23 @@ export function AppSidebar() {
         navigate('/login');
     };
 
+    useEffect(() => {
+        if (param.menuItems) {
+            const titleCaseLabel = toTitleCase(param.menuItems);
+            console.log("Title Case Label:", titleCaseLabel);
+            setSelected(titleCaseLabel);
+        }
+    }, [param.menuItems]);
+    // const navigate = useNavigate();
     return (
         <Sidebar className="bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
             <SidebarHeader>
-                <div className="flex">
-                    <img src="/agility.jpg" alt="Logo" className="h-18 m-2" />
+                <div className="flex gap-1 items-center" onClick={() => navigate('/')}>
+                    <img src="/Invoicely_logo_Final.png" alt="Logo" className="h-14 m-2 rounded-lg"
+                    />
                     <div className="flex flex-col items-center py-4">
-                        <div className="text-xl font-bold text-white">Invoice App</div>
-                        <div className="text-xs text-muted-foreground">Powered by AgilityAI</div>
+                        <div className="text-xl font-bold text-white">Agility AI Invoicely</div>
+                        {/* <div className="text-xs text-muted-foreground">Powered by AgilityAI</div> */}
                     </div>
                 </div>
             </SidebarHeader>
@@ -79,6 +98,7 @@ export function AppSidebar() {
                 <SidebarGroup className="overflow-auto scrollbar-hide">
                     {menuItems.map(({ label, icon: Icon }) => {
                         const isSelected = selected === label
+                        console.log(label)
                         return (
                             <button
                                 key={label}
@@ -89,7 +109,7 @@ export function AppSidebar() {
                                         : "hover:bg-[#2b2b2b] text-white pl-4"
                                 )}
                                 onClick={() => {
-                                    setSelected(label);
+                                    setSelected(label)
                                     navigate(`/app/${slugify(label)}`)
                                 }}
                             >
@@ -103,15 +123,46 @@ export function AppSidebar() {
             <SidebarFooter>
                 <div className="p-4 border-t border-sidebar-border">
                     {/* Logout Button */}
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm hover:bg-red-600 text-white"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        <span>Logout</span>
-                    </button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <button
+                                className="flex items-center gap-3 w-full text-left px-4 py-2 rounded-md transition-colors text-sm hover:bg-red-600 text-white"
+                            >
+                                <LogOut className="w-5 h-5" />
+                                <span>Logout</span>
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md bg-white ">
+                            <DialogHeader>
+                                <DialogTitle>Are you sure?</DialogTitle>
+                                <DialogDescription>
+                                    Do you really want to log out? You’ll need to log in again to access your account.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button className="bg-white text-black hover:bg-white ">
+                                    <DialogClose asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="hover:text-black cursor-pointer"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </DialogClose>
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleLogout}
+                                    className=" cursor-pointer"
+                                >
+                                    Logout
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
                 </div>
             </SidebarFooter>
-        </Sidebar>
+        </Sidebar >
     )
 }

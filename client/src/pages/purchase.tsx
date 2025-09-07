@@ -18,7 +18,6 @@ const purchase = () => {
                     </CardContent>
                 </Card>
             </div>
-
         );
     }
     return (

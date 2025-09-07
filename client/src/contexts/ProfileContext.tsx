@@ -18,7 +18,9 @@ interface Profile {
 }
 
 interface ProfileContextType {
-    profile: Profile | null;
+    profile: {
+       data :  Profile | null;
+    }
     loading: boolean;
     error: string | null;
     refreshProfile: () => Promise<void>;
@@ -27,6 +29,7 @@ interface ProfileContextType {
 }
 
 const ProfileContext = createContext<ProfileContextType>({
+    //@ts-ignore
     profile: null,
     loading: true,
     error: null,
@@ -83,10 +86,11 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         fetchProfile();
-    }, [fetchProfile]);
+    }, []); // Only run once on mount
 
     return (
         <ProfileContext.Provider value={{ 
+            //@ts-ignore
             profile, 
             loading, 
             error, 

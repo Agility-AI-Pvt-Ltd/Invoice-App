@@ -1,13 +1,27 @@
-"use client"
+// FILE: client\src\components\InventoryTable.tsx
 
-import { useState, useEffect } from "react"
-import { Search, Edit, Trash2, ChevronDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/Input" // Corrected import path for Input
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+"use client";
+
+import { useState, useEffect } from "react";
+import { Search,  Trash2, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     Pagination,
     PaginationContent,
@@ -16,111 +30,225 @@ import {
     PaginationLink,
     PaginationNext,
     PaginationPrevious,
-} from "@/components/ui/pagination"
-import type { InventoryItem, PaginatedResponse, InventoryFilters } from "@/types/inventory"
-import { Checkbox } from "@/components/ui/checkbox"
-import { getInventoryItems } from "@/lib/mock/inventory-data"
-import { InventoryActionsBar } from "./InventoryActionBar"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+} from "@/components/ui/pagination";
+import type {
+    InventoryItem,
+    PaginatedResponse,
+    InventoryFilters,
+} from "@/types/inventory";
+import { Checkbox } from "../components/ui/Checkbox";
+import { InventoryActionsBar } from "./InventoryActionBar";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import axios from "axios";
+import { INVENTORY_API } from "@/services/api/inventory";
+import Cookies from "js-cookie";
+import { Input } from "./ui/Input";
+
+type Props = {
+    // optional callback when user clicks Edit button (parent should open the product form with initial data)
+    onEdit?: (item: InventoryItem) => void;
+    // optional external signal to force refresh (incrementing number)
+    refreshSignal?: number;
+    // optional callback after successful delete
+    onDeleteSuccess?: () => void;
+};
 
 const StatusBadge = ({ status }: { status: InventoryItem["status"] }) => {
-    const variants = {
+    const variants: Record<string, string> = {
         "In Stock": "bg-green-100 text-green-800 border-green-200",
         "Out of Stock": "bg-red-100 text-red-800 border-red-200",
         "Low in Stock": "bg-orange-100 text-orange-800 border-orange-200",
-    }
+    };
     return (
         <Badge variant="outline" className={variants[status]}>
             {status}
         </Badge>
-    )
-}
+    );
+};
 
 const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || Number.isNaN(amount)) return "-";
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
         minimumFractionDigits: 2,
-    }).format(amount)
-}
+    }).format(amount);
+};
 
-export default function InventoryTable() {
-    const [data, setData] = useState<PaginatedResponse<InventoryItem> | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
-    const [filters, setFilters] = useState<InventoryFilters>({})
-    //For checkbox state
-    const [selectedItems, setSelectedItems] = useState<string[]>([])
-    const isAllSelected = data && selectedItems.length === data.data.length && data.data.length > 0
+export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess }: Props) {
+    const [data, setData] = useState<PaginatedResponse<InventoryItem> | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [filters, setFilters] = useState<InventoryFilters>({});
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const token = Cookies.get("authToken") || "";
+    const isAllSelected =
+        data && data.data && selectedItems.length === data.data.length && data.data.length > 0;
 
     const toggleSelectAll = () => {
-        if (!data) return
+        if (!data || !data.data) return;
         if (isAllSelected) {
-            setSelectedItems([])
+            setSelectedItems([]);
         } else {
-            setSelectedItems(data.data.map((item) => item.id))
+            setSelectedItems(data.data.map((item) => item.id));
         }
-    }
+    };
+
     const toggleSelectItem = (id: string) => {
-        setSelectedItems((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]))
-    }
-    //check box ktml
+        setSelectedItems((prev) =>
+            prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+        );
+    };
+
     const fetchData = async () => {
-        setLoading(true)
+        setLoading(true);
         try {
-            const result = await getInventoryItems(currentPage, itemsPerPage, filters)
-            setData(result)
+            const params = new URLSearchParams({
+                page: currentPage.toString(),
+                limit: itemsPerPage.toString(),
+                ...(filters.search ? { search: filters.search } : {}),
+                ...(filters.category ? { category: filters.category } : {}),
+                ...(filters.status ? { status: filters.status } : {}),
+                ...(filters.sortBy ? { sortBy: filters.sortBy } : {}),
+                ...(filters.sortOrder ? { sortOrder: filters.sortOrder } : {}),
+            });
+
+            const res = await axios.get<PaginatedResponse<InventoryItem>>(
+                `${INVENTORY_API.ITEMS}?${params.toString()}`,
+                {
+                    headers: {
+                        Authorization: token ? `Bearer ${token}` : "",
+                    },
+                }
+            );
+
+            // Handle both direct PaginatedResponse format and wrapped response format
+            const responseData = res.data as any;
+            if (responseData && typeof responseData === 'object' && 'data' in responseData && 'pagination' in responseData) {
+                // Direct PaginatedResponse format
+                setData(responseData);
+            } else if (responseData && typeof responseData === 'object' && 'success' in responseData && responseData.data) {
+                // Wrapped response format from backend
+                setData(responseData.data);
+            } else {
+                // Fallback: create empty response
+                setData({
+                    data: [],
+                    pagination: {
+                        page: 1,
+                        limit: 10,
+                        total: 0,
+                        totalPages: 0
+                    }
+                });
+            }
+            // reset selection when data changes
+            setSelectedItems([]);
         } catch (error) {
-            console.error("Failed to fetch inventory items:", error)
+            console.error("Failed to fetch inventory items:", error);
+            // Set empty data on error to prevent crashes
+            setData({
+                data: [],
+                pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0,
+                    totalPages: 0
+                }
+            });
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
+
     useEffect(() => {
-        fetchData()
-    }, [currentPage, itemsPerPage, filters])
-    const handleSearch = (search: string) => {
-        setFilters((prev) => ({ ...prev, search }))
-        setCurrentPage(1);
-    }
+        if (token) {
+            fetchData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, itemsPerPage, filters, token]);
+
+    // Listen to external refresh signal
+    useEffect(() => {
+        if (typeof refreshSignal !== "undefined") {
+            fetchData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshSignal]);
+
     const handleSort = (column: string) => {
         setFilters((prev) => ({
             ...prev,
             sortBy: column,
-            sortOrder: prev.sortBy === column && prev.sortOrder === "asc" ? "desc" : "asc",
-        }))
-    }
+            sortOrder:
+                prev.sortBy === column && prev.sortOrder === "asc" ? "desc" : "asc",
+        }));
+    };
+
+    const deleteItem = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this item?")) return;
+        try {
+            setLoading(true);
+            await axios.delete(`${INVENTORY_API.ITEMS}/${id}`, {
+                headers: { Authorization: token ? `Bearer ${token}` : "" },
+            });
+            // refresh list
+            await fetchData();
+            if (onDeleteSuccess) onDeleteSuccess();
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert("Failed to delete item");
+        } finally {
+            setLoading(false);
+        }
+    };
+    //@ts-ignore
+    const handleEditClick = (item: InventoryItem) => {
+        if (onEdit) {
+            onEdit(item);
+        } else {
+            // no-op if parent didn't pass onEdit; keep UI unchanged
+            console.warn("Edit clicked but no onEdit handler provided by parent.");
+        }
+    };
+
     const renderPaginationItems = () => {
-        if (!data) return null
-        const { page, totalPages } = data.pagination
-        const items = []
-        // Previous button
+        if (!data) return null;
+        const { page, totalPages } = data.pagination;
+        const items = [];
+
         items.push(
             <PaginationItem key="prev">
                 <PaginationPrevious
                     onClick={() => setCurrentPage(Math.max(1, page - 1))}
-                    className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={
+                        page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+                    }
                 />
-            </PaginationItem>,
-        )
-        // Page numbers
+            </PaginationItem>
+        );
+
         for (let i = 1; i <= Math.min(3, totalPages); i++) {
             items.push(
                 <PaginationItem key={i}>
-                    <PaginationLink onClick={() => setCurrentPage(i)} isActive={page === i} className="cursor-pointer">
+                    <PaginationLink
+                        onClick={() => setCurrentPage(i)}
+                        isActive={page === i}
+                        className="cursor-pointer"
+                    >
                         {i}
                     </PaginationLink>
-                </PaginationItem>,
-            )
+                </PaginationItem>
+            );
         }
-        // Ellipsis and last pages
+
         if (totalPages > 3) {
             items.push(
                 <PaginationItem key="ellipsis">
                     <PaginationEllipsis />
-                </PaginationItem>,
-            )
+                </PaginationItem>
+            );
             items.push(
                 <PaginationItem key={totalPages}>
                     <PaginationLink
@@ -130,20 +258,26 @@ export default function InventoryTable() {
                     >
                         {totalPages}
                     </PaginationLink>
-                </PaginationItem>,
-            )
+                </PaginationItem>
+            );
         }
-        // Next button
+
         items.push(
             <PaginationItem key="next">
                 <PaginationNext
                     onClick={() => setCurrentPage(Math.min(totalPages, page + 1))}
-                    className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={
+                        page === totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                    }
                 />
-            </PaginationItem>,
-        )
-        return items
-    }
+            </PaginationItem>
+        );
+
+        return items;
+    };
+
     if (loading) {
         return (
             <Card className="w-full">
@@ -153,22 +287,26 @@ export default function InventoryTable() {
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
+
     return (
         <Card className="w-full bg-white">
             <CardHeader className="pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <h2 className="text-lg font-semibold text-gray-900">Inventory Items</h2>
                     <div className="flex justify-between sm:flex-row gap-2">
-                        <SearchBar handleSearch={(query) => console.log(query)} />
+                        <SearchBar
+                            handleSearch={(query) =>
+                                setFilters((prev) => ({ ...prev, search: query }))
+                            }
+                        />
                         <InventoryActionsBar
                             filters={filters}
                             setFilters={setFilters}
                             setCurrentPage={setCurrentPage}
                             data={data}
                         />
-
                     </div>
                 </div>
             </CardHeader>
@@ -178,45 +316,71 @@ export default function InventoryTable() {
                         <TableHeader>
                             <TableRow className="bg-gray-50">
                                 <TableHead className="w-12">
-                                    <Checkbox checked={isAllSelected || false} onCheckedChange={toggleSelectAll} aria-label="Select all" className="items-center ml-3" />
+                                    <Checkbox
+                                        checked={isAllSelected || false}
+                                        onCheckedChange={toggleSelectAll}
+                                        aria-label="Select all"
+                                        className="items-center ml-3"
+                                    />
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("productName")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("productName")}
+                                >
                                     <div className="flex items-center gap-1">
                                         Product Name
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("category")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("category")}
+                                >
                                     <div className="flex items-center gap-1">
                                         Category
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("unitPrice")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("unitPrice")}
+                                >
                                     <div className="flex items-center gap-1">
                                         Unit Price
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("inStock")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("inStock")}
+                                >
                                     <div className="flex items-center gap-1">
                                         In Stock
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("discount")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("discount")}
+                                >
                                     <div className="flex items-center gap-1">
                                         Discount
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("totalValue")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("totalValue")}
+                                >
                                     <div className="flex items-center gap-1">
                                         Total Value
                                         <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort("status")}>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleSort("status")}
+                                >
                                     <div className="flex items-center gap-1">
                                         Status
                                         <ChevronDown className="h-4 w-4" />
@@ -226,7 +390,7 @@ export default function InventoryTable() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {data?.data.map((item) => (
+                            {(data?.data || []).map((item) => (
                                 <TableRow key={item.id} className="hover:bg-gray-50">
                                     <TableCell>
                                         <Checkbox
@@ -239,12 +403,17 @@ export default function InventoryTable() {
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-3">
                                             <img
-                                                src={item.image || "/placeholder.svg?height=40&width=40&query=product image"} // Using placeholder.svg
+                                                src={
+                                                    item.image ||
+                                                    "/placeholder.svg?height=40&width=40&query=product image"
+                                                }
                                                 alt={item.productName}
                                                 className="w-10 h-10 rounded object-cover flex-shrink-0"
                                             />
                                             <div className="truncate max-w-[150px]">
-                                                <span className="text-sm text-gray-900 truncate block">{item.productName}</span>
+                                                <span className="text-sm text-gray-900 truncate block">
+                                                    {item.productName}
+                                                </span>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -258,10 +427,10 @@ export default function InventoryTable() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
-                                            <Button variant="ghost" size="sm">
+                                            {/* <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
                                                 <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="sm">
+                                            </Button> */}
+                                            <Button variant="ghost" size="sm" onClick={() => deleteItem(item.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -271,11 +440,13 @@ export default function InventoryTable() {
                         </TableBody>
                     </Table>
                 </div>
-                {/* Pagination */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                         <span>Items per page:</span>
-                        <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                        <Select
+                            value={itemsPerPage.toString()}
+                            onValueChange={(value) => setItemsPerPage(Number(value))}
+                        >
                             <SelectTrigger className="w-20">
                                 <SelectValue />
                             </SelectTrigger>
@@ -288,7 +459,10 @@ export default function InventoryTable() {
                         </Select>
                         <span>
                             {data
-                                ? `${(data.pagination.page - 1) * data.pagination.limit + 1}-${Math.min(data.pagination.page * data.pagination.limit, data.pagination.total)} of ${data.pagination.total} items`
+                                ? `${(data.pagination.page - 1) * data.pagination.limit + 1}-${Math.min(
+                                    data.pagination.page * data.pagination.limit,
+                                    data.pagination.total
+                                )} of ${data.pagination.total} items`
                                 : ""}
                         </span>
                     </div>
@@ -298,19 +472,21 @@ export default function InventoryTable() {
                 </div>
             </CardContent>
         </Card>
-    )
+    );
 }
-
-
 
 function SearchBar({ handleSearch }: { handleSearch: (query: string) => void }) {
     return (
         <>
-            {/* Mobile View: Icon Button with Popover */}
             <div className="sm:hidden">
                 <Popover>
-                    <PopoverTrigger>
-                        <Button size="icon" variant="outline" className="hover:bg-slate-200" title="Search">
+                    <PopoverTrigger asChild>
+                        <Button
+                            size="icon"
+                            variant="outline"
+                            className="hover:bg-slate-200"
+                            title="Search"
+                        >
                             <Search className="h-4 w-4 text-gray-600" />
                         </Button>
                     </PopoverTrigger>
@@ -323,8 +499,6 @@ function SearchBar({ handleSearch }: { handleSearch: (query: string) => void }) 
                     </PopoverContent>
                 </Popover>
             </div>
-
-            {/* Desktop View: Full Input with Icon */}
             <div className="hidden sm:block relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
@@ -334,5 +508,5 @@ function SearchBar({ handleSearch }: { handleSearch: (query: string) => void }) 
                 />
             </div>
         </>
-    )
+    );
 }

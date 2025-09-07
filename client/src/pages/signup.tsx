@@ -1,18 +1,18 @@
-import { useEffect } from "react";
-import Cookies from "js-cookie";
+// import { useEffect } from "react";
+// import Cookies from "js-cookie";
 import SignupForm from "@/components/SignUpForm";
 import SignupSVG from "@/components/SVGs/SignupSVG";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 
 const SignUpPage: React.FC = () => {
-    const router = useNavigate();
+    // const router = useNavigate();
 
-    useEffect(() => {
-        const token = Cookies.get("authToken");
-        if (token) {
-            router("/app/dashboard"); // Change to your actual dashboard route
-        }
-    }, []);
+    // useEffect(() => {
+    //     const token = Cookies.get("authToken");
+    //     if (token) {
+    //         router("/app/dashboard"); // Change to your actual dashboard route
+    //     }
+    // }, []);
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

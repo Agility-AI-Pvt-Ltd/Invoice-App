@@ -1,67 +1,281 @@
-//TaxCollection.tsx
+import  { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-
-const generateBarData = () => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
-  
-  return months.map((month) => ({
-    month,
-    taxCollected: Math.floor(Math.random() * 30) + 70, // 70-100%
-    taxPaid: Math.floor(Math.random() * 25) + 60, // 60-85%
-  }));
-};
+import axios from "axios";
+import Cookies from "js-cookie";
+import { routes } from "@/lib/routes/route";
 
 interface TaxCollectedChartProps {
   selectedDate: Date;
 }
 
+interface ApiTaxPoint {
+  date: string;
+  collected?: number;
+  paid?: number;
+}
+
+interface ApiRevenuePoint {
+  date?: string;
+  period?: string;
+  periodLabel?: string;
+  revenue?: number;
+  revenueAccrued?: number;
+  revenueRealised?: number;
+}
+
+interface BarPoint {
+  monthLabel: string;
+  monthKey: string; // e.g. '2025-01'
+  tax: number;
+  revenue: number;
+}
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export function TaxCollectedChart({ selectedDate }: TaxCollectedChartProps) {
-  const data = generateBarData();
+  const [taxSeries, setTaxSeries] = useState<ApiTaxPoint[]>([]);
+  const [revenueSeries, setRevenueSeries] = useState<ApiRevenuePoint[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const year = selectedDate.getFullYear();
+        const fromDate = new Date(year, 0, 1);
+        const toDate = new Date(year, 11, 31);
+        const token = Cookies.get("authToken") || localStorage.getItem("token") || "";
+
+        // --- TAX (existing endpoint via routes) ---
+        let taxData: any[] = [];
+        try {
+          const taxResp = await axios.get(routes.tax.collectedTimeseries, {
+            params: {
+              from: fromDate.toISOString(),
+              to: toDate.toISOString(),
+              interval: "month",
+            },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+
+          if (Array.isArray(taxResp.data)) {
+            taxData = taxResp.data;
+          } else if (Array.isArray(taxResp.data?.series)) {
+            taxData = taxResp.data.series;
+          } else if (Array.isArray(taxResp.data?.data)) {
+            taxData = taxResp.data.data;
+          } else {
+            for (const k of Object.keys(taxResp.data || {})) {
+              if (Array.isArray((taxResp.data as any)[k])) {
+                taxData = (taxResp.data as any)[k];
+                break;
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Tax timeseries fetch failed:", err);
+          taxData = [];
+        }
+
+        // --- REVENUE (exact backend endpoint) ---
+        let revenueUrl = "/api/dashboard/revenue-chart";
+        try {
+          if (routes?.tax?.collectedTimeseries && typeof routes.tax.collectedTimeseries === "string") {
+            const tmp = new URL(routes.tax.collectedTimeseries, window.location.origin);
+            revenueUrl = `${tmp.origin}/api/dashboard/revenue-chart`;
+          }
+        } catch (e) {
+          revenueUrl = "/api/dashboard/revenue-chart";
+        }
+
+        let revenueData: any[] | null = null;
+        try {
+          const revResp = await axios.get(revenueUrl, {
+            params: {
+              granularity: "monthly",
+              dateFrom: fromDate.toISOString(),
+              dateTo: toDate.toISOString(),
+            },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+
+          if (Array.isArray(revResp.data)) {
+            revenueData = revResp.data;
+          } else if (Array.isArray(revResp.data?.data)) {
+            revenueData = revResp.data.data;
+          } else if (Array.isArray(revResp.data?.series)) {
+            revenueData = revResp.data.series;
+          } else {
+            for (const k of Object.keys(revResp.data || {})) {
+              if (Array.isArray((revResp.data as any)[k])) {
+                revenueData = (revResp.data as any)[k];
+                break;
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Revenue timeseries fetch failed (tried " + revenueUrl + "):", err);
+          revenueData = null;
+        }
+
+        setTaxSeries(Array.isArray(taxData) ? taxData : []);
+        setRevenueSeries(Array.isArray(revenueData) ? revenueData : null);
+      } catch (e) {
+        console.error("Failed to fetch tax/revenue timeseries:", e);
+        setTaxSeries([]);
+        setRevenueSeries(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedDate]);
+
+  // Build merged monthly data for the whole year (Jan..Dec)
+  const data: BarPoint[] = useMemo(() => {
+    const year = selectedDate.getFullYear();
+
+    const taxMap = new Map<string, ApiTaxPoint>();
+    for (const t of taxSeries) {
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        taxMap.set(key, t);
+      } else {
+        const raw = String(t.date).slice(0, 7);
+        taxMap.set(raw, t);
+      }
+    }
+
+    const revMap = new Map<string, ApiRevenuePoint>();
+    if (Array.isArray(revenueSeries)) {
+      for (const r of revenueSeries) {
+        const dCandidate = r.date ?? r.period ?? r.periodLabel;
+        const d = new Date(dCandidate as string);
+        if (!isNaN(d.getTime())) {
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          revMap.set(key, r);
+        } else {
+          const raw = String(dCandidate)?.slice(0, 7);
+          revMap.set(raw, r);
+        }
+      }
+    }
+
+    const points: BarPoint[] = [];
+    for (let m = 0; m < 12; m++) {
+      const key = `${year}-${String(m + 1).padStart(2, "00").slice(-2)}`; // ensure 2-digit month
+      const taxPoint = taxMap.get(key);
+      const revPoint = revMap.get(key);
+
+      const collected = taxPoint?.collected ?? 0;
+      const paid = taxPoint?.paid ?? 0;
+      const taxValue = collected || (collected + paid) || 0;
+
+      const revenueValue =
+        (revPoint && (revPoint.revenue ?? revPoint.revenueAccrued ?? revPoint.revenueRealised ?? 0))
+        ?? (collected + paid);
+
+      points.push({
+        monthLabel: MONTH_NAMES[m],
+        monthKey: key,
+        tax: Math.round(taxValue),
+        revenue: Math.round(revenueValue ?? 0),
+      });
+    }
+
+    return points;
+  }, [taxSeries, revenueSeries, selectedDate]);
+
+  // compute max for scaling bars (avoid zero)
+  const maxVal = useMemo(() => {
+    let max = 0;
+    for (const p of data) {
+      if (p.tax > max) max = p.tax;
+      if (p.revenue > max) max = p.revenue;
+    }
+    return max || 1;
+  }, [data]);
 
   return (
     <Card className="p-6 bg-white">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">Tax Collected v. Tax Paid</h3>
-        <select className="border border-border rounded px-2 py-1 text-sm">
-          <option>This Year</option>
-          <option>Last Year</option>
-        </select>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Monthly Revenue vs Monthly Tax</h3>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="inline-block w-3 h-3 rounded-sm bg-gradient-to-r from-pink-400 to-pink-500" />
+            <span className="text-xs text-muted-foreground">Revenue</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="inline-block w-3 h-3 rounded-sm bg-pink-200" />
+            <span className="text-xs text-muted-foreground">Tax</span>
+          </div>
+          <select className="border border-border rounded px-2 py-1 text-sm">
+            <option>This Year</option>
+            <option>Last Year</option>
+          </select>
+        </div>
       </div>
-      
-      <div className="space-y-4">
-        {data.map((item) => (
-          <div key={item.month} className="space-y">
-            <div className="flex items-center gap-4 group">
-              <div className="w-8 text-sm font-medium text-muted-foreground">
-                {item.month}
-              </div>
-              <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-pink-400 to-pink-500 rounded-full transition-all duration-300"
-                  style={{ width: `${item.taxCollected}%` }}
-                  title={`Tax Collected: ₹${(item.taxCollected * 23.3).toFixed(0)}`}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground w-12">
-                ₹2.3k
-              </div>
-            </div>
-            <div className="flex items-center gap-4 group">
-              <div className="w-8"></div>
-              <div className="flex-1 bg-white rounded-full h-3 relative overflow-hidden">
-                <div 
-                  className="h-full bg-pink-200 rounded-full transition-all duration-300"
-                  style={{ width: `${item.taxPaid}%` }}
-                  title={`Tax Paid: ₹${(item.taxPaid * 23.3).toFixed(0)}`}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground w-12">
-                ₹2.3k
-              </div>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : (
+        <div>
+          {/* Chart area: horizontal scroll on small screens, responsive */}
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[720px] md:min-w-full flex items-end gap-4 px-2 py-4">
+              {data.map((item) => {
+                const revenuePct = Math.min(100, (item.revenue / maxVal) * 100);
+                const taxPct = Math.min(100, (item.tax / maxVal) * 100);
+
+                return (
+                  <div key={item.monthKey} className="flex flex-col items-center justify-end w-12 md:w-16">
+                    {/* Bars container with fixed chart height */}
+                    <div className="relative w-full h-44 md:h-52 flex items-end">
+                      {/* Revenue bar (left) */}
+                      <div
+                        className="absolute bottom-0 left-1/4 transform -translate-x-1/2 w-3 md:w-4 rounded-t-lg bg-gradient-to-t from-pink-400 to-pink-500 transition-all duration-300 hover:opacity-90"
+                        style={{ height: `${revenuePct}%` }}
+                        title={`Revenue: ₹${item.revenue.toLocaleString()}`}
+                        aria-label={`Revenue ${item.monthLabel} ₹${item.revenue.toLocaleString()}`}
+                      />
+
+                      {/* Tax bar (right) */}
+                      <div
+                        className="absolute bottom-0 right-1/4 transform translate-x-1/2 w-3 md:w-4 rounded-t-lg bg-pink-200 transition-all duration-300 hover:opacity-90"
+                        style={{ height: `${taxPct}%` }}
+                        title={`Tax: ₹${item.tax.toLocaleString()}`}
+                        aria-label={`Tax ${item.monthLabel} ₹${item.tax.toLocaleString()}`}
+                      />
+
+                      {/* Value labels above bars (small, shown on hover via opacity) */}
+                      <div className="absolute -top-5 left-1/4 transform -translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
+                        ₹{item.revenue.toLocaleString()}
+                      </div>
+                      <div className="absolute -top-5 right-1/4 transform translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
+                        ₹{item.tax.toLocaleString()}
+                      </div>
+                    </div>
+
+                    {/* Month label */}
+                    <div className="mt-2 text-xs font-medium text-muted-foreground">{item.monthLabel}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ))}
-      </div>
+
+          {/* X axis values area for larger screens (also keeps layout consistent) */}
+          <div className="mt-3 hidden md:block">
+            <div className="grid grid-cols-12 text-xs text-muted-foreground">
+              {data.map((d) => (
+                <div key={d.monthKey} className="col-span-1 text-center"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

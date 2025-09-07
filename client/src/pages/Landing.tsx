@@ -10,6 +10,8 @@ import TestimonialSection from "@/components/TestimonialSection";
 import FAQSection from "@/components/FAQsection";
 import BackgroundEffects from "@/components/BackgroundEffects";
 import CoreFeatures from "@/components/CoreFeatures";
+import CompareFeatures from "@/components/CompareFeatures";
+// import CompareFeatures from "@/components/CompareFeature";
 
 const Landing = () => {
   useEffect(() => {
@@ -27,6 +29,8 @@ const Landing = () => {
       <TailorMadeFeatures />
       <CoreFeatures />
       <PricingSection />
+      <CompareFeatures />
+      {/* <CompareFeatures /> */}
       <TestimonialSection />
       <FAQSection />
       <Footer />
