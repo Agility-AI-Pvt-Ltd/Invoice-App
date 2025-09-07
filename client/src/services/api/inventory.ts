@@ -1,13 +1,11 @@
-import axios from "axios";
-
-export const BASE_URL = "https://invoice-backend-604217703209.asia-south1.run.app";
+import api from "@/lib/api";
 
 export const INVENTORY_API = {
-    ITEMS: `${BASE_URL}/api/inventory/items`,
-    SUMMARY: `${BASE_URL}/api/inventory/summary`,
-    EXPORT: `${BASE_URL}/api/inventory/export`,
-    IMPORT: `${BASE_URL}/api/inventory/import`,
-    CATEGORIES: `${BASE_URL}/api/inventory/categories`,
+    ITEMS: `/api/inventory/items`,
+    SUMMARY: `/api/inventory/summary`,
+    EXPORT: `/api/inventory/export`,
+    IMPORT: `/api/inventory/import`,
+    CATEGORIES: `/api/inventory/categories`,
 };
 
 // Types
@@ -41,17 +39,10 @@ export interface InventorySummary {
 
 /**
  * Fetch inventory summary
- * @param token JWT authentication token
  */
-export const getInventorySummary = async (
-    token: string
-): Promise<InventorySummary> => {
+export const getInventorySummary = async (): Promise<InventorySummary> => {
     try {
-        const response = await axios.get(`${INVENTORY_API.SUMMARY}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const response = await api.get(`${INVENTORY_API.SUMMARY}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching inventory summary:', error);
@@ -99,13 +90,11 @@ export interface InventoryFilters {
 
 /**
  * Fetch inventory items
- * @param token JWT authentication token
  * @param page Page number
  * @param limit Items per page
  * @param filters Optional filters
  */
 export const getInventoryItems = async (
-    token: string,
     page: number = 1,
     limit: number = 10,
     filters: InventoryFilters = {}
@@ -121,13 +110,8 @@ export const getInventoryItems = async (
             ...(filters.sortOrder ? { sortOrder: filters.sortOrder } : {}),
         });
 
-        const response = await axios.get(
-            `${INVENTORY_API.ITEMS}?${params.toString()}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
+        const response = await api.get(
+            `${INVENTORY_API.ITEMS}?${params.toString()}`
         );
         return response.data;
     } catch (error) {

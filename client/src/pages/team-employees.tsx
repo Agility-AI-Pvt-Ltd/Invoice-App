@@ -71,7 +71,7 @@ interface TeamMemberUpdate {
   status?: "Active" | "Inactive";
 }
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+// Removed hardcoded production URL - now using API service
 
 export default function TeamManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -119,27 +119,20 @@ export default function TeamManagement() {
     limit = 10,
     params: { search?: string } = {},
   ) => {
-    const q = new URLSearchParams();
-    q.append("page", String(page));
-    q.append("limit", String(limit));
-    if (params.search) q.append("search", params.search);
-
-    const url = `${API_BASE}/api/team-members?${q.toString()}`;
-    const res = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) {
-      // try to parse error body
-      let errText = `Failed to fetch team members (status ${res.status})`;
-      try {
-        const body = await res.json();
-        errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) {}
-      throw new Error(errText);
+    try {
+      const { getTeamMembers } = await import("@/services/api/team");
+      const response = await getTeamMembers(page, limit, params);
+      return {
+        data: response.data,
+        pagination: {
+          totalPages: response.totalPages,
+          totalItems: response.total,
+          currentPage: response.page
+        }
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch team members: ${error.message}`);
     }
-
-    const json = await res.json();
-    return json;
   };
 
   const generateRandomPassword = (len = 10) => {

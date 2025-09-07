@@ -18,12 +18,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = Cookies.get('authToken');
-        if (!token){
-          console.error('No authentication token found');
-          return;
-        } 
-        const data = await getDashboardStats(token);
+        const data = await getDashboardStats();
         setStats(data);
       } catch (err) {
         console.error('Failed to load stats:', err);

@@ -15,7 +15,7 @@ const statusOptions = ["In Stock", "Out of Stock", "Low in Stock", "Discontinued
 export function InventoryFilterMenu({ selectedStatus, onStatusChange }: Props) {
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
                 <Button
                     variant="outline"
                     size="sm"

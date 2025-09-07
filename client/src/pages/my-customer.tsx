@@ -8,8 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Download, MoreVertical, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
 import MultiStepForm from "./add-customer";
-import axios from "axios";
-import Cookies from "js-cookie";
+// Removed axios and Cookies imports - now using API service
 
 // 🔹 Added imports for dropdowns & menu (used for Filter and Export/Import)
 import {
@@ -52,16 +51,10 @@ export default function CustomerDashboard() {
   const fetchCustomers = useCallback(
     async (p = page) => {
       try {
-        const token = Cookies.get("authToken");
-        const res = await axios.get(
-          `https://invoice-backend-604217703209.asia-south1.run.app/api/get_customer?page=${p}&limit=${ITEMS_PER_PAGE}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          }
-        );
-        setCustomers(res.data.data || []);
-        setTotalPages(res.data.pagination?.totalPages || 1);
+        const { getCustomers } = await import("@/services/api/customer");
+        const response = await getCustomers(p, ITEMS_PER_PAGE);
+        setCustomers(response.data || []);
+        setTotalPages(response.pagination?.totalPages || 1);
       } catch (err) {
         console.error("Failed to fetch customers:", err);
       }

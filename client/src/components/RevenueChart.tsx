@@ -20,16 +20,16 @@ export function RevenueChart({ selectedDate }: RevenueChartProps) {
 
     (async () => {
       try {
-        const res = await getRevenueChart(token, "30-days");
+        const chartData = await getRevenueChart("30-days");
 
         // Transform API data -> match chart format
-        const chartData = res?.data.map((item: any) => ({
-          month: item.period, // API sends "Mar", "Jul" etc.
+        const transformedData = chartData?.map((item: any) => ({
+          month: item.period, // API sends "Week 1", "Week 2" etc.
           accrued: item.revenueAccrued,
           realised: item.revenueRealised,
         }));
 
-        setData(chartData);
+        setData(transformedData);
       } catch (error) {
         console.error("Failed to fetch revenue chart:", error);
       }

@@ -84,10 +84,10 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const token = Cookies.get("authToken") || "";
     const isAllSelected =
-        data && selectedItems.length === data.data.length && data.data.length > 0;
+        data && data.data && selectedItems.length === data.data.length && data.data.length > 0;
 
     const toggleSelectAll = () => {
-        if (!data) return;
+        if (!data || !data.data) return;
         if (isAllSelected) {
             setSelectedItems([]);
         } else {
@@ -123,11 +123,40 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                 }
             );
 
-            setData(res.data);
+            // Handle both direct PaginatedResponse format and wrapped response format
+            const responseData = res.data as any;
+            if (responseData && typeof responseData === 'object' && 'data' in responseData && 'pagination' in responseData) {
+                // Direct PaginatedResponse format
+                setData(responseData);
+            } else if (responseData && typeof responseData === 'object' && 'success' in responseData && responseData.data) {
+                // Wrapped response format from backend
+                setData(responseData.data);
+            } else {
+                // Fallback: create empty response
+                setData({
+                    data: [],
+                    pagination: {
+                        page: 1,
+                        limit: 10,
+                        total: 0,
+                        totalPages: 0
+                    }
+                });
+            }
             // reset selection when data changes
             setSelectedItems([]);
         } catch (error) {
             console.error("Failed to fetch inventory items:", error);
+            // Set empty data on error to prevent crashes
+            setData({
+                data: [],
+                pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0,
+                    totalPages: 0
+                }
+            });
         } finally {
             setLoading(false);
         }
@@ -361,7 +390,7 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {data?.data.map((item) => (
+                            {(data?.data || []).map((item) => (
                                 <TableRow key={item.id} className="hover:bg-gray-50">
                                     <TableCell>
                                         <Checkbox
@@ -451,7 +480,7 @@ function SearchBar({ handleSearch }: { handleSearch: (query: string) => void }) 
         <>
             <div className="sm:hidden">
                 <Popover>
-                    <PopoverTrigger>
+                    <PopoverTrigger asChild>
                         <Button
                             size="icon"
                             variant="outline"

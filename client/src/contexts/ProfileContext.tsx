@@ -86,7 +86,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         fetchProfile();
-    }, [fetchProfile]);
+    }, []); // Only run once on mount
 
     return (
         <ProfileContext.Provider value={{ 
