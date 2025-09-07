@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { DASHBOARD_API } from '../routes/dashboard';
 import Cookies from 'js-cookie';
 
@@ -18,16 +18,11 @@ export interface DashboardStat {
  * @param period Time period filter ('this-month', 'last-month', 'this-year', 'last-year', '30-days')
  */
 export const getDashboardStats = async (
-    token: string,
     period: string = 'this-month'
 ): Promise<DashboardStat[]> => {
     try {
-        const response = await axios.get(`${DASHBOARD_API.STATS}?period=${period}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        return response.data;
+        const response = await api.get(`${DASHBOARD_API.STATS}?period=${period}`);
+        return response.data.data; // Extract data from {success: true, data: [...]}
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         throw error;
@@ -48,13 +43,10 @@ export interface SalesReportData {
 }
 
 export const getSalesReport = async (
-    token: string,
     period: string = 'this-year'
 ): Promise<SalesReportData> => {
-    const res = await axios.get(`${DASHBOARD_API.SALES_REPORT}?period=${period}`, {
-        headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    const res = await api.get(`${DASHBOARD_API.SALES_REPORT}?period=${period}`);
+    return res.data.data; // Extract data from {success: true, data: {...}}
 };
 
 
@@ -75,14 +67,9 @@ export interface RecentActivity {
  * @param limit Optional limit for number of records
  */
 export const getRecentActivity = async (
-    token: string,
     limit: number = 10
 ): Promise<RecentActivity[]> => {
-    const res = await axios.get(`${DASHBOARD_API.RECENT_ACTIVITY}?limit=${limit}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
+    const res = await api.get(`${DASHBOARD_API.RECENT_ACTIVITY}?limit=${limit}`);
     return res.data;
 };
 
@@ -106,17 +93,11 @@ export interface TopProductsData {
  * @param period Time period ("7-days", "30-days", "6-months")
  */
 export const getTopProducts = async (
-    token: string,
     sortBy: "sales" | "units" = "sales",
     period: "7-days" | "30-days" | "6-months" = "30-days"
 ): Promise<TopProductsData> => {
-    const res = await axios.get(
-        `${DASHBOARD_API.TOP_PRODUCTS}?sortBy=${sortBy}&period=${period}`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
+    const res = await api.get(
+        `${DASHBOARD_API.TOP_PRODUCTS}?sortBy=${sortBy}&period=${period}`
     );
     return res.data;
 };
@@ -132,13 +113,9 @@ export interface TopCustomersResponse {
 }
 
 // Fetch top customers
-export const getTopCustomers = async (token: string): Promise<TopCustomersResponse> => {
-    const response = await axios.get<TopCustomersResponse>(DASHBOARD_API.TOP_CUSTOMERS, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    return response.data;
+export const getTopCustomers = async (): Promise<TopCustomersResponse> => {
+    const response = await api.get(DASHBOARD_API.TOP_CUSTOMERS);
+    return response.data.data; // Extract data from {success: true, data: {...}}
 };
 
 
@@ -153,16 +130,11 @@ export interface RevenueChartResponse {
     data: RevenueChartItem[];
 }
 
-export const getRevenueChart = async (token: string, period: string = "30-days") => {
-    const response = await axios.get<RevenueChartResponse>(
-        `${DASHBOARD_API.REVENUE_CHART}?period=${period}`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
+export const getRevenueChart = async (period: string = "30-days") => {
+    const response = await api.get(
+        `${DASHBOARD_API.REVENUE_CHART}?period=${period}`
     );
-    return response.data;
+    return response.data.data; // Extract data from {success: true, data: {...}}
 };
 
 
@@ -174,11 +146,9 @@ export interface CashFlowResponse {
     asOfDate: string;
 }
 
-export const getCashFlow = async (token: string): Promise<CashFlowResponse> => {
-    const res = await axios.get<CashFlowResponse>(DASHBOARD_API.CASH_FLOW, {
-        headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+export const getCashFlow = async (): Promise<CashFlowResponse> => {
+    const res = await api.get(DASHBOARD_API.CASH_FLOW);
+    return res.data.data; // Extract data from {success: true, data: {...}}
 };
 
 
@@ -186,7 +156,8 @@ export const getCashFlow = async (token: string): Promise<CashFlowResponse> => {
 //Invoice APIs
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+import { getApiBaseUrl } from '@/lib/api-config';
+const API_BASE_URL = getApiBaseUrl();
 
 const INVOICES_API = {
     GET_ALL: `${API_BASE_URL}/api/invoices`,
@@ -262,7 +233,6 @@ export interface GetInvoicesResponse {
 
 // API Functions
 export const getAllInvoices = async (
-    token: string,
     params?: GetInvoicesParams
 ): Promise<GetInvoicesResponse> => {
     const queryParams: any = {};
@@ -283,8 +253,7 @@ export const getAllInvoices = async (
         queryParams.limit = params.limit;
     }
 
-    const res = await axios.get<GetInvoicesResponse>(INVOICES_API.GET_ALL, {
-        headers: { Authorization: `Bearer ${token}` },
+    const res = await api.get<GetInvoicesResponse>(INVOICES_API.GET_ALL, {
         params: queryParams
     });
     
@@ -292,69 +261,51 @@ export const getAllInvoices = async (
 };
 
 export const getInvoiceById = async (
-    token: string,
     invoiceId: string
 ): Promise<Invoice> => {
-    const res = await axios.get<Invoice>(`${INVOICES_API.GET_BY_ID}/${invoiceId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await api.get<Invoice>(`${INVOICES_API.GET_BY_ID}/${invoiceId}`);
     return res.data;
 };
 
 export const createInvoice = async (
-    token: string,
     invoiceData: Omit<Invoice, '_id'>
 ): Promise<Invoice> => {
-    const res = await axios.post<Invoice>(INVOICES_API.CREATE, invoiceData, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await api.post<Invoice>(INVOICES_API.CREATE, invoiceData);
     return res.data;
 };
 
 export const updateInvoice = async (
-    token: string,
     invoiceId: string,
     invoiceData: Partial<Invoice>
 ): Promise<Invoice> => {
-    const res = await axios.put<Invoice>(`${INVOICES_API.UPDATE}/${invoiceId}`, invoiceData, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await api.put<Invoice>(`${INVOICES_API.UPDATE}/${invoiceId}`, invoiceData);
     return res.data;
 };
 
 export const deleteInvoice = async (
-    token: string,
     invoiceId: string
 ): Promise<{ message: string }> => {
-    const res = await axios.delete<{ message: string }>(`${INVOICES_API.DELETE}/${invoiceId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await api.delete<{ message: string }>(`${INVOICES_API.DELETE}/${invoiceId}`);
     return res.data;
 };
 
 export const duplicateInvoice = async (
-    token: string,
     invoiceId: string
 ): Promise<Invoice> => {
-    const res = await axios.post<Invoice>(`${INVOICES_API.DUPLICATE}/${invoiceId}/duplicate`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await api.post<Invoice>(`${INVOICES_API.DUPLICATE}/${invoiceId}/duplicate`, {});
     return res.data;
 };
 
 export const downloadInvoice = async (
-    token: string,
     invoiceId: string
 ): Promise<Blob> => {
-    const res = await axios.get(`${INVOICES_API.DOWNLOAD}/${invoiceId}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
+    const res = await api.get(`${INVOICES_API.DOWNLOAD}/${invoiceId}/download`, {
         responseType: 'blob'
     });
     return res.data;
 };
 
 export const exportInvoices = async (
-    token: string,
     params?: {
         status?: string;
         month?: number;
@@ -381,8 +332,7 @@ export const exportInvoices = async (
         queryParams.export_format = params.export_format;
     }
 
-    const res = await axios.get(INVOICES_API.EXPORT, {
-        headers: { Authorization: `Bearer ${token}` },
+    const res = await api.get(INVOICES_API.EXPORT, {
         params: queryParams,
         responseType: 'blob'
     });
@@ -401,18 +351,18 @@ export const getAuthToken = (): string => {
 
 // Wrapper functions that automatically get the token
 export const invoicesAPI = {
-    getAll: (params?: GetInvoicesParams) => getAllInvoices(getAuthToken(), params),
-    getById: (invoiceId: string) => getInvoiceById(getAuthToken(), invoiceId),
-    create: (invoiceData: Omit<Invoice, '_id'>) => createInvoice(getAuthToken(), invoiceData),
-    update: (invoiceId: string, invoiceData: Partial<Invoice>) => updateInvoice(getAuthToken(), invoiceId, invoiceData),
-    delete: (invoiceId: string) => deleteInvoice(getAuthToken(), invoiceId),
-    duplicate: (invoiceId: string) => duplicateInvoice(getAuthToken(), invoiceId),
-    download: (invoiceId: string) => downloadInvoice(getAuthToken(), invoiceId),
+    getAll: (params?: GetInvoicesParams) => getAllInvoices(params),
+    getById: (invoiceId: string) => getInvoiceById(invoiceId),
+    create: (invoiceData: Omit<Invoice, '_id'>) => createInvoice(invoiceData),
+    update: (invoiceId: string, invoiceData: Partial<Invoice>) => updateInvoice(invoiceId, invoiceData),
+    delete: (invoiceId: string) => deleteInvoice(invoiceId),
+    duplicate: (invoiceId: string) => duplicateInvoice(invoiceId),
+    download: (invoiceId: string) => downloadInvoice(invoiceId),
     export: (params?: {
         status?: string;
         month?: number;
         year?: number;
         client?: string;
         export_format?: 'excel' | 'csv';
-    }) => exportInvoices(getAuthToken(), params),
+    }) => exportInvoices(params),
 };

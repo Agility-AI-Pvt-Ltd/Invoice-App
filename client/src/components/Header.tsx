@@ -21,8 +21,7 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const token = Cookies.get("authToken") || "";
-                const logo = await fetchBusinessLogo(token);
+                const logo = await fetchBusinessLogo();
                 console.log(logo)
                 setAvatarUrl(logo);
             } catch (err: any) {

@@ -81,9 +81,12 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     setError(null);
     try {
       const res = await getSalesData();
-      setInvoices(res || []);
+      // Ensure res is always an array
+      const invoicesArray = Array.isArray(res) ? res : [];
+      setInvoices(invoicesArray);
     } catch (err: any) {
       setError(err.message || "Failed to fetch invoices");
+      setInvoices([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -359,7 +362,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     try {
       await invoicesAPI.delete(invoiceId);
       // remove by id or _id to be safe
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId && (inv as any)._id !== invoiceId));
+      setInvoices(prev => Array.isArray(prev) ? prev.filter(inv => inv.id !== invoiceId && (inv as any)._id !== invoiceId) : []);
       // re-fetch to make sure UI matches server
       fetchInvoices();
     } catch (err: any) {
@@ -417,11 +420,14 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       { label: "Overdue", value: "overdue" },
     ];
 
+    // Ensure invoices is always an array
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
     return filterButtons.map(btn => ({
       ...btn,
       count: btn.value === "all"
-        ? invoices.length
-        : invoices.filter(inv => mapStatusToFilter(inv.paymentStatus || "") === btn.value).length
+        ? safeInvoices.length
+        : safeInvoices.filter(inv => mapStatusToFilter(inv.paymentStatus || "") === btn.value).length
     }));
   };
 
@@ -762,8 +768,8 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 <div className="text-center text-sm text-gray-700 sm:text-left">
                   Showing {filteredInvoices.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
-                  {(hasActiveFilters() && filteredInvoices.length !== invoices.length) &&
-                    ` (filtered from ${invoices.length} total)`
+                  {(hasActiveFilters() && filteredInvoices.length !== (Array.isArray(invoices) ? invoices.length : 0)) &&
+                    ` (filtered from ${Array.isArray(invoices) ? invoices.length : 0} total)`
                   }
                 </div>
 

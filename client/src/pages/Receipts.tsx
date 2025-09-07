@@ -33,9 +33,7 @@ import { format } from "date-fns";
 import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
-
-
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+import api from "@/lib/api";
 
 type Tab = "invoices" | "credit-notes" | "debit-notes";
 
@@ -175,11 +173,8 @@ export default function Receipts() {
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
       console.log("Fetching invoices with params:", params.toString()); // Debug log
-      const res = await fetch(`${API_BASE}/api/invoices?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!res.ok) throw new Error(`Failed to fetch invoices (${res.status})`);
-      const data = await res.json();
+      const res = await api.get(`/api/invoices?${params.toString()}`);
+      const data = res.data;
       console.log("Invoices API response:", data); // Debug log
       const arr = Array.isArray(data) ? data : data.data || data.invoices || [];
       const mapped = arr.map((invoice: any) => ({
@@ -265,15 +260,8 @@ export default function Receipts() {
         ...(searchTerm && { search: searchTerm }),
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
-      const res = await fetch(
-        `${API_BASE}/api/credit-notes?${params.toString()}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        },
-      );
-      if (!res.ok)
-        throw new Error(`Failed to fetch credit notes (${res.status})`);
-      const data = await res.json();
+      const res = await api.get(`/api/credit-notes?${params.toString()}`);
+      const data = res.data;
       const arr = Array.isArray(data) ? data : data.data || data.notes || [];
       const mapped = arr.map((n: any) => ({
         id: n._id || n.id || n.creditNoteId || String(n._id || n.id || ""),
@@ -363,15 +351,8 @@ export default function Receipts() {
         ...(searchTerm && { search: searchTerm }),
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
-      const res = await fetch(
-        `${API_BASE}/api/debit-notes?${params.toString()}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        },
-      );
-      if (!res.ok)
-        throw new Error(`Failed to fetch debit notes (${res.status})`);
-      const data = await res.json();
+      const res = await api.get(`/api/debit-notes?${params.toString()}`);
+      const data = res.data;
       const arr = Array.isArray(data) ? data : data.data || data.notes || [];
       const mapped = arr.map((n: any) => ({
         id: n._id || n.id || n.debitNoteId || String(n._id || n.id || ""),
@@ -617,36 +598,32 @@ export default function Receipts() {
     let endpoint = "";
     switch (type) {
       case "invoices":
-        endpoint = `${API_BASE}/api/invoices/import`;
+        endpoint = `/api/invoices/import`;
         break;
       case "credit-notes":
-        endpoint = `${API_BASE}/api/credit-notes/import`;
+        endpoint = `/api/credit-notes/import`;
         break;
       case "debit-notes":
-        endpoint = `${API_BASE}/api/debit-notes/import`;
+        endpoint = `/api/debit-notes/import`;
         break;
       default:
         throw new Error("Invalid type for import");
     }
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: headers,
-      body: formData,
-    });
-
-    if (!res.ok) {
-      let errText = `Failed to import ${type} (status ${res.status})`;
-      try {
-        const body = await res.json();
-        errText = body.detail || body.message || JSON.stringify(body);
-      } catch (err) {
-        console.log(err);
+    try {
+      const res = await api.post(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return res.data;
+    } catch (error: any) {
+      let errText = `Failed to import ${type}`;
+      if (error.response?.data) {
+        errText = error.response.data.detail || error.response.data.message || errText;
       }
       throw new Error(errText);
     }
-
-    return await res.json();
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -671,14 +648,13 @@ export default function Receipts() {
     let endpoint = "";
     switch (type) {
       case "invoices":
-        // For invoices, we might need to use a different endpoint or handle differently
-        endpoint = `${API_BASE}/api/invoices/export?format=${format}`;
+        endpoint = `/api/invoices/export?format=${format}`;
         break;
       case "credit-notes":
-        endpoint = `${API_BASE}/api/credit-notes/export?format=${format}`;
+        endpoint = `/api/credit-notes/export?format=${format}`;
         break;
       case "debit-notes":
-        endpoint = `${API_BASE}/api/debit-notes/export?format=${format}`;
+        endpoint = `/api/debit-notes/export?format=${format}`;
         break;
       default:
         throw new Error("Invalid type for export");
@@ -686,26 +662,25 @@ export default function Receipts() {
 
     console.log(`Attempting to export ${type} from endpoint: ${endpoint}`);
 
-    const res = await fetch(endpoint, { method: "GET", headers });
-
-    console.log(`Export response status: ${res.status}`);
-
-    if (!res.ok) {
-      if (res.status === 204) {
+    try {
+      const res = await api.get(endpoint, {
+        responseType: 'blob',
+        headers: {
+          ...headers,
+        }
+      });
+      return res;
+    } catch (error: any) {
+      if (error.response?.status === 204) {
         throw new Error(`No ${type} found to export`);
       }
 
-      let errText = `Failed to export ${type} (status ${res.status})`;
-      try {
-        const body = await res.json();
-        errText = body.detail || body.message || JSON.stringify(body);
-      } catch (err) {
-        console.log(err);
+      let errText = `Failed to export ${type}`;
+      if (error.response?.data) {
+        errText = error.response.data.detail || error.response.data.message || errText;
       }
       throw new Error(errText);
     }
-
-    return res;
   };
 
   const getExportFilename = (
@@ -1005,26 +980,15 @@ export default function Receipts() {
 
       let endpoint = "";
       if (activeTab === "invoices") {
-        endpoint = `${API_BASE}/api/invoices/${item.id}`;
+        endpoint = `/api/invoices/${item.id}`;
       } else if (activeTab === "credit-notes") {
-        endpoint = `${API_BASE}/api/credit-notes/${item.id}`;
+        endpoint = `/api/credit-notes/${item.id}`;
       } else if (activeTab === "debit-notes") {
-        endpoint = `${API_BASE}/api/debit-notes/${item.id}`;
+        endpoint = `/api/debit-notes/${item.id}`;
       }
 
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-
-      const detailedData = await response.json();
+      const response = await api.get(endpoint);
+      const detailedData = response.data;
       console.log(`Fetched detailed data for ${activeTab}:`, detailedData); // Debug log
 
       if (activeTab === "invoices") {
@@ -1133,24 +1097,14 @@ export default function Receipts() {
 
       let endpoint = "";
       if (activeTab === "invoices") {
-        endpoint = `${API_BASE}/api/invoices/${itemId}`;
+        endpoint = `/api/invoices/${itemId}`;
       } else if (activeTab === "credit-notes") {
-        endpoint = `${API_BASE}/api/credit-notes/${itemId}`;
+        endpoint = `/api/credit-notes/${itemId}`;
       } else if (activeTab === "debit-notes") {
-        endpoint = `${API_BASE}/api/debit-notes/${itemId}`;
+        endpoint = `/api/debit-notes/${itemId}`;
       }
 
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
+      await api.delete(endpoint);
 
       toast({
         title: "Success",

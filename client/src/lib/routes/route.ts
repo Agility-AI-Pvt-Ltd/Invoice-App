@@ -1,5 +1,6 @@
-const BACKEND_URL = "https://invoice-backend-604217703209.asia-south1.run.app";
-// const BACKEND_URL = import.meta.env.DEV ? "" : BACKEND_URL;
+import { getApiBaseUrl } from '../api-config';
+
+const BACKEND_URL = getApiBaseUrl();
 
 export const routes = {
     auth: {

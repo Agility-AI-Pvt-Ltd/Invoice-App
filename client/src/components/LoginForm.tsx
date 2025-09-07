@@ -32,9 +32,13 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
     try {
       const res = await login({ email, password });
       console.log(res)
-      Cookies.set('authToken', res.token, {
+      
+      // Determine if we're in production (HTTPS) or development (HTTP)
+      const isProduction = import.meta.env.VITE_NODE_ENV === 'production' || window.location.protocol === 'https:';
+      
+      Cookies.set('authToken', res.data.token, {
         expires: 1, // 1 day
-        secure: true,
+        secure: isProduction, // Only secure in production/HTTPS
         sameSite: 'Strict',
       });
 

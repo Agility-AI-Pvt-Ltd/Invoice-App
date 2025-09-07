@@ -17,9 +17,7 @@ export function TopCustomersCard({ className }: React.HTMLAttributes<HTMLDivElem
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const token = Cookies.get("authToken");
-                if (!token) return;
-                const data = await getTopCustomers(token);
+                const data = await getTopCustomers();
                 setTopCustomers(data);
             } catch (error) {
                 console.error("Error fetching top customers:", error);

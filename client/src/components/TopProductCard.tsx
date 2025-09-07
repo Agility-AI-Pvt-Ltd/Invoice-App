@@ -53,9 +53,7 @@ const TopProductsCard = () => {
         setIsLoading(true);
         setGraphErrorMessage("");
         
-        const token = Cookies.get("authToken");
-        if (!token) return;
-        const data = await getTopProducts(token, sortBy, period);
+        const data = await getTopProducts(sortBy, period);
         
         // Check if data exists and has the required structure
         if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
