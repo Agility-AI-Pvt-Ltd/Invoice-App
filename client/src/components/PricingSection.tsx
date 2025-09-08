@@ -26,7 +26,7 @@ const plans: PricingPlan[] = [
     monthlyPrice: "₹249",
     yearlyPrice: "₹2,499",
     explain: "A free plan grants you access to some cool features of Agility AI Invoicely",
-    highlights: ["Unlimited Invoices", "Income & Expense Tracking", "Invoice Scan (basic)", "GST-Complaint Invoices", "Automated Payment Reminders"],
+    highlights: ["Unlimited Invoices", "Income & Expense Tracking", "Invoice Scan (basic)", "GST-Compliant Invoices", "Automated Payment Reminders"],
     features: [
       { name: "Sync across device", included: true },
       { name: "5 workspaces", included: true },
@@ -66,7 +66,7 @@ const plans: PricingPlan[] = [
   },
   {
     name: "Diamond",
-    description: "Best suits for great company!",
+    description: "Best suited for large companies!",
     monthlyPrice: "₹549",
     yearlyPrice: "₹5,499",
     explain: "If you are a finance manager at a big company, this plan is a perfect match",
