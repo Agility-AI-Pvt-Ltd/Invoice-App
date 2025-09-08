@@ -76,7 +76,7 @@ const AboutUs = () => {
 
   const founders = [
     {
-      name: "Sharad Raj Ustav",
+      name: "Sharad Raaj Ustav",
       role: "Founder & CEO",
       description:
         "Sharad, founder of Lyfshilp Academy & Agility AI, brings diverse experience across academia,consulting, social development, and brand-building.",
@@ -157,7 +157,7 @@ const AboutUs = () => {
                 Simplifying AI Invoicing & Payments for Everyone
               </h2>
               <p className="text-gray-600 text-lg mb-8 leading-relaxed">
-                From invoice scanning to GST filing, Agility AI makes finances simple, speeds up payments, and keeps you
+                From invoice scanning to GST filing, Invoicely makes finances simple, speeds up payments, and keeps you
                 compliant.
               </p>
               <Button className="bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-8 py-3 rounded-lg text-lg cursor-pointer">
@@ -202,8 +202,7 @@ const AboutUs = () => {
                   <h3 className="text-xl font-bold text-gray-900">Our Values</h3>
                 </div>
                 <p className="text-gray-600 leading-relaxed">
-                  Innovation, transparency, and customer-first design. We believe in reliable automation businesses can
-                  trust.
+                  We believe in innovation, transparency, and customer-first design — delivering reliable automation businesses can trust.
                 </p>
               </CardContent>
             </Card>
