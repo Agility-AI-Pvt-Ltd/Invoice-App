@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
 import { getCashFlow, type CashFlowResponse } from "@/services/api/dashboard";
-import Cookies from "js-cookie";
 
 // interface CashFlowCardProps {
 //   selectedDate: Date;
@@ -10,18 +9,17 @@ import Cookies from "js-cookie";
 
 export function CashFlowCard() {
   const [cashFlow, setCashFlow] = useState<CashFlowResponse | null>(null);
-  const token = Cookies.get("authToken") || " ";
 
   useEffect(() => {
     (async () => {
       try {
-        const data = await getCashFlow(token);
+        const data = await getCashFlow();
         setCashFlow(data);
       } catch (error) {
         console.error("Failed to load cash flow:", error);
       }
     })();
-  }, [token]);
+  }, []);
 
   if (!cashFlow) {
     return (

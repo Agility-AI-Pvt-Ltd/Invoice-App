@@ -165,7 +165,7 @@ export default function Receipts() {
     console.log("🔄 fetchInvoices called with currentPage:", currentPage, "activeTab:", activeTab);
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined;
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -253,7 +253,7 @@ export default function Receipts() {
   const fetchCreditNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined;
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -344,7 +344,7 @@ export default function Receipts() {
   const fetchDebitNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined;
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -769,7 +769,7 @@ export default function Receipts() {
   const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined;
 
       toast({
         title: "Exporting...",
@@ -779,10 +779,10 @@ export default function Receipts() {
       // For invoices, try server export first, fallback to client-side export
       if (activeTab === "invoices") {
         try {
-          const response = await apiExportReceipts(token, format, activeTab);
-          const blob = await response.blob();
+          const response = await apiExportReceipts(undefined, format, activeTab);
+          const blob = await response.data;
           const contentDisposition =
-            response.headers.get("content-disposition") || "";
+            response.headers["content-disposition"] || "";
           let filename = getExportFilename(format, activeTab);
 
           if (contentDisposition) {
@@ -827,10 +827,10 @@ export default function Receipts() {
       }
 
       // For other types or formats, use server export
-      const response = await apiExportReceipts(token, format, activeTab);
-      const blob = await response.blob();
+      const response = await apiExportReceipts(undefined, format, activeTab);
+      const blob = await response.data;
       const contentDisposition =
-        response.headers.get("content-disposition") || "";
+        response.headers["content-disposition"] || "";
       let filename = getExportFilename(format, activeTab);
 
       if (contentDisposition) {
@@ -926,14 +926,14 @@ export default function Receipts() {
 
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined;
 
       toast({
         title: "Importing...",
         description: `Uploading ${activeTab} file`,
       });
 
-      const response = await apiImportReceipts(token, file, activeTab);
+      const response = await apiImportReceipts(undefined, file, activeTab);
 
       toast({
         title: "Success",

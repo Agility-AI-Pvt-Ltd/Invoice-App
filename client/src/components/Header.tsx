@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ProfileAvatar from "./ui/ProfileAvatar";
 import { fetchBusinessLogo } from "./setting";
-import Cookies from "js-cookie";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 

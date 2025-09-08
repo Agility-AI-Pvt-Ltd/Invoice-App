@@ -20,7 +20,6 @@ import {
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import { Calendar } from "lucide-react";
-import Cookies from "js-cookie";
 import { getSalesReport, type SalesReportData } from "@/services/api/dashboard";
 
 ChartJS.register(

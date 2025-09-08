@@ -40,6 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 // Type definitions
 interface TeamMember {
@@ -71,7 +72,8 @@ interface TeamMemberUpdate {
   status?: "Active" | "Inactive";
 }
 
-// Removed hardcoded production URL - now using API service
+// API Base URL
+const API_BASE = getApiBaseUrl();
 
 export default function TeamManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -114,7 +116,7 @@ export default function TeamManagement() {
   };
 
   const apiGetTeamMembers = async (
-    token: string | undefined,
+    _token: string | undefined,
     page = 1,
     limit = 10,
     params: { search?: string } = {},
@@ -130,7 +132,7 @@ export default function TeamManagement() {
           currentPage: response.page
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Failed to fetch team members: ${error.message}`);
     }
   };
@@ -396,28 +398,13 @@ export default function TeamManagement() {
 
       if (Array.isArray(response)) {
         data = response;
-      } else if (response.success && Array.isArray(response.data)) {
-        data = response.data;
-        const p = response.pagination || response.page || {};
-        page = p.currentPage || response.page || currentPage;
-        totalPages =
-          (response.pagination && response.pagination.totalPages) ||
-          response.totalPages ||
-          1;
-        total =
-          (response.pagination && response.pagination.totalItems) ||
-          response.total ||
-          data.length;
       } else if (response.data && Array.isArray(response.data)) {
         data = response.data;
-        page = response.page || response.pagination?.currentPage || currentPage;
-        totalPages =
-          response.totalPages || response.pagination?.totalPages || 1;
-        total =
-          response.total || response.pagination?.totalItems || data.length;
-      } else if (response.members && Array.isArray(response.members)) {
-        data = response.members;
+        page = response.pagination?.currentPage || currentPage;
+        totalPages = response.pagination?.totalPages || 1;
+        total = response.pagination?.totalItems || data.length;
       } else {
+        // Handle other response formats
         for (const k of Object.keys(response)) {
           if (Array.isArray((response as any)[k])) {
             data = (response as any)[k];
