@@ -4,8 +4,8 @@ const BACKEND_URL = getApiBaseUrl();
 
 export const routes = {
     auth: {
-        sendOtpRegister: `${BACKEND_URL}/api/send-otp-register`,
-        verifyOtpAndRegister: `${BACKEND_URL}/api/verify-otp-register`,
+        sendOtpRegister: `${BACKEND_URL}/api/auth/send-otp-register`,
+        verifyOtpAndRegister: `${BACKEND_URL}/api/auth/verify-otp-register`,
         login: `${BACKEND_URL}/api/login`,
         getProfile: `${BACKEND_URL}/api/profile`,
         updateProfile: `${BACKEND_URL}/api/profile/update`,
