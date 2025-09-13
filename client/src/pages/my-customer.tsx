@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/select";
 
 import { useLocation, useNavigate } from "react-router-dom";
+import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
+import { Input } from "@/components/ui/Input";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -39,7 +41,9 @@ export default function CustomerDashboard() {
   // 🔹 Filter states
   const [statusFilter, setStatusFilter] = useState("__all");
   const [dateFilter, setDateFilter] = useState("__any");
-  const [balanceFilter, setBalanceFilter] = useState("__any");
+  const [customDate, setCustomDate] = useState<Date | null>(null)
+  const [balanceFilter, setBalanceFilter] = useState("__any")
+  const [customBalance, setCustomBalance] = useState("")
 
   // file input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -209,128 +213,128 @@ export default function CustomerDashboard() {
     }
   };
 
-  const mapCustomersForExport = (arr) =>
-    arr.map((c) => ({
-      "Company Name": c.company?.name ?? "-",
-      "Company Email": c.company?.email ?? "-",
-      "Customer Name": c.customer?.name ?? "-",
-      "Phone Number": c.phone ?? "-",
-      "Status": c.status ?? "-",
-      "Last Invoice Date": c.lastInvoice ?? "-",
-      "Outstanding Balance": c.balance ?? "-",
-    }));
+  // const mapCustomersForExport = (arr) =>
+  //   arr.map((c) => ({
+  //     "Company Name": c.company?.name ?? "-",
+  //     "Company Email": c.company?.email ?? "-",
+  //     "Customer Name": c.customer?.name ?? "-",
+  //     "Phone Number": c.phone ?? "-",
+  //     "Status": c.status ?? "-",
+  //     "Last Invoice Date": c.lastInvoice ?? "-",
+  //     "Outstanding Balance": c.balance ?? "-",
+  //   }));
 
-  const handleExportExcel = async () => {
-    try {
-      const XLSX = await loadXLSX();
-      const ws = XLSX.utils.json_to_sheet(mapCustomersForExport(filteredCustomers));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Customers");
-      XLSX.writeFile(wb, "customers.xlsx");
-    } catch (err) {
-      console.error("Excel export failed:", err);
-      alert("Table is Empty");
-    }
-  };
+  // const handleExportExcel = async () => {
+  //   try {
+  //     const XLSX = await loadXLSX();
+  //     const ws = XLSX.utils.json_to_sheet(mapCustomersForExport(filteredCustomers));
+  //     const wb = XLSX.utils.book_new();
+  //     XLSX.utils.book_append_sheet(wb, ws, "Customers");
+  //     XLSX.writeFile(wb, "customers.xlsx");
+  //   } catch (err) {
+  //     console.error("Excel export failed:", err);
+  //     alert("Table is Empty");
+  //   }
+  // };
 
-  const handleExportCompanyWise = async () => {
-    try {
-      const XLSX = await loadXLSX();
-      const byCompany: Record<string, any[]> = {};
-      filteredCustomers.forEach((c) => {
-        const name = (c.company?.name || "Unknown Company").toString();
-        byCompany[name] = byCompany[name] || [];
-        byCompany[name].push({
-          "Customer Name": c.customer?.name ?? "-",
-          "Phone Number": c.phone ?? "-",
-          "Status": c.status ?? "-",
-          "Last Invoice Date": c.lastInvoice ?? "-",
-          "Outstanding Balance": c.balance ?? "-",
-        });
-      });
+  // const handleExportCompanyWise = async () => {
+  //   try {
+  //     const XLSX = await loadXLSX();
+  //     const byCompany: Record<string, any[]> = {};
+  //     filteredCustomers.forEach((c) => {
+  //       const name = (c.company?.name || "Unknown Company").toString();
+  //       byCompany[name] = byCompany[name] || [];
+  //       byCompany[name].push({
+  //         "Customer Name": c.customer?.name ?? "-",
+  //         "Phone Number": c.phone ?? "-",
+  //         "Status": c.status ?? "-",
+  //         "Last Invoice Date": c.lastInvoice ?? "-",
+  //         "Outstanding Balance": c.balance ?? "-",
+  //       });
+  //     });
 
-      const wb = XLSX.utils.book_new();
-      Object.keys(byCompany).forEach((companyName) => {
-        const ws = XLSX.utils.json_to_sheet(byCompany[companyName]);
-        const safeName = companyName.substring(0, 30);
-        XLSX.utils.book_append_sheet(wb, ws, safeName || "Company");
-      });
+  //     const wb = XLSX.utils.book_new();
+  //     Object.keys(byCompany).forEach((companyName) => {
+  //       const ws = XLSX.utils.json_to_sheet(byCompany[companyName]);
+  //       const safeName = companyName.substring(0, 30);
+  //       XLSX.utils.book_append_sheet(wb, ws, safeName || "Company");
+  //     });
 
-      XLSX.writeFile(wb, "customers_by_company.xlsx");
-    } catch (err) {
-      console.error("Company-wise export failed:", err);
-      alert("Table is Empty.");
-    }
-  };
+  //     XLSX.writeFile(wb, "customers_by_company.xlsx");
+  //   } catch (err) {
+  //     console.error("Company-wise export failed:", err);
+  //     alert("Table is Empty.");
+  //   }
+  // };
 
-  const handleExportPDF = async () => {
-    try {
-      const jsPDF = await loadJsPDF();
+  // const handleExportPDF = async () => {
+  //   try {
+  //     const jsPDF = await loadJsPDF();
 
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "pt",
-        format: "a4",
-      });
+  //     const doc = new jsPDF({
+  //       orientation: "landscape",
+  //       unit: "pt",
+  //       format: "a4",
+  //     });
 
-      const headers = [
-        "Company Name",
-        "Customer Name",
-        "Phone Number",
-        "Status",
-        "Last Invoice Date",
-        "Outstanding Balance",
-      ];
+  //     const headers = [
+  //       "Company Name",
+  //       "Customer Name",
+  //       "Phone Number",
+  //       "Status",
+  //       "Last Invoice Date",
+  //       "Outstanding Balance",
+  //     ];
 
-      const body = filteredCustomers.map((c) => [
-        c.company?.name ?? "-",
-        c.customer?.name ?? "-",
-        c.phone ?? "-",
-        c.status ?? "-",
-        c.lastInvoice ?? "-",
-        c.balance ?? "-",
-      ]);
+  //     const body = filteredCustomers.map((c) => [
+  //       c.company?.name ?? "-",
+  //       c.customer?.name ?? "-",
+  //       c.phone ?? "-",
+  //       c.status ?? "-",
+  //       c.lastInvoice ?? "-",
+  //       c.balance ?? "-",
+  //     ]);
 
-      // Check if autoTable is available
-      if (typeof doc.autoTable === 'function') {
-        doc.autoTable({
-          head: [headers],
-          body,
-          startY: 40,
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [230, 230, 230] },
-        });
-      } else {
-        // Fallback: basic table layout
-        let yPos = 40;
-        doc.setFontSize(8);
+  //     // Check if autoTable is available
+  //     if (typeof doc.autoTable === 'function') {
+  //       doc.autoTable({
+  //         head: [headers],
+  //         body,
+  //         startY: 40,
+  //         styles: { fontSize: 8 },
+  //         headStyles: { fillColor: [230, 230, 230] },
+  //       });
+  //     } else {
+  //       // Fallback: basic table layout
+  //       let yPos = 40;
+  //       doc.setFontSize(8);
 
-        // Headers
-        let xPos = 40;
-        headers.forEach(header => {
-          doc.text(header, xPos, yPos);
-          xPos += 100;
-        });
+  //       // Headers
+  //       let xPos = 40;
+  //       headers.forEach(header => {
+  //         doc.text(header, xPos, yPos);
+  //         xPos += 100;
+  //       });
 
-        yPos += 20;
+  //       yPos += 20;
 
-        // Body rows
-        body.forEach(row => {
-          xPos = 40;
-          row.forEach(cell => {
-            doc.text(String(cell), xPos, yPos);
-            xPos += 100;
-          });
-          yPos += 15;
-        });
-      }
+  //       // Body rows
+  //       body.forEach(row => {
+  //         xPos = 40;
+  //         row.forEach(cell => {
+  //           doc.text(String(cell), xPos, yPos);
+  //           xPos += 100;
+  //         });
+  //         yPos += 15;
+  //       });
+  //     }
 
-      doc.save("customers.pdf");
-    } catch (err) {
-      console.error("PDF export failed:", err);
-      alert(`PDF export failed: ${err.message || 'Unknown error'}`);
-    }
-  };
+  //     doc.save("customers.pdf");
+  //   } catch (err) {
+  //     console.error("PDF export failed:", err);
+  //     alert(`PDF export failed: ${err.message || 'Unknown error'}`);
+  //   }
+  // };
 
   const getValueFromRow = (row, candidates = []) => {
     for (const key of Object.keys(row)) {
@@ -395,9 +399,9 @@ export default function CustomerDashboard() {
     }
   };
 
-  const triggerFileSelect = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
+  // const triggerFileSelect = () => {
+  //   if (fileInputRef.current) fileInputRef.current.click();
+  // };
 
   // ------------------ Apply filters (frontend)
   const filteredCustomers = customers.filter((c) => {
@@ -483,15 +487,37 @@ export default function CustomerDashboard() {
                     {/* Last Invoice Date */}
                     <div>
                       <p className="text-sm font-medium mb-1">Last Invoice Date</p>
-                      <Select onValueChange={setDateFilter} defaultValue="__any">
+                      <Select value={dateFilter} onValueChange={setDateFilter}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select range" />
+                          <SelectValue placeholder="Select range">
+                            {dateFilter === "custom" && customDate
+                              ? customDate.toDateString()
+                              : undefined}
+                          </SelectValue>
                         </SelectTrigger>
+
                         <SelectContent>
                           <SelectItem value="__any">Any</SelectItem>
                           <SelectItem value="7">Last 7 days</SelectItem>
                           <SelectItem value="30">Last 30 days</SelectItem>
                           <SelectItem value="365">Last 1 year</SelectItem>
+
+                          {/* Inline custom date picker */}
+                          <div
+                            className="p-2 border-t cursor-pointer"
+                            onClick={() => setDateFilter("custom")}
+                          >
+                            <p className="text-sm mb-2">Custom Date</p>
+                            {dateFilter === "custom" && (
+                              <SingleDatePicker
+                                selectedDate={customDate ?? undefined}
+                                onDateChange={(date) => {
+                                  setCustomDate(date)
+                                  setDateFilter("custom")
+                                }}
+                              />
+                            )}
+                          </div>
                         </SelectContent>
                       </Select>
                     </div>
@@ -499,41 +525,40 @@ export default function CustomerDashboard() {
                     {/* Outstanding Balance */}
                     <div>
                       <p className="text-sm font-medium mb-1">Outstanding Balance</p>
-                      <Select onValueChange={setBalanceFilter} defaultValue="__any">
+
+                      <Select value={balanceFilter} onValueChange={setBalanceFilter}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select balance" />
+                          <SelectValue placeholder="Select balance">
+                            {balanceFilter === "custom" && customBalance
+                              ? `₹${customBalance}`
+                              : undefined}
+                          </SelectValue>
                         </SelectTrigger>
+
                         <SelectContent>
                           <SelectItem value="__any">Any</SelectItem>
                           <SelectItem value="low">Less than 10k</SelectItem>
                           <SelectItem value="medium">10k - 50k</SelectItem>
                           <SelectItem value="high">More than 50k</SelectItem>
+
+                          {/* Custom input field */}
+                          <div
+                            className="p-2 border-t space-y-2 cursor-pointer"
+                            onClick={() => setBalanceFilter("custom")}
+                          >
+                            <p className="text-sm">Custom Amount</p>
+                            {balanceFilter === "custom" && (
+                              <Input
+                                type="number"
+                                placeholder="Enter balance"
+                                value={customBalance}
+                                onChange={(e) => setCustomBalance(e.target.value)}
+                              />
+                            )}
+                          </div>
                         </SelectContent>
                       </Select>
                     </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Export / Import Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      Export/Import
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48 p-2 bg-white text-black">
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportCompanyWise(); }}>
-                      Export as Company wise
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportExcel(); }}>
-                      Export as Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportPDF(); }}>
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); triggerFileSelect(); }}>
-                      Import (Excel/CSV)
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -561,8 +586,6 @@ export default function CustomerDashboard() {
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Phone Number</th>
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Status</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Last Invoice Date</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Outstanding Balance</th>
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
                 </tr>
               </thead>
@@ -607,8 +630,6 @@ export default function CustomerDashboard() {
                         {c.status}
                       </span>
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.lastInvoice}</td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{c.balance}</td>
                     <td className="px-3 py-4 sm:px-6">
                       <div className="flex items-center gap-2">
                         <Button
@@ -617,7 +638,7 @@ export default function CustomerDashboard() {
                           className="h-8 w-8 p-0 hover:bg-gray-100"
                           onClick={() => handleDownloadCustomerPDF(c)}
                         >
-                          <Download className="h-4 w-4" />
+                          <img src='/edit.svg' className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -644,10 +665,10 @@ export default function CustomerDashboard() {
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                     disabled={page === 1}
                   >
                     <MoveLeft className="h-4 w-4 mr-1" /> Previous
@@ -665,10 +686,10 @@ export default function CustomerDashboard() {
                       </Button>
                     ))}
                   </div>
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={page === totalPages}
                   >
                     Next <MoveRight className="h-4 w-4 ml-1" />
