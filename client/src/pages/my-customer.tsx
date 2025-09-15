@@ -8,7 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Download, MoreVertical, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
 import MultiStepForm from "./add-customer";
-// Removed axios and Cookies imports - now using API service
+// Added back axios and Cookies for fetchAllCustomers function
+import axios from "axios";
+import Cookies from "js-cookie";
 
 // 🔹 Added imports for dropdowns & menu (used for Filter and Export/Import)
 import {
@@ -39,6 +41,8 @@ export default function CustomerDashboard() {
   const [showAddCustomerForm, setShowAddCustomerForm] = useState(false);
 
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [allCustomers, setAllCustomers] = useState([]); // Store all customers when filtering
 
@@ -60,17 +64,32 @@ export default function CustomerDashboard() {
   const fetchCustomers = useCallback(
     async (p = page) => {
       try {
+        setLoading(true);
+        setError(null);
+        
+        console.log("🚀 Starting to fetch customers for page:", p);
+        
         const { getCustomers } = await import("@/services/api/customer");
         const response = await getCustomers(p, ITEMS_PER_PAGE);
         
         // Debug: Log the actual structure we're getting from backend
         console.log("🔍 Backend response structure:", response);
+        console.log("🔍 Response data array:", response.data);
         console.log("🔍 First customer data:", response.data?.[0]);
+        console.log("🔍 Number of customers:", response.data?.length || 0);
+        
+        if (!response.data || response.data.length === 0) {
+          console.log("⚠️ No customers returned from API");
+        }
         
         setCustomers(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
       } catch (err) {
-        console.error("Failed to fetch customers:", err);
+        console.error("❌ Failed to fetch customers:", err);
+        setError(err.message || "Failed to fetch customers");
+        setCustomers([]);
+      } finally {
+        setLoading(false);
       }
     },
     []
@@ -80,15 +99,12 @@ export default function CustomerDashboard() {
   const fetchAllCustomers = useCallback(
     async () => {
       try {
-        const token = Cookies.get("authToken");
-        const res = await axios.get(
-          `https://invoice-backend-604217703209.asia-south1.run.app/api/get_customer?page=1&limit=1000`, // Fetch large number to get all
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          }
-        );
-        setAllCustomers(res.data.data || []);
+        const { getCustomers } = await import("@/services/api/customer");
+        const response = await getCustomers(1, 1000); // Fetch large number to get all
+        
+        console.log("🔍 fetchAllCustomers response:", response);
+        
+        setAllCustomers(response.data || []);
         setPage(1); // Reset to first page
       } catch (err) {
         console.error("Failed to fetch all customers:", err);
@@ -818,34 +834,54 @@ export default function CustomerDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {currentDisplayedItems.map((c, i) => (
-                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="w-1/4 px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={c.company?.logo || c.logo} />
-                          <AvatarFallback className="text-xs">
-
-                            {(c.company?.name || c.company || "Company")?.[0] || "C"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900">{c.company?.name || c.company || "No Company"}</p>
-                          <p className="text-sm text-gray-500">
-                            {c.company?.email || c.email || "No Email"}
-
-                            {c.company?.name?.[0] || c.name?.[0] || "C"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900">{c.company?.name || c.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {c.company?.email || c.email}
-
-                          </p>
-                        </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-500">Loading customers...</p>
                       </div>
                     </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-red-500 mb-2">Error loading customers</p>
+                        <p className="text-gray-500 text-sm">{error}</p>
+                        <Button onClick={() => fetchCustomers()} className="mt-4" variant="outline">
+                          Try Again
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : currentDisplayedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-gray-500 mb-2">No customers found</p>
+                        <p className="text-gray-400 text-sm">Add your first customer to get started</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : currentDisplayedItems.map((c, i) => (
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                     <td className="w-1/4 px-6 py-4">
+                       <div className="flex items-center gap-2">
+                         <Avatar className="h-8 w-8">
+                           <AvatarImage src={c.company?.logo || c.logo} />
+                           <AvatarFallback className="text-xs">
+                             {(c.company?.name || c.company || "Company")?.[0] || "C"}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div>
+                           <p className="font-medium text-gray-900">{c.company?.name || c.company || "No Company"}</p>
+                           <p className="text-sm text-gray-500">
+                             {c.company?.email || c.email || "No Email"}
+                           </p>
+                         </div>
+                       </div>
+                     </td>
                     <td className="w-1/6 px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
@@ -856,11 +892,6 @@ export default function CustomerDashboard() {
                           </AvatarFallback>
                         </Avatar>
                         <p className="text-gray-900">{c.customer?.name || c.name || "No Name"}</p>
-
-                            {c.customer?.name?.[0] || c.name?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <p className="text-gray-900">{c.customer?.name || c.name || "Unknown"}</p>
 
                       </div>
                     </td>

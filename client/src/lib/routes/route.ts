@@ -9,6 +9,7 @@ export const routes = {
         login: `${BACKEND_URL}/api/login`,
         getProfile: `${BACKEND_URL}/api/profile`,
         updateProfile: `${BACKEND_URL}/api/profile/update`,
+        getLogo: `${BACKEND_URL}/api/profile/logo`,
     },
     tax: {
         metrics: `${BACKEND_URL}/api/tax/metrics`,

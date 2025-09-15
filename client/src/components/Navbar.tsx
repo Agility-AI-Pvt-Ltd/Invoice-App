@@ -13,21 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import api from "@/lib/api";
-
-// Fetch business logo function  
-export async function fetchBusinessLogo(): Promise<string> {
-  try {
-    const { routes } = await import("@/lib/routes/route");
-    const response = await api.get(routes.auth.getLogo, {
-      responseType: "blob",
-    });
-    return URL.createObjectURL(response.data);
-  } catch (error) {
-    console.warn("Logo endpoint not available (using default avatar):", error);
-    return "";
-  }
-}
+import { fetchBusinessLogo } from "@/services/api/settings";
 
 const NavbarUpdated = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

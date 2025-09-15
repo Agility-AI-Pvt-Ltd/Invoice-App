@@ -1,5 +1,6 @@
 import api from '@/lib/api';
 import { SETTINGS_API } from '../routes/settings';
+import { routes } from '@/lib/routes/route';
 
 // Types
 export interface User {
@@ -184,5 +185,22 @@ export const updateNotificationSettings = async (settings: Partial<NotificationS
   } catch (error) {
     console.error('Error updating notification settings:', error);
     throw error;
+  }
+};
+
+/**
+ * Fetch business logo
+ */
+export const fetchBusinessLogo = async (): Promise<string> => {
+  try {
+    console.log("🔍 Fetching business logo from:", routes.auth.getLogo);
+    const response = await api.get(routes.auth.getLogo, {
+      responseType: "blob",
+    });
+    console.log("✅ Business logo fetched successfully");
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    console.log("ℹ️ Logo endpoint not available (using default avatar) - this is normal if no logo is uploaded");
+    return "";
   }
 }; 

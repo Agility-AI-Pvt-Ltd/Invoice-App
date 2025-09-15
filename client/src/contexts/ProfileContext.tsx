@@ -38,9 +38,11 @@ const ProfileContext = createContext<ProfileContextType>({
     logout: () => {},
 });
 
-export const useProfile = () => useContext(ProfileContext);
+// Custom hook to use profile context
+const useProfile = () => useContext(ProfileContext);
 
-export const ProfileProvider = ({ children }: { children: ReactNode }) => {
+// Profile provider component
+const ProfileProvider = ({ children }: { children: ReactNode }) => {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -115,3 +117,6 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         </ProfileContext.Provider>
     );
 };
+
+// Export hook and provider separately to fix HMR issues
+export { useProfile, ProfileProvider };
