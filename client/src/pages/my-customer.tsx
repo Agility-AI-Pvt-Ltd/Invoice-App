@@ -37,6 +37,7 @@ export default function CustomerDashboard() {
   const [customers, setCustomers] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [showAddCustomerForm, setShowAddCustomerForm] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   // 🔹 Filter states
   const [statusFilter, setStatusFilter] = useState("__all");
@@ -57,6 +58,11 @@ export default function CustomerDashboard() {
       try {
         const { getCustomers } = await import("@/services/api/customer");
         const response = await getCustomers(p, ITEMS_PER_PAGE);
+        
+        // Debug: Log the actual structure we're getting from backend
+        console.log("🔍 Backend response structure:", response);
+        console.log("🔍 First customer data:", response.data?.[0]);
+        
         setCustomers(response.data || []);
         setTotalPages(response.pagination?.totalPages || 1);
       } catch (err) {
@@ -87,7 +93,7 @@ export default function CustomerDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen for "customer:added" event and refetch (non-invasive)
+  // Listen for "customer:added" and "customer:updated" events and refetch (non-invasive)
   useEffect(() => {
     const handler = (e: any) => {
       try {
@@ -117,8 +123,21 @@ export default function CustomerDashboard() {
       }
     };
 
+    const updateHandler = (e: any) => {
+      try {
+        console.log("customer:updated event received, refetching list", e?.detail);
+        fetchCustomers(page);
+      } catch (err) {
+        console.error("Error handling customer:updated event:", err);
+      }
+    };
+
     window.addEventListener("customer:added", handler);
-    return () => window.removeEventListener("customer:added", handler);
+    window.addEventListener("customer:updated", updateHandler);
+    return () => {
+      window.removeEventListener("customer:added", handler);
+      window.removeEventListener("customer:updated", updateHandler);
+    };
   }, [page, fetchCustomers]);
 
   // ------------------ Export / Import Helpers ------------------
@@ -399,6 +418,117 @@ export default function CustomerDashboard() {
     }
   };
 
+  // Handle edit customer
+  const handleEditCustomer = async (customer: any) => {
+    try {
+      // Fetch full customer details for editing
+      const { getCustomerById } = await import("@/services/api/customer");
+      console.log("🔍 Fetching customer details for ID:", customer.id || customer._id);
+      const fullCustomerData = await getCustomerById(customer.id || customer._id);
+      console.log("📥 Full customer data from getCustomerById API:", fullCustomerData);
+      
+      // Map the API response to form structure
+      const mappedData = mapCustomerToFormData(fullCustomerData);
+      
+      setEditingCustomer(mappedData);
+      setShowAddCustomerForm(true);
+    } catch (err) {
+      console.error("Failed to fetch customer details:", err);
+      console.log("🔄 Using fallback data from customer list:", customer);
+      // Fallback to basic data if API call fails
+      const mappedData = mapCustomerToFormData(customer);
+      setEditingCustomer(mappedData);
+      setShowAddCustomerForm(true);
+    }
+  };
+
+  // Map customer API response to form data structure
+  const mapCustomerToFormData = (customer: any) => {
+    console.log("🔍 Mapping customer for edit:", customer);
+    console.log("🏠 Address fields in customer data:");
+    console.log("  - address:", customer.address);
+    console.log("  - billingAddress:", customer.billingAddress);
+    console.log("  - billingAddressLine1:", customer.billingAddressLine1);
+    console.log("  - billingAddressLine2:", customer.billingAddressLine2);
+    console.log("  - billingCity:", customer.billingCity);
+    console.log("  - billingState:", customer.billingState);
+    console.log("  - billingZip:", customer.billingZip);
+    console.log("  - billingCountry:", customer.billingCountry);
+    
+    const mappedData = {
+      // Step 1 - Basic Information (handle both nested and flat structures)
+      customerType: customer.customerType || "",
+      name: customer.customer?.name || customer.name || customer.fullName || "",
+      email: customer.company?.email || customer.email || "",
+      phone: customer.phone || "",
+      companyName: customer.company?.name || customer.company || customer.companyName || "",
+      website: customer.website || "",
+
+      // Step 2 - Address Details (handle both nested and flat structures)
+      billingAddress: customer.address || customer.billingAddress || "",
+      billingAddressLine1: customer.billingAddressLine1 || customer.billingAddress || customer.address || "",
+      billingAddressLine2: customer.billingAddressLine2 || "",
+      billingCity: customer.billingCity || customer.city || "",
+      billingState: customer.billingState || customer.state || "",
+      billingZip: customer.billingZip || customer.zip || customer.zipCode || customer.pincode || "",
+      billingCountry: customer.billingCountry || customer.country || "India",
+      shippingAddress: customer.shippingAddress || "",
+      shippingAddressLine1: customer.shippingAddressLine1 || "",
+      shippingAddressLine2: customer.shippingAddressLine2 || "",
+      shippingCity: customer.shippingCity || "",
+      shippingState: customer.shippingState || "",
+      shippingZip: customer.shippingZip || "",
+      shippingCountry: customer.shippingCountry || "India",
+
+      // Step 3 - Tax and Other Details
+      pan: customer.panNumber || customer.pan || "",
+      gstRegistered: customer.gstRegistered || "",
+      gstNumber: customer.gstNumber || "",
+      supplyPlace: customer.supplyPlace || "",
+      currency: customer.currency || "INR",
+      paymentTerms: customer.paymentTerms || "",
+
+      // Step 4 - Additional Info
+      logo: null,
+      notes: customer.notes || "",
+      tags: customer.tags || "",
+
+      // Keep original ID for updates
+      id: customer.id || customer._id,
+    };
+    
+    console.log("🔧 Mapped form data for editing:");
+    console.log("  - billingAddress:", mappedData.billingAddress);
+    console.log("  - billingAddressLine1:", mappedData.billingAddressLine1);
+    console.log("  - billingCity:", mappedData.billingCity);
+    console.log("  - billingState:", mappedData.billingState);
+    
+    return mappedData;
+  };
+
+  // Handle delete customer
+  const handleDeleteCustomer = async (customerId: string | number) => {
+    if (!confirm("Are you sure you want to delete this customer?")) {
+      return;
+    }
+
+    try {
+      const { deleteCustomer } = await import("@/services/api/customer");
+      await deleteCustomer(Number(customerId));
+      
+      // Remove from local state immediately for better UX
+      setCustomers((prev) => prev.filter((c) => c.id !== customerId && c._id !== customerId));
+      
+      alert("Customer deleted successfully!");
+      
+      // Refetch to ensure consistency
+      fetchCustomers(page);
+    } catch (err) {
+      console.error("Failed to delete customer:", err);
+      alert("Failed to delete customer. Please try again.");
+    }
+  };
+
   // const triggerFileSelect = () => {
   //   if (fileInputRef.current) fileInputRef.current.click();
   // };
@@ -432,9 +562,17 @@ export default function CustomerDashboard() {
   if (showAddCustomerForm) {
     return (
       <Card className="max-w-full p-4 sm:p-6 bg-white mx-2 sm:mx-4">
-        <p className="font-semibold text-2xl ">Add New Customer</p>
+        <p className="font-semibold text-2xl ">
+          {editingCustomer ? "Edit Customer" : "Add New Customer"}
+        </p>
         <CardContent className="mt-2 ">
-          <MultiStepForm onCancel={() => setShowAddCustomerForm(false)} />
+          <MultiStepForm 
+            onCancel={() => {
+              setShowAddCustomerForm(false);
+              setEditingCustomer(null);
+            }} 
+            initialData={editingCustomer}
+          />
         </CardContent>
       </Card>
     );
@@ -567,7 +705,9 @@ export default function CustomerDashboard() {
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls,.csv"
-                  style={{ display: "none" }}
+                  className="hidden"
+                  aria-label="Import customers from Excel or CSV file"
+                  title="Import customers from Excel or CSV file"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
                     handleImportFile(f);
@@ -595,15 +735,15 @@ export default function CustomerDashboard() {
                     <td className="px-3 py-4 sm:px-6">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={c.company?.logo} />
+                          <AvatarImage src={c.company?.logo || c.logo} />
                           <AvatarFallback className="text-xs">
-                            {c.company?.name?.[0] || "C"}
+                            {(c.company?.name || c.company || "Company")?.[0] || "C"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-gray-900">{c.company?.name}</p>
+                          <p className="font-medium text-gray-900">{c.company?.name || c.company || "No Company"}</p>
                           <p className="text-sm text-gray-500">
-                            {c.company?.email}
+                            {c.company?.email || c.email || "No Email"}
                           </p>
                         </div>
                       </div>
@@ -611,12 +751,12 @@ export default function CustomerDashboard() {
                     <td className="px-3 py-4 sm:px-6">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={c.customer?.avatar} />
+                          <AvatarImage src={c.customer?.avatar || c.avatar} />
                           <AvatarFallback className="text-xs">
-                            {c.customer?.name?.[0] || "U"}
+                            {(c.customer?.name || c.name || "User")?.[0] || "U"}
                           </AvatarFallback>
                         </Avatar>
-                        <p className="text-gray-900">{c.customer?.name || "Unknown"}</p>
+                        <p className="text-gray-900">{c.customer?.name || c.name || "No Name"}</p>
                       </div>
                     </td>
                     <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.phone}</td>
@@ -636,9 +776,28 @@ export default function CustomerDashboard() {
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0 hover:bg-gray-100"
-                          onClick={() => handleDownloadCustomerPDF(c)}
+                          onClick={() => handleEditCustomer(c)}
+                          title="Edit customer"
                         >
-                          <img src='/edit.svg' className="w-4 h-4" />
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:bg-red-100 text-red-600 hover:text-red-700"
+                          onClick={() => handleDeleteCustomer(c.id || c._id)}
+                          title="Delete customer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:bg-gray-100"
+                          onClick={() => handleDownloadCustomerPDF(c)}
+                          title="Download customer PDF report"
+                        >
+                          <Download className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>

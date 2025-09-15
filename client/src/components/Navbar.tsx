@@ -15,16 +15,17 @@ import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import api from "@/lib/api";
 
-// Fetch business logo function
+// Fetch business logo function  
 export async function fetchBusinessLogo(): Promise<string> {
   try {
-    const response = await api.get("/api/profile/logo", {
+    const { routes } = await import("@/lib/routes/route");
+    const response = await api.get(routes.auth.getLogo, {
       responseType: "blob",
     });
-    return URL.createObjectURL(response.data); // returns usable image URL
+    return URL.createObjectURL(response.data);
   } catch (error) {
-    console.warn("Logo endpoint not available:", error);
-    throw error;
+    console.warn("Logo endpoint not available (using default avatar):", error);
+    return "";
   }
 }
 

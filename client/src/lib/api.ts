@@ -6,6 +6,8 @@ import { getApiBaseUrl } from "./api-config";
 // Use shared API configuration
 const API_BASE = getApiBaseUrl();
 
+console.log(`🔧 Axios API client created with baseURL: ${API_BASE}`);
+
 // Request throttling to prevent rate limiting
 const requestQueue = new Map<string, Promise<any>>();
 
@@ -59,11 +61,28 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 429) {
       console.warn("Rate limit exceeded, retrying after delay...");
-      // You could implement exponential backoff here
     }
     
     if (error.response?.status === 404) {
       console.warn("Endpoint not found:", error.config?.url);
+    }
+    
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const token = Cookies.get("authToken");
+      console.warn("Authentication failed:", {
+        status: error.response.status,
+        url: error.config?.url,
+        hasToken: !!token,
+        tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
+        errorMessage: error.response?.data?.error || error.response?.data?.message
+      });
+    }
+    
+    if (error.response?.status === 500) {
+      console.error("Server error:", {
+        url: error.config?.url,
+        error: error.response?.data
+      });
     }
     
     return Promise.reject(error);

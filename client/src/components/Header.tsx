@@ -25,8 +25,9 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                 console.log(logo)
                 setAvatarUrl(logo);
             } catch (err: any) {
-                console.error("Failed to fetch profile:", err.message);
-                setError("Failed to load profile");
+                console.warn("Failed to fetch logo, using default:", err.message);
+                // Don't set error state for logo failures - use default avatar instead
+                setAvatarUrl(""); // Use default avatar
             } finally {
                 setLoading(false);
             }
