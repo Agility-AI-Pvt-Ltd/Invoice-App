@@ -37,7 +37,11 @@ export default function CustomerDashboard() {
   const [customers, setCustomers] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [showAddCustomerForm, setShowAddCustomerForm] = useState(false);
+
   const [editingCustomer, setEditingCustomer] = useState(null);
+
+  const [allCustomers, setAllCustomers] = useState([]); // Store all customers when filtering
+
 
   // 🔹 Filter states
   const [statusFilter, setStatusFilter] = useState("__all");
@@ -72,10 +76,53 @@ export default function CustomerDashboard() {
     []
   );
 
-  // call fetch on page change
+  // ------------------ Fetch all customers for filtering ------------------
+  const fetchAllCustomers = useCallback(
+    async () => {
+      try {
+        const token = Cookies.get("authToken");
+        const res = await axios.get(
+          `https://invoice-backend-604217703209.asia-south1.run.app/api/get_customer?page=1&limit=1000`, // Fetch large number to get all
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          }
+        );
+        setAllCustomers(res.data.data || []);
+        setPage(1); // Reset to first page
+      } catch (err) {
+        console.error("Failed to fetch all customers:", err);
+      }
+    },
+    []
+  );
+
+  // Check if any filters are applied
+  const hasActiveFilters = statusFilter !== "__all" || dateFilter !== "__any" || balanceFilter !== "__any";
+
+  // Fetch all customers when filters are applied (only when filters change)
   useEffect(() => {
-    fetchCustomers(page);
-  }, [page, fetchCustomers]);
+    if (hasActiveFilters) {
+      fetchAllCustomers();
+    }
+  }, [statusFilter, dateFilter, balanceFilter, customDate, customBalance, hasActiveFilters, fetchAllCustomers]);
+
+  // Fetch paginated customers when no filters and page changes
+  useEffect(() => {
+    if (!hasActiveFilters) {
+      fetchCustomers(page);
+    }
+  }, [page, hasActiveFilters, fetchCustomers]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, dateFilter, balanceFilter, customDate, customBalance]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchCustomers(1);
+  }, []);
 
   // If navigated here with state.openAddCustomerForm -> open the add-customer form and clear history state.
   useEffect(() => {
@@ -534,30 +581,70 @@ export default function CustomerDashboard() {
   // };
 
   // ------------------ Apply filters (frontend)
-  const filteredCustomers = customers.filter((c) => {
-    if (statusFilter && statusFilter !== "__all") {
-      if (!c.status || c.status !== statusFilter) return false;
-    }
+  const applyFilters = (customerList) => {
+    return customerList.filter((c) => {
+      if (statusFilter && statusFilter !== "__all") {
+        if (!c.status || c.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+      }
 
-    if (dateFilter && dateFilter !== "__any") {
-      if (!c.lastInvoice) return false;
-      const today = new Date();
-      const invoiceDate = new Date(c.lastInvoice);
-      if (isNaN(invoiceDate.getTime())) return false;
-      const daysDiff =
-        (today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysDiff > parseInt(dateFilter, 10)) return false;
-    }
+      if (dateFilter && dateFilter !== "__any") {
+        if (!c.lastInvoice) return false;
+        const today = new Date();
+        const invoiceDate = new Date(c.lastInvoice);
+        if (isNaN(invoiceDate.getTime())) return false;
+        const daysDiff =
+          (today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysDiff > parseInt(dateFilter, 10)) return false;
+      }
 
-    if (balanceFilter && balanceFilter !== "__any") {
-      const balance = parseFloat(c.balance || 0);
-      if (balanceFilter === "low" && balance >= 10000) return false;
-      if (balanceFilter === "medium" && (balance < 10000 || balance > 50000)) return false;
-      if (balanceFilter === "high" && balance <= 50000) return false;
-    }
+      if (balanceFilter && balanceFilter !== "__any") {
+        const balance = parseFloat(c.balance || 0);
+        if (balanceFilter === "low" && balance >= 10000) return false;
+        if (balanceFilter === "medium" && (balance < 10000 || balance > 50000)) return false;
+        if (balanceFilter === "high" && balance <= 50000) return false;
+      }
 
-    return true;
+      return true;
+    });
+  };
+
+  // Get the appropriate customer list based on filtering state
+  const customerList = hasActiveFilters ? allCustomers : customers;
+  const allFilteredCustomers = applyFilters(customerList);
+
+  // Calculate pagination for filtered results
+  const totalFilteredPages = Math.ceil(allFilteredCustomers.length / ITEMS_PER_PAGE);
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const filteredCustomers = allFilteredCustomers.slice(startIndex, endIndex);
+
+  // Use appropriate pagination based on filtering state
+  const currentTotalPages = hasActiveFilters ? totalFilteredPages : totalPages;
+  const currentTotalItems = hasActiveFilters ? allFilteredCustomers.length : (totalPages * ITEMS_PER_PAGE);
+  const currentDisplayedItems = hasActiveFilters ? filteredCustomers : customers;
+
+  // Debug logging
+  console.log('Debug Info:', {
+    hasActiveFilters,
+    allCustomersLength: allCustomers.length,
+    customersLength: customers.length,
+    customerListLength: customerList.length,
+    allFilteredCustomersLength: allFilteredCustomers.length,
+    totalPages,
+    totalFilteredPages,
+    currentTotalPages,
+    currentPage: page,
+    startIndex,
+    endIndex,
+    filteredCustomersLength: filteredCustomers.length,
+    currentDisplayedItemsLength: currentDisplayedItems.length
   });
+
+  // Debug customer data structure
+  if (currentDisplayedItems.length > 0) {
+    console.log('Sample customer data:', currentDisplayedItems[0]);
+    console.log('Available fields:', Object.keys(currentDisplayedItems[0]));
+  }
 
   if (showAddCustomerForm) {
     return (
@@ -587,7 +674,7 @@ export default function CustomerDashboard() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Customers List</h2>
-                <p className="text-sm text-gray-500 mt-1">Total {filteredCustomers.length} customers</p>
+                <p className="text-sm text-gray-500 mt-1">Total {hasActiveFilters ? allFilteredCustomers.length : (totalPages * ITEMS_PER_PAGE)} customers</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -719,24 +806,26 @@ export default function CustomerDashboard() {
 
           {/* Table */}
           <div className="w-full overflow-x-auto rounded-md border">
-            <table className="min-w-[900px]">
+            <table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Company Name</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Phone Number</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Status</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
+                  <th className="w-1/4 px-6 py-3 text-left text-sm font-medium text-gray-500">Company Name</th>
+                  <th className="w-1/6 px-6 py-3 text-left text-sm font-medium text-gray-500">Customer Name</th>
+                  <th className="w-1/8 px-6 py-3 text-left text-sm font-medium text-gray-500">Phone Number</th>
+                  <th className="w-1/8 px-6 py-3 text-left text-sm font-medium text-gray-500">Date</th>
+                  <th className="w-1/8 px-6 py-3 text-left text-sm font-medium text-gray-500">Status</th>
+                  <th className="w-1/12 px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((c, i) => (
+                {currentDisplayedItems.map((c, i) => (
                   <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-3 py-4 sm:px-6">
+                    <td className="w-1/4 px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={c.company?.logo || c.logo} />
                           <AvatarFallback className="text-xs">
+
                             {(c.company?.name || c.company || "Company")?.[0] || "C"}
                           </AvatarFallback>
                         </Avatar>
@@ -744,38 +833,58 @@ export default function CustomerDashboard() {
                           <p className="font-medium text-gray-900">{c.company?.name || c.company || "No Company"}</p>
                           <p className="text-sm text-gray-500">
                             {c.company?.email || c.email || "No Email"}
+
+                            {c.company?.name?.[0] || c.name?.[0] || "C"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900">{c.company?.name || c.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {c.company?.email || c.email}
+
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-4 sm:px-6">
+                    <td className="w-1/6 px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={c.customer?.avatar || c.avatar} />
                           <AvatarFallback className="text-xs">
+
                             {(c.customer?.name || c.name || "User")?.[0] || "U"}
                           </AvatarFallback>
                         </Avatar>
                         <p className="text-gray-900">{c.customer?.name || c.name || "No Name"}</p>
+
+                            {c.customer?.name?.[0] || c.name?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-gray-900">{c.customer?.name || c.name || "Unknown"}</p>
+
                       </div>
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.phone}</td>
-                    <td className="px-3 py-4 sm:px-6">
+                    <td className="w-1/8 px-6 py-4 text-sm text-gray-900">{c.phone}</td>
+                    <td className="w-1/8 px-6 py-4 text-sm text-gray-900">
+                      {c.lastInvoice || '-'}
+                    </td>
+                    <td className="w-1/8 px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${c.status === "Active"
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${c.status?.toLowerCase() === "active"
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
                           }`}
                       >
-                        {c.status}
+                        {c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : '-'}
                       </span>
                     </td>
-                    <td className="px-3 py-4 sm:px-6">
+                    <td className="w-1/12 px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0 hover:bg-gray-100"
+
                           onClick={() => handleEditCustomer(c)}
                           title="Edit customer"
                         >
@@ -796,6 +905,9 @@ export default function CustomerDashboard() {
                           className="h-8 w-8 p-0 hover:bg-gray-100"
                           onClick={() => handleDownloadCustomerPDF(c)}
                           title="Download customer PDF report"
+
+                        // onClick={() => handleDownloadCustomerPDF(c)}
+
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -803,9 +915,9 @@ export default function CustomerDashboard() {
                     </td>
                   </tr>
                 ))}
-                {filteredCustomers.length === 0 && (
+                {currentDisplayedItems.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-gray-500 sm:px-6">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                       No customers found for selected filter.
                     </td>
                   </tr>
@@ -815,12 +927,12 @@ export default function CustomerDashboard() {
           </div>
 
           {/* Pagination */}
-          {filteredCustomers.length > 0 && (
+          {currentDisplayedItems.length > 0 && (
             <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 <div className="text-center text-sm text-gray-700 sm:text-left">
-                  Showing {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length} results
-                  {totalPages > 1 && ` (Page ${page} of ${totalPages})`}
+                  Showing {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, currentTotalItems)} of {currentTotalItems} results
+                  {currentTotalPages > 1 && ` (Page ${page} of ${currentTotalPages})`}
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
@@ -833,7 +945,7 @@ export default function CustomerDashboard() {
                     <MoveLeft className="h-4 w-4 mr-1" /> Previous
                   </Button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    {Array.from({ length: currentTotalPages }, (_, i) => i + 1).map((pageNum) => (
                       <Button
                         key={pageNum}
                         variant={page === pageNum ? "default" : "outline"}
@@ -848,8 +960,8 @@ export default function CustomerDashboard() {
                   <Button
                     className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
                     size="sm"
-                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={page === totalPages}
+                    onClick={() => setPage((prev) => Math.min(prev + 1, currentTotalPages))}
+                    disabled={page === currentTotalPages}
                   >
                     Next <MoveRight className="h-4 w-4 ml-1" />
                   </Button>
