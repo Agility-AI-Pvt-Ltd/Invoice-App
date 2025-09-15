@@ -40,22 +40,41 @@ export async function fetchCustomerByName(name: string): Promise<Customer | null
   if (!name || name.trim().length === 0) return null;
   try {
     const res = await api.get(`/api/customers/search/${encodeURIComponent(name.trim())}`);
-    // Handle the new API response format
+    console.log("🔍 fetchCustomerByName API response:", res.data);
+    
+    // Handle the new API response format - try multiple possible structures
     const data = res?.data;
     if (!data) return null;
     
-    // Check if it's an array of customers or single customer
+    // Try different response structures
+    // 1. Check for nested data structure (response.data.data)
+    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+      console.log("✅ Found customer in data.data array:", data.data[0]);
+      return data.data[0] as Customer;
+    }
+    
+    // 2. Check if it's an array of customers (data.customers)
     if (data.customers && Array.isArray(data.customers) && data.customers.length > 0) {
-      // Return the first customer from the array
+      console.log("✅ Found customer in data.customers array:", data.customers[0]);
       return data.customers[0] as Customer;
-    } else if (data._id) {
-      // Single customer response
+    }
+    
+    // 3. Check if data itself is an array
+    if (Array.isArray(data) && data.length > 0) {
+      console.log("✅ Found customer in direct array:", data[0]);
+      return data[0] as Customer;
+    }
+    
+    // 4. Check if it's a single customer object
+    if (data._id || data.id) {
+      console.log("✅ Found single customer object:", data);
       return data as Customer;
     }
     
+    console.log("❌ No customer found in response");
     return null;
   } catch (err) {
-    console.error("fetchCustomerByName error", err);
+    console.error("❌ fetchCustomerByName error", err);
     return null;
   }
 }
@@ -66,20 +85,40 @@ export async function searchCustomers(searchTerm: string): Promise<Customer[]> {
   
   try {
     const res = await api.get(`/api/customers/search/${encodeURIComponent(searchTerm.trim())}`);
+    console.log("🔍 searchCustomers API response:", res.data);
+    
     const data = res?.data;
     if (!data) return [];
     
-    // Handle both response formats
+    // Try different response structures
+    // 1. Check for nested data structure (response.data.data)
+    if (data.data && Array.isArray(data.data)) {
+      console.log("✅ Found customers in data.data array:", data.data.length);
+      return data.data as Customer[];
+    }
+    
+    // 2. Check if it's an array of customers (data.customers)
     if (data.customers && Array.isArray(data.customers)) {
+      console.log("✅ Found customers in data.customers array:", data.customers.length);
       return data.customers as Customer[];
-    } else if (data._id) {
-      // Single customer response, wrap in array
+    }
+    
+    // 3. Check if data itself is an array
+    if (Array.isArray(data)) {
+      console.log("✅ Found customers in direct array:", data.length);
+      return data as Customer[];
+    }
+    
+    // 4. Check if it's a single customer object
+    if (data._id || data.id) {
+      console.log("✅ Found single customer, wrapping in array");
       return [data as Customer];
     }
     
+    console.log("❌ No customers found in response");
     return [];
   } catch (err) {
-    console.error("searchCustomers error", err);
+    console.error("❌ searchCustomers error", err);
     return [];
   }
 }

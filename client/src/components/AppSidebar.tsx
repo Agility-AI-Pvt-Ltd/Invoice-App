@@ -15,7 +15,8 @@ import {
     WalletMinimal,
     LogOut,
     User,
-    NotepadText
+    NotepadText,
+    RotateCcw
 } from "lucide-react"
 import {
     Dialog,
@@ -56,6 +57,7 @@ const menuItems = [
     // { label: "Sales", icon: BarChart2 },
     { label: "Expenses", icon: WalletMinimal },
     // { label: "Purchases", icon: ShoppingCart },
+    { label: "Sales Returns", icon: RotateCcw },
     { label: "Tax Summary", icon: Receipt },
     // { label: "Accounts", icon: CreditCard },
     { label: "Team", icon: UserCog },

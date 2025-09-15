@@ -9,6 +9,7 @@ import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { useToast } from "@/hooks/use-toast";
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
@@ -27,7 +28,7 @@ const steps = [
   { label: "Sub Total", icon: CurlyBraces },
 ];
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+const API_BASE = "http://localhost:3001";
 
 /* ------------------ Helpers ------------------ */
 
@@ -42,6 +43,8 @@ type ValidationError = { step: number; message: string; field?: string };
 /* ------------------ Component ------------------ */
 
 export default function InvoiceForm({ onCancel, initialData }: Props) {
+  const { toast } = useToast();
+  
   const defaultInvoice: InvoiceModel = {
     invoiceNumber: `INV-${Date.now()}`,
     date: new Date().toISOString().slice(0, 10),
@@ -489,6 +492,26 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         Cookies.get("bearer") ||
         Cookies.get("access_token");
       const token = localStorage.getItem("token") || cookieToken || undefined;
+      
+      // Debug token information
+      console.log("🔑 Authentication Debug:");
+      console.log("🔑 cookieToken:", cookieToken ? "EXISTS" : "MISSING");
+      console.log("🔑 localStorage token:", localStorage.getItem("token") ? "EXISTS" : "MISSING");
+      console.log("🔑 final token:", token ? "EXISTS (length: " + token.length + ")" : "MISSING");
+      
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.");
+      }
+
+      // Debug payload being sent
+      console.log("📤 Invoice Payload Debug:");
+      console.log("📤 Full payload:", JSON.stringify(payload, null, 2));
+      console.log("📤 Payload keys:", Object.keys(payload));
+      console.log("📤 Required fields check:");
+      console.log("📤 - customerName:", payload.customerName || "MISSING");
+      console.log("📤 - date:", payload.date || "MISSING");
+      console.log("📤 - items:", payload.items ? `${payload.items.length} items` : "MISSING");
+      console.log("📤 - total:", payload.total || "MISSING");
 
       const axiosConfig: any = {
         withCredentials: true,
@@ -522,6 +545,27 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       onCancel();
     } catch (err: any) {
       console.error("Save invoice error:", err);
+      
+      // Enhanced error debugging
+      console.log("🚨 Backend Error Debug:");
+      console.log("🚨 Error status:", err.response?.status);
+      console.log("🚨 Error data:", err.response?.data);
+      console.log("🚨 Full error response:", JSON.stringify(err.response, null, 2));
+      
+      // Handle invalid token specifically - TEMPORARILY DISABLED FOR DEBUGGING
+      if (err.response?.status === 401 && err.response?.data?.detail === "Invalid token") {
+        console.log("🔑 Invalid token detected - BUT NOT AUTO-LOGGING OUT FOR DEBUGGING");
+        
+        // Show error but don't logout automatically
+        toast({
+          title: "Authentication Error",
+          description: "Backend rejected your token. Check console for details.",
+          variant: "destructive",
+        });
+        
+        // DON'T clear tokens or redirect - let user see the error
+        // return; // Exit early to prevent further error processing
+      }
 
       // --- robust server-side validation parsing & mapping to inline fields ---
       const resp = err?.response?.data;

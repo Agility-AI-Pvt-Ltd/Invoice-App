@@ -108,9 +108,40 @@ export const deleteCustomer = async (id: number): Promise<void> => {
 export const searchCustomers = async (name: string): Promise<Customer[]> => {
   try {
     const response = await api.get(`/api/customers/search/${encodeURIComponent(name)}`);
-    return response.data.data;
+    console.log("🔍 customer.ts searchCustomers API response:", response.data);
+    
+    const data = response.data;
+    if (!data) return [];
+    
+    // Try different response structures to match backend
+    // 1. Check for nested data structure (response.data.data)
+    if (data.data && Array.isArray(data.data)) {
+      console.log("✅ Found customers in data.data array:", data.data.length);
+      return data.data;
+    }
+    
+    // 2. Check if it's an array of customers (data.customers)
+    if (data.customers && Array.isArray(data.customers)) {
+      console.log("✅ Found customers in data.customers array:", data.customers.length);
+      return data.customers;
+    }
+    
+    // 3. Check if data itself is an array
+    if (Array.isArray(data)) {
+      console.log("✅ Found customers in direct array:", data.length);
+      return data;
+    }
+    
+    // 4. Check if it's a single customer object
+    if (data._id || data.id) {
+      console.log("✅ Found single customer, wrapping in array");
+      return [data];
+    }
+    
+    console.log("❌ No customers found in response");
+    return [];
   } catch (error) {
-    console.error('Error searching customers:', error);
+    console.error('❌ Error searching customers:', error);
     throw error;
   }
 };

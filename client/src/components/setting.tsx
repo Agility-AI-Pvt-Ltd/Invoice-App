@@ -8,17 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
+import { routes } from "@/lib/routes/route";
 
 export async function fetchBusinessLogo(): Promise<string> {
   try {
-    const response = await api.get("/api/profile/logo", {
+    const response = await api.get(routes.auth.getLogo, {
       responseType: "blob",
     });
-    return URL.createObjectURL(response.data); // returns usable image URL
+    return URL.createObjectURL(response.data);
   } catch (error) {
-    // If logo endpoint doesn't exist, return empty string
-    console.warn("Logo endpoint not available:", error);
-    throw error;
+    console.warn("Logo endpoint not available (using default avatar):", error);
+    return "";
   }
 }
 
