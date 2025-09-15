@@ -41,12 +41,62 @@ export const getCustomers = async (
     const params: any = { page, limit };
     if (search) params.search = search;
 
+    console.log("🔍 getCustomers API call with params:", params);
+
     const response = await api.get('/api/customers', {
       params,
     });
-    return response.data.data; // Extract data from {success: true, data: {...}}
+    
+    console.log("🔍 getCustomers raw response:", response.data);
+    
+    // Handle different response structures from backend
+    const responseData = response.data;
+    
+    if (responseData.success && responseData.data) {
+      console.log("✅ Found customers in response.data.data structure");
+      return responseData.data; // {data: [...], pagination: {...}}
+    }
+    
+    // Fallback: if direct data array
+    if (Array.isArray(responseData.data)) {
+      console.log("✅ Found customers in direct data array");
+      return {
+        data: responseData.data,
+        pagination: {
+          page: page,
+          totalPages: Math.ceil(responseData.data.length / limit),
+          totalItems: responseData.data.length,
+          itemsPerPage: limit
+        }
+      };
+    }
+    
+    // Fallback: if direct array
+    if (Array.isArray(responseData)) {
+      console.log("✅ Found customers in direct array");
+      return {
+        data: responseData,
+        pagination: {
+          page: page,
+          totalPages: Math.ceil(responseData.length / limit),
+          totalItems: responseData.length,
+          itemsPerPage: limit
+        }
+      };
+    }
+    
+    console.log("❌ No customers found in response");
+    return {
+      data: [],
+      pagination: {
+        page: page,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: limit
+      }
+    };
   } catch (error) {
-    console.error('Error fetching customers:', error);
+    console.error('❌ Error fetching customers:', error);
     throw error;
   }
 };
