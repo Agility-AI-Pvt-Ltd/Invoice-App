@@ -724,7 +724,7 @@ export default function CustomerDashboard() {
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0 hover:bg-gray-100"
-                          onClick={() => handleDownloadCustomerPDF(c)}
+                        // onClick={() => handleDownloadCustomerPDF(c)}
                         >
                           <img src='/edit.svg' className="w-4 h-4" />
                         </Button>
