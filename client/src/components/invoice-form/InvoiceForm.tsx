@@ -10,7 +10,11 @@ import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useToast } from "@/hooks/use-toast";
+
 import { getApiBaseUrl } from "@/lib/api-config";
+
+import { BASE_URL } from "@/lib/api-config";
+
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
@@ -29,7 +33,9 @@ const steps = [
   { label: "Sub Total", icon: CurlyBraces },
 ];
 
+
 const API_BASE = getApiBaseUrl();
+
 
 /* ------------------ Helpers ------------------ */
 
@@ -45,7 +51,7 @@ type ValidationError = { step: number; message: string; field?: string };
 
 export default function InvoiceForm({ onCancel, initialData }: Props) {
   const { toast } = useToast();
-  
+
   const defaultInvoice: InvoiceModel = {
     invoiceNumber: `INV-${Date.now()}`,
     date: new Date().toISOString().slice(0, 10),
@@ -199,7 +205,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
           amount:
             it?.amount !== undefined
               ? Number(it.amount)
-              : +( ( (it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0) ) ).toFixed(2),
+              : +(((it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0))).toFixed(2),
         };
       });
     } else {
@@ -216,10 +222,10 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // only use flattened item if any meaningful field present
       const hasAny = Boolean(
         possibleItem.description ||
-          possibleItem.hsn ||
-          possibleItem.unitPrice ||
-          possibleItem.amount ||
-          possibleItem.quantity > 1
+        possibleItem.hsn ||
+        possibleItem.unitPrice ||
+        possibleItem.amount ||
+        possibleItem.quantity > 1
       );
       out.items = hasAny ? [possibleItem] : defaultInvoice.items;
     }
@@ -493,13 +499,13 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         Cookies.get("bearer") ||
         Cookies.get("access_token");
       const token = localStorage.getItem("token") || cookieToken || undefined;
-      
+
       // Debug token information
       console.log("🔑 Authentication Debug:");
       console.log("🔑 cookieToken:", cookieToken ? "EXISTS" : "MISSING");
       console.log("🔑 localStorage token:", localStorage.getItem("token") ? "EXISTS" : "MISSING");
       console.log("🔑 final token:", token ? "EXISTS (length: " + token.length + ")" : "MISSING");
-      
+
       if (!token) {
         throw new Error("No authentication token found. Please log in again.");
       }
@@ -527,10 +533,10 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       let res;
       if (id) {
         // Update existing invoice (backend must accept PUT /api/invoices/:id)
-        res = await axios.put(`${API_BASE}/api/invoices/${id}`, payload, axiosConfig);
+        res = await axios.put(`${BASE_URL}/api/invoices/${id}`, payload, axiosConfig);
       } else {
         // Create new invoice
-        res = await axios.post(`${API_BASE}/api/invoices`, payload, axiosConfig);
+        res = await axios.post(`${BASE_URL}/api/invoices`, payload, axiosConfig);
       }
 
       // backend returns { message, invoice: {...} } or similar
@@ -546,24 +552,24 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       onCancel();
     } catch (err: any) {
       console.error("Save invoice error:", err);
-      
+
       // Enhanced error debugging
       console.log("🚨 Backend Error Debug:");
       console.log("🚨 Error status:", err.response?.status);
       console.log("🚨 Error data:", err.response?.data);
       console.log("🚨 Full error response:", JSON.stringify(err.response, null, 2));
-      
+
       // Handle invalid token specifically - TEMPORARILY DISABLED FOR DEBUGGING
       if (err.response?.status === 401 && err.response?.data?.detail === "Invalid token") {
         console.log("🔑 Invalid token detected - BUT NOT AUTO-LOGGING OUT FOR DEBUGGING");
-        
+
         // Show error but don't logout automatically
         toast({
           title: "Authentication Error",
           description: "Backend rejected your token. Check console for details.",
           variant: "destructive",
         });
-        
+
         // DON'T clear tokens or redirect - let user see the error
         // return; // Exit early to prevent further error processing
       }
@@ -575,10 +581,10 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       const fieldToStep = (fieldName: string | undefined) => {
         if (!fieldName) return 1;
         const f = String(fieldName);
-        if (f.startsWith("billFrom") || f.startsWith("billTo") || f.startsWith("shipTo") || ["name","email","phone","address","gst","pan","companyName","businessName","state"].some(k => f.includes(k))) return 2;
+        if (f.startsWith("billFrom") || f.startsWith("billTo") || f.startsWith("shipTo") || ["name", "email", "phone", "address", "gst", "pan", "companyName", "businessName", "state"].some(k => f.includes(k))) return 2;
         if (f.startsWith("items") || f.startsWith("item") || f.includes("quantity") || f.includes("unitPrice") || f.includes("description")) return 3;
-        if (["subtotal","total","cgst","sgst","igst","shipping","discount"].some(k => f.includes(k))) return 4;
-        if (["date","dueDate","invoiceNumber","paymentTerms","status","currency"].some(k => f.includes(k))) return 1;
+        if (["subtotal", "total", "cgst", "sgst", "igst", "shipping", "discount"].some(k => f.includes(k))) return 4;
+        if (["date", "dueDate", "invoiceNumber", "paymentTerms", "status", "currency"].some(k => f.includes(k))) return 1;
         return 1;
       };
 
@@ -628,7 +634,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
           serverErrors.push({ step: 1, message: resp.detail });
         }
       } else if (resp && typeof resp === "object") {
-        const potentialFields = Object.keys(resp).filter(k => !["message","status","statusCode"].includes(k));
+        const potentialFields = Object.keys(resp).filter(k => !["message", "status", "statusCode"].includes(k));
         if (potentialFields.length > 0) {
           potentialFields.forEach((k) => {
             const v = resp[k];

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
+import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, fetchBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
 // Removed fetchBusinessLogo - moved to services/api/settings.ts to fix HMR issues
 
@@ -16,7 +16,7 @@ export default function Settings() {
 
   // 🔹 UI Message state
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  
+
   // 🔹 Password-specific message state
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -95,7 +95,7 @@ export default function Settings() {
         }
         console.log(userData)
         setUserProfile(userData);
-        
+
         const profileData = {
           name: userData.data.name || "",
           businessName: userData.data.businessName || "",
@@ -156,7 +156,7 @@ export default function Settings() {
 
       const updatedProfile = await getUserProfile();
       setUserProfile(updatedProfile);
-      
+
       // 🔹 Update original data to match current form data after successful save
       setOriginalData({ ...formData });
     } catch (error) {
@@ -569,11 +569,10 @@ export default function Settings() {
                 <Button
                   type="submit"
                   disabled={!hasChanges()}
-                  className={`${
-                    hasChanges() 
-                      ? "bg-primary hover:bg-primary/90 text-primary-foreground" 
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                  className={`${hasChanges()
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
                 >
                   Save Changes
                 </Button>

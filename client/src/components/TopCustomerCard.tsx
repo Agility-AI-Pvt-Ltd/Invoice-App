@@ -6,7 +6,6 @@ import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip as tp, Legend } from "chart.js";
 import { cn } from "@/lib/utils";
 import { getTopCustomers, type TopCustomersResponse } from "@/services/api/dashboard";
-import Cookies from "js-cookie";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, tp, Legend);
