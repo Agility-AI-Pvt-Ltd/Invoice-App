@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { getApiBaseUrl } from "@/lib/api-config";
 import Cookies from "js-cookie";
 
 interface ReasonDropdownProps {
@@ -30,7 +31,7 @@ export default function ReasonDropdown({
 }: ReasonDropdownProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+  const API_BASE = getApiBaseUrl();
 
   const handleReasonUpdate = async (newReason: string) => {
     if (newReason === currentReason) return;

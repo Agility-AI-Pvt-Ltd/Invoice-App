@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 interface FormSectionProps {
   title: string;
@@ -78,7 +79,32 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+
+  const API_URL = `${getApiBaseUrl()}/api`;
+  // calculate profit/loss
+  const calculateProfitLoss = () => {
+    const pp = Number(purchasePrice) || 0;
+    const sp = Number(sellingPrice) || 0;
+    const disc = Number(discount) || 0;
+
+    // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
+    let effectiveSP = sp;
+    if (disc > 0) {
+      // assuming % discount for now
+      effectiveSP = sp - (sp * disc) / 100;
+    }
+
+    const diff = effectiveSP - pp;
+
+    return {
+      effectiveSP,
+      diff,
+      type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
+    };
+  };
+
   const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
+
 
 
   useEffect(() => {
