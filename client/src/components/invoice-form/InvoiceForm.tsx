@@ -10,7 +10,11 @@ import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useToast } from "@/hooks/use-toast";
+
+import { getApiBaseUrl } from "@/lib/api-config";
+
 import { BASE_URL } from "@/lib/api-config";
+
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
@@ -28,6 +32,9 @@ const steps = [
   { label: "Item Details", icon: BanknoteX },
   { label: "Sub Total", icon: CurlyBraces },
 ];
+
+
+const API_BASE = getApiBaseUrl();
 
 
 /* ------------------ Helpers ------------------ */
