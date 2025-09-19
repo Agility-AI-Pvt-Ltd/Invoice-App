@@ -8,7 +8,6 @@ import { ExpenseTable } from "@/components/ExpenseTable";
 import { useToast } from "@/hooks/use-toast";
 import { format, parse } from "date-fns";
 import ExpenseForm from "@/components/expense-form/ExpenseForm";
-import Cookies from "js-cookie";
 import api from "@/lib/api";
 
 interface Expense {
@@ -94,60 +93,12 @@ const parseExpenseDate = (dateString: string): Date | null => {
     try {
       const d = new Date(dateString);
       if (!isNaN(d.getTime())) return d;
-    } catch {}
+    } catch { }
     console.warn(`Failed to parse date: ${dateString}`, error);
     return null;
   }
 };
 
-/* Auth helpers: try localStorage, cookies, document.cookie (non-HttpOnly) */
-const getAuthToken = (): string | null => {
-  try {
-    const lsCandidates = ["token", "authToken", "access_token"];
-    for (const k of lsCandidates) {
-      try {
-        const v = localStorage.getItem(k);
-        if (v && v.trim()) return v.trim();
-      } catch (e) {
-        /* ignore localStorage read errors */
-      }
-    }
-
-    const cookieCandidates = [
-      "authToken",
-      "token",
-      "access_token",
-      "bearer",
-      "Authorization",
-      "auth_token",
-    ];
-    for (const k of cookieCandidates) {
-      const v = Cookies.get(k);
-      if (v && v.trim()) return v.trim();
-    }
-
-    if (typeof document !== "undefined" && document.cookie) {
-      const cookieMap: Record<string, string> = {};
-      document.cookie.split(";").forEach((part) => {
-        const [rawK, ...rest] = part.split("=");
-        if (!rawK) return;
-        const key = rawK.trim();
-        const val = rest.join("=").trim();
-        try {
-          cookieMap[key] = decodeURIComponent(val);
-        } catch {
-          cookieMap[key] = val;
-        }
-      });
-      for (const k of cookieCandidates) {
-        if (cookieMap[k]) return cookieMap[k];
-      }
-    }
-  } catch (e) {
-    console.warn("getAuthToken error:", e);
-  }
-  return null;
-};
 
 
 export default function Expenses() {
@@ -417,8 +368,8 @@ export default function Expenses() {
       setExpenses((prev) =>
         prev.map((e) =>
           e.expenseId === mapped.expenseId ||
-          e.id === mapped.id ||
-          e.id === mapped._id
+            e.id === mapped.id ||
+            e.id === mapped._id
             ? mapped
             : e,
         ),
@@ -468,8 +419,8 @@ export default function Expenses() {
         setExpenses((prev) =>
           prev.map((e) =>
             e.expenseId === mapped.expenseId ||
-            e.id === mapped.id ||
-            e.id === mapped._id
+              e.id === mapped.id ||
+              e.id === mapped._id
               ? mapped
               : e,
           ),

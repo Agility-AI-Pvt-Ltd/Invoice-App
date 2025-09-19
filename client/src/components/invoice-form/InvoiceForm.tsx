@@ -508,7 +508,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       console.log("📤 Full payload:", JSON.stringify(payload, null, 2));
       console.log("📤 Payload keys:", Object.keys(payload));
       console.log("📤 Required fields check:");
-      console.log("📤 - customerName:", payload.customerName || "MISSING");
+      console.log("📤 - customerName:", payload.billTo?.name || "MISSING");
       console.log("📤 - date:", payload.date || "MISSING");
       console.log("📤 - items:", payload.items ? `${payload.items.length} items` : "MISSING");
       console.log("📤 - total:", payload.total || "MISSING");

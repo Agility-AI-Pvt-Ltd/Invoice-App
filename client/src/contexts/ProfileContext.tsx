@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 
 interface Profile {
     _id: string;
+    id?: string; // Add optional id field for compatibility
     name: string;
     email: string;
     company: string;
@@ -19,7 +20,7 @@ interface Profile {
 
 interface ProfileContextType {
     profile: {
-       data :  Profile | null;
+        data: Profile | null;
     }
     loading: boolean;
     error: string | null;
@@ -33,9 +34,9 @@ const ProfileContext = createContext<ProfileContextType>({
     profile: null,
     loading: true,
     error: null,
-    refreshProfile: async () => {},
+    refreshProfile: async () => { },
     isAuthenticated: false,
-    logout: () => {},
+    logout: () => { },
 });
 
 // Custom hook to use profile context
@@ -53,7 +54,7 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
             setLoading(true);
             setError(null);
             const token = Cookies.get('authToken');
-            
+
             if (!token) {
                 setIsAuthenticated(false);
                 setProfile(null);
@@ -68,10 +69,15 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
                 // If profile fetch fails, create a minimal mock profile to prevent null reference errors
                 console.warn("Profile fetch failed, using mock profile:", profileError);
                 setProfile({
+                    _id: 'mock-user',
                     id: 'mock-user',
                     name: 'User',
                     email: 'user@example.com',
                     company: 'Company',
+                    address: '',
+                    phone: '',
+                    panNumber: '',
+                    isGstRegistered: false,
                     // Add other common profile fields as needed
                 });
                 setIsAuthenticated(true);
@@ -104,11 +110,11 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
     }, []); // Only run once on mount
 
     return (
-        <ProfileContext.Provider value={{ 
+        <ProfileContext.Provider value={{
             //@ts-ignore
-            profile, 
-            loading, 
-            error, 
+            profile,
+            loading,
+            error,
             refreshProfile,
             isAuthenticated,
             logout
