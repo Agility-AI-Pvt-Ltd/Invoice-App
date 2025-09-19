@@ -22,9 +22,7 @@ import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
 import CreditDebitTable from "@/components/reports/CreditDebitTable";
 
-import { getApiBaseUrl } from "@/lib/api-config";
 
-const API_BASE = getApiBaseUrl();
 
 import { BASE_URL } from "@/lib/api-config";
 

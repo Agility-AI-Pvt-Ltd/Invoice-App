@@ -11,7 +11,6 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useToast } from "@/hooks/use-toast";
 
-import { getApiBaseUrl } from "@/lib/api-config";
 
 import { BASE_URL } from "@/lib/api-config";
 
@@ -34,7 +33,6 @@ const steps = [
 ];
 
 
-const API_BASE = getApiBaseUrl();
 
 
 /* ------------------ Helpers ------------------ */
