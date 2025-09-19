@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Download, MoreVertical, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
 import MultiStepForm from "./add-customer";
+// Added back axios and Cookies for fetchAllCustomers function
 import axios from "axios";
 import Cookies from "js-cookie";
 
@@ -28,6 +29,8 @@ import {
 } from "@/components/ui/select";
 
 import { useLocation, useNavigate } from "react-router-dom";
+import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
+import { Input } from "@/components/ui/Input";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -37,10 +40,19 @@ export default function CustomerDashboard() {
   const [totalPages, setTotalPages] = useState(1);
   const [showAddCustomerForm, setShowAddCustomerForm] = useState(false);
 
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [allCustomers, setAllCustomers] = useState([]); // Store all customers when filtering
+
+
   // 🔹 Filter states
   const [statusFilter, setStatusFilter] = useState("__all");
   const [dateFilter, setDateFilter] = useState("__any");
-  const [balanceFilter, setBalanceFilter] = useState("__any");
+  const [customDate, setCustomDate] = useState<Date | null>(null)
+  const [balanceFilter, setBalanceFilter] = useState("__any")
+  const [customBalance, setCustomBalance] = useState("")
 
   // file input ref for import
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -52,27 +64,81 @@ export default function CustomerDashboard() {
   const fetchCustomers = useCallback(
     async (p = page) => {
       try {
-        const token = Cookies.get("authToken");
-        const res = await axios.get(
-          `https://invoice-backend-604217703209.asia-south1.run.app/api/get_customer?page=${p}&limit=${ITEMS_PER_PAGE}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          }
-        );
-        setCustomers(res.data.data || []);
-        setTotalPages(res.data.pagination?.totalPages || 1);
+        setLoading(true);
+        setError(null);
+        
+        console.log("🚀 Starting to fetch customers for page:", p);
+        
+        const { getCustomers } = await import("@/services/api/customer");
+        const response = await getCustomers(p, ITEMS_PER_PAGE);
+        
+        // Debug: Log the actual structure we're getting from backend
+        console.log("🔍 Backend response structure:", response);
+        console.log("🔍 Response data array:", response.data);
+        console.log("🔍 First customer data:", response.data?.[0]);
+        console.log("🔍 Number of customers:", response.data?.length || 0);
+        
+        if (!response.data || response.data.length === 0) {
+          console.log("⚠️ No customers returned from API");
+        }
+        
+        setCustomers(response.data || []);
+        setTotalPages(response.pagination?.totalPages || 1);
       } catch (err) {
-        console.error("Failed to fetch customers:", err);
+        console.error("❌ Failed to fetch customers:", err);
+        setError(err.message || "Failed to fetch customers");
+        setCustomers([]);
+      } finally {
+        setLoading(false);
       }
     },
     []
   );
 
-  // call fetch on page change
+  // ------------------ Fetch all customers for filtering ------------------
+  const fetchAllCustomers = useCallback(
+    async () => {
+      try {
+        const { getCustomers } = await import("@/services/api/customer");
+        const response = await getCustomers(1, 1000); // Fetch large number to get all
+        
+        console.log("🔍 fetchAllCustomers response:", response);
+        
+        setAllCustomers(response.data || []);
+        setPage(1); // Reset to first page
+      } catch (err) {
+        console.error("Failed to fetch all customers:", err);
+      }
+    },
+    []
+  );
+
+  // Check if any filters are applied
+  const hasActiveFilters = statusFilter !== "__all" || dateFilter !== "__any" || balanceFilter !== "__any";
+
+  // Fetch all customers when filters are applied (only when filters change)
   useEffect(() => {
-    fetchCustomers(page);
-  }, [page, fetchCustomers]);
+    if (hasActiveFilters) {
+      fetchAllCustomers();
+    }
+  }, [statusFilter, dateFilter, balanceFilter, customDate, customBalance, hasActiveFilters, fetchAllCustomers]);
+
+  // Fetch paginated customers when no filters and page changes
+  useEffect(() => {
+    if (!hasActiveFilters) {
+      fetchCustomers(page);
+    }
+  }, [page, hasActiveFilters, fetchCustomers]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, dateFilter, balanceFilter, customDate, customBalance]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchCustomers(1);
+  }, []);
 
   // If navigated here with state.openAddCustomerForm -> open the add-customer form and clear history state.
   useEffect(() => {
@@ -90,7 +156,7 @@ export default function CustomerDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen for "customer:added" event and refetch (non-invasive)
+  // Listen for "customer:added" and "customer:updated" events and refetch (non-invasive)
   useEffect(() => {
     const handler = (e: any) => {
       try {
@@ -120,8 +186,21 @@ export default function CustomerDashboard() {
       }
     };
 
+    const updateHandler = (e: any) => {
+      try {
+        console.log("customer:updated event received, refetching list", e?.detail);
+        fetchCustomers(page);
+      } catch (err) {
+        console.error("Error handling customer:updated event:", err);
+      }
+    };
+
     window.addEventListener("customer:added", handler);
-    return () => window.removeEventListener("customer:added", handler);
+    window.addEventListener("customer:updated", updateHandler);
+    return () => {
+      window.removeEventListener("customer:added", handler);
+      window.removeEventListener("customer:updated", updateHandler);
+    };
   }, [page, fetchCustomers]);
 
   // ------------------ Export / Import Helpers ------------------
@@ -216,128 +295,128 @@ export default function CustomerDashboard() {
     }
   };
 
-  const mapCustomersForExport = (arr) =>
-    arr.map((c) => ({
-      "Company Name": c.company?.name ?? "-",
-      "Company Email": c.company?.email ?? "-",
-      "Customer Name": c.customer?.name ?? "-",
-      "Phone Number": c.phone ?? "-",
-      "Status": c.status ?? "-",
-      "Last Invoice Date": c.lastInvoice ?? "-",
-      "Outstanding Balance": c.balance ?? "-",
-    }));
+  // const mapCustomersForExport = (arr) =>
+  //   arr.map((c) => ({
+  //     "Company Name": c.company?.name ?? "-",
+  //     "Company Email": c.company?.email ?? "-",
+  //     "Customer Name": c.customer?.name ?? "-",
+  //     "Phone Number": c.phone ?? "-",
+  //     "Status": c.status ?? "-",
+  //     "Last Invoice Date": c.lastInvoice ?? "-",
+  //     "Outstanding Balance": c.balance ?? "-",
+  //   }));
 
-  const handleExportExcel = async () => {
-    try {
-      const XLSX = await loadXLSX();
-      const ws = XLSX.utils.json_to_sheet(mapCustomersForExport(filteredCustomers));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Customers");
-      XLSX.writeFile(wb, "customers.xlsx");
-    } catch (err) {
-      console.error("Excel export failed:", err);
-      alert("Table is Empty");
-    }
-  };
+  // const handleExportExcel = async () => {
+  //   try {
+  //     const XLSX = await loadXLSX();
+  //     const ws = XLSX.utils.json_to_sheet(mapCustomersForExport(filteredCustomers));
+  //     const wb = XLSX.utils.book_new();
+  //     XLSX.utils.book_append_sheet(wb, ws, "Customers");
+  //     XLSX.writeFile(wb, "customers.xlsx");
+  //   } catch (err) {
+  //     console.error("Excel export failed:", err);
+  //     alert("Table is Empty");
+  //   }
+  // };
 
-  const handleExportCompanyWise = async () => {
-    try {
-      const XLSX = await loadXLSX();
-      const byCompany: Record<string, any[]> = {};
-      filteredCustomers.forEach((c) => {
-        const name = (c.company?.name || "Unknown Company").toString();
-        byCompany[name] = byCompany[name] || [];
-        byCompany[name].push({
-          "Customer Name": c.customer?.name ?? "-",
-          "Phone Number": c.phone ?? "-",
-          "Status": c.status ?? "-",
-          "Last Invoice Date": c.lastInvoice ?? "-",
-          "Outstanding Balance": c.balance ?? "-",
-        });
-      });
+  // const handleExportCompanyWise = async () => {
+  //   try {
+  //     const XLSX = await loadXLSX();
+  //     const byCompany: Record<string, any[]> = {};
+  //     filteredCustomers.forEach((c) => {
+  //       const name = (c.company?.name || "Unknown Company").toString();
+  //       byCompany[name] = byCompany[name] || [];
+  //       byCompany[name].push({
+  //         "Customer Name": c.customer?.name ?? "-",
+  //         "Phone Number": c.phone ?? "-",
+  //         "Status": c.status ?? "-",
+  //         "Last Invoice Date": c.lastInvoice ?? "-",
+  //         "Outstanding Balance": c.balance ?? "-",
+  //       });
+  //     });
 
-      const wb = XLSX.utils.book_new();
-      Object.keys(byCompany).forEach((companyName) => {
-        const ws = XLSX.utils.json_to_sheet(byCompany[companyName]);
-        const safeName = companyName.substring(0, 30);
-        XLSX.utils.book_append_sheet(wb, ws, safeName || "Company");
-      });
+  //     const wb = XLSX.utils.book_new();
+  //     Object.keys(byCompany).forEach((companyName) => {
+  //       const ws = XLSX.utils.json_to_sheet(byCompany[companyName]);
+  //       const safeName = companyName.substring(0, 30);
+  //       XLSX.utils.book_append_sheet(wb, ws, safeName || "Company");
+  //     });
 
-      XLSX.writeFile(wb, "customers_by_company.xlsx");
-    } catch (err) {
-      console.error("Company-wise export failed:", err);
-      alert("Table is Empty.");
-    }
-  };
+  //     XLSX.writeFile(wb, "customers_by_company.xlsx");
+  //   } catch (err) {
+  //     console.error("Company-wise export failed:", err);
+  //     alert("Table is Empty.");
+  //   }
+  // };
 
-  const handleExportPDF = async () => {
-    try {
-      const jsPDF = await loadJsPDF();
+  // const handleExportPDF = async () => {
+  //   try {
+  //     const jsPDF = await loadJsPDF();
 
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "pt",
-        format: "a4",
-      });
+  //     const doc = new jsPDF({
+  //       orientation: "landscape",
+  //       unit: "pt",
+  //       format: "a4",
+  //     });
 
-      const headers = [
-        "Company Name",
-        "Customer Name",
-        "Phone Number",
-        "Status",
-        "Last Invoice Date",
-        "Outstanding Balance",
-      ];
+  //     const headers = [
+  //       "Company Name",
+  //       "Customer Name",
+  //       "Phone Number",
+  //       "Status",
+  //       "Last Invoice Date",
+  //       "Outstanding Balance",
+  //     ];
 
-      const body = filteredCustomers.map((c) => [
-        c.company?.name ?? "-",
-        c.customer?.name ?? "-",
-        c.phone ?? "-",
-        c.status ?? "-",
-        c.lastInvoice ?? "-",
-        c.balance ?? "-",
-      ]);
+  //     const body = filteredCustomers.map((c) => [
+  //       c.company?.name ?? "-",
+  //       c.customer?.name ?? "-",
+  //       c.phone ?? "-",
+  //       c.status ?? "-",
+  //       c.lastInvoice ?? "-",
+  //       c.balance ?? "-",
+  //     ]);
 
-      // Check if autoTable is available
-      if (typeof doc.autoTable === 'function') {
-        doc.autoTable({
-          head: [headers],
-          body,
-          startY: 40,
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [230, 230, 230] },
-        });
-      } else {
-        // Fallback: basic table layout
-        let yPos = 40;
-        doc.setFontSize(8);
+  //     // Check if autoTable is available
+  //     if (typeof doc.autoTable === 'function') {
+  //       doc.autoTable({
+  //         head: [headers],
+  //         body,
+  //         startY: 40,
+  //         styles: { fontSize: 8 },
+  //         headStyles: { fillColor: [230, 230, 230] },
+  //       });
+  //     } else {
+  //       // Fallback: basic table layout
+  //       let yPos = 40;
+  //       doc.setFontSize(8);
 
-        // Headers
-        let xPos = 40;
-        headers.forEach(header => {
-          doc.text(header, xPos, yPos);
-          xPos += 100;
-        });
+  //       // Headers
+  //       let xPos = 40;
+  //       headers.forEach(header => {
+  //         doc.text(header, xPos, yPos);
+  //         xPos += 100;
+  //       });
 
-        yPos += 20;
+  //       yPos += 20;
 
-        // Body rows
-        body.forEach(row => {
-          xPos = 40;
-          row.forEach(cell => {
-            doc.text(String(cell), xPos, yPos);
-            xPos += 100;
-          });
-          yPos += 15;
-        });
-      }
+  //       // Body rows
+  //       body.forEach(row => {
+  //         xPos = 40;
+  //         row.forEach(cell => {
+  //           doc.text(String(cell), xPos, yPos);
+  //           xPos += 100;
+  //         });
+  //         yPos += 15;
+  //       });
+  //     }
 
-      doc.save("customers.pdf");
-    } catch (err) {
-      console.error("PDF export failed:", err);
-      alert(`PDF export failed: ${err.message || 'Unknown error'}`);
-    }
-  };
+  //     doc.save("customers.pdf");
+  //   } catch (err) {
+  //     console.error("PDF export failed:", err);
+  //     alert(`PDF export failed: ${err.message || 'Unknown error'}`);
+  //   }
+  // };
 
   const getValueFromRow = (row, candidates = []) => {
     for (const key of Object.keys(row)) {
@@ -402,42 +481,201 @@ export default function CustomerDashboard() {
     }
   };
 
-  const triggerFileSelect = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
+  // Handle edit customer
+  const handleEditCustomer = async (customer: any) => {
+    try {
+      // Fetch full customer details for editing
+      const { getCustomerById } = await import("@/services/api/customer");
+      console.log("🔍 Fetching customer details for ID:", customer.id || customer._id);
+      const fullCustomerData = await getCustomerById(customer.id || customer._id);
+      console.log("📥 Full customer data from getCustomerById API:", fullCustomerData);
+      
+      // Map the API response to form structure
+      const mappedData = mapCustomerToFormData(fullCustomerData);
+      
+      setEditingCustomer(mappedData);
+      setShowAddCustomerForm(true);
+    } catch (err) {
+      console.error("Failed to fetch customer details:", err);
+      console.log("🔄 Using fallback data from customer list:", customer);
+      // Fallback to basic data if API call fails
+      const mappedData = mapCustomerToFormData(customer);
+      setEditingCustomer(mappedData);
+      setShowAddCustomerForm(true);
+    }
   };
 
+  // Map customer API response to form data structure
+  const mapCustomerToFormData = (customer: any) => {
+    console.log("🔍 Mapping customer for edit:", customer);
+    console.log("🏠 Address fields in customer data:");
+    console.log("  - address:", customer.address);
+    console.log("  - billingAddress:", customer.billingAddress);
+    console.log("  - billingAddressLine1:", customer.billingAddressLine1);
+    console.log("  - billingAddressLine2:", customer.billingAddressLine2);
+    console.log("  - billingCity:", customer.billingCity);
+    console.log("  - billingState:", customer.billingState);
+    console.log("  - billingZip:", customer.billingZip);
+    console.log("  - billingCountry:", customer.billingCountry);
+    
+    const mappedData = {
+      // Step 1 - Basic Information (handle both nested and flat structures)
+      customerType: customer.customerType || "",
+      name: customer.customer?.name || customer.name || customer.fullName || "",
+      email: customer.company?.email || customer.email || "",
+      phone: customer.phone || "",
+      companyName: customer.company?.name || customer.company || customer.companyName || "",
+      website: customer.website || "",
+
+      // Step 2 - Address Details (handle both nested and flat structures)
+      billingAddress: customer.address || customer.billingAddress || "",
+      billingAddressLine1: customer.billingAddressLine1 || customer.billingAddress || customer.address || "",
+      billingAddressLine2: customer.billingAddressLine2 || "",
+      billingCity: customer.billingCity || customer.city || "",
+      billingState: customer.billingState || customer.state || "",
+      billingZip: customer.billingZip || customer.zip || customer.zipCode || customer.pincode || "",
+      billingCountry: customer.billingCountry || customer.country || "India",
+      shippingAddress: customer.shippingAddress || "",
+      shippingAddressLine1: customer.shippingAddressLine1 || "",
+      shippingAddressLine2: customer.shippingAddressLine2 || "",
+      shippingCity: customer.shippingCity || "",
+      shippingState: customer.shippingState || "",
+      shippingZip: customer.shippingZip || "",
+      shippingCountry: customer.shippingCountry || "India",
+
+      // Step 3 - Tax and Other Details
+      pan: customer.panNumber || customer.pan || "",
+      gstRegistered: customer.gstRegistered || "",
+      gstNumber: customer.gstNumber || "",
+      supplyPlace: customer.supplyPlace || "",
+      currency: customer.currency || "INR",
+      paymentTerms: customer.paymentTerms || "",
+
+      // Step 4 - Additional Info
+      logo: null,
+      notes: customer.notes || "",
+      tags: customer.tags || "",
+
+      // Keep original ID for updates
+      id: customer.id || customer._id,
+    };
+    
+    console.log("🔧 Mapped form data for editing:");
+    console.log("  - billingAddress:", mappedData.billingAddress);
+    console.log("  - billingAddressLine1:", mappedData.billingAddressLine1);
+    console.log("  - billingCity:", mappedData.billingCity);
+    console.log("  - billingState:", mappedData.billingState);
+    
+    return mappedData;
+  };
+
+  // Handle delete customer
+  const handleDeleteCustomer = async (customerId: string | number) => {
+    if (!confirm("Are you sure you want to delete this customer?")) {
+      return;
+    }
+
+    try {
+      const { deleteCustomer } = await import("@/services/api/customer");
+      await deleteCustomer(Number(customerId));
+      
+      // Remove from local state immediately for better UX
+      setCustomers((prev) => prev.filter((c) => c.id !== customerId && c._id !== customerId));
+      
+      alert("Customer deleted successfully!");
+      
+      // Refetch to ensure consistency
+      fetchCustomers(page);
+    } catch (err) {
+      console.error("Failed to delete customer:", err);
+      alert("Failed to delete customer. Please try again.");
+    }
+  };
+
+  // const triggerFileSelect = () => {
+  //   if (fileInputRef.current) fileInputRef.current.click();
+  // };
+
   // ------------------ Apply filters (frontend)
-  const filteredCustomers = customers.filter((c) => {
-    if (statusFilter && statusFilter !== "__all") {
-      if (!c.status || c.status !== statusFilter) return false;
-    }
+  const applyFilters = (customerList) => {
+    return customerList.filter((c) => {
+      if (statusFilter && statusFilter !== "__all") {
+        if (!c.status || c.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+      }
 
-    if (dateFilter && dateFilter !== "__any") {
-      if (!c.lastInvoice) return false;
-      const today = new Date();
-      const invoiceDate = new Date(c.lastInvoice);
-      if (isNaN(invoiceDate.getTime())) return false;
-      const daysDiff =
-        (today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysDiff > parseInt(dateFilter, 10)) return false;
-    }
+      if (dateFilter && dateFilter !== "__any") {
+        if (!c.lastInvoice) return false;
+        const today = new Date();
+        const invoiceDate = new Date(c.lastInvoice);
+        if (isNaN(invoiceDate.getTime())) return false;
+        const daysDiff =
+          (today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysDiff > parseInt(dateFilter, 10)) return false;
+      }
 
-    if (balanceFilter && balanceFilter !== "__any") {
-      const balance = parseFloat(c.balance || 0);
-      if (balanceFilter === "low" && balance >= 10000) return false;
-      if (balanceFilter === "medium" && (balance < 10000 || balance > 50000)) return false;
-      if (balanceFilter === "high" && balance <= 50000) return false;
-    }
+      if (balanceFilter && balanceFilter !== "__any") {
+        const balance = parseFloat(c.balance || 0);
+        if (balanceFilter === "low" && balance >= 10000) return false;
+        if (balanceFilter === "medium" && (balance < 10000 || balance > 50000)) return false;
+        if (balanceFilter === "high" && balance <= 50000) return false;
+      }
 
-    return true;
+      return true;
+    });
+  };
+
+  // Get the appropriate customer list based on filtering state
+  const customerList = hasActiveFilters ? allCustomers : customers;
+  const allFilteredCustomers = applyFilters(customerList);
+
+  // Calculate pagination for filtered results
+  const totalFilteredPages = Math.ceil(allFilteredCustomers.length / ITEMS_PER_PAGE);
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const filteredCustomers = allFilteredCustomers.slice(startIndex, endIndex);
+
+  // Use appropriate pagination based on filtering state
+  const currentTotalPages = hasActiveFilters ? totalFilteredPages : totalPages;
+  const currentTotalItems = hasActiveFilters ? allFilteredCustomers.length : (totalPages * ITEMS_PER_PAGE);
+  const currentDisplayedItems = hasActiveFilters ? filteredCustomers : customers;
+
+  // Debug logging
+  console.log('Debug Info:', {
+    hasActiveFilters,
+    allCustomersLength: allCustomers.length,
+    customersLength: customers.length,
+    customerListLength: customerList.length,
+    allFilteredCustomersLength: allFilteredCustomers.length,
+    totalPages,
+    totalFilteredPages,
+    currentTotalPages,
+    currentPage: page,
+    startIndex,
+    endIndex,
+    filteredCustomersLength: filteredCustomers.length,
+    currentDisplayedItemsLength: currentDisplayedItems.length
   });
+
+  // Debug customer data structure
+  if (currentDisplayedItems.length > 0) {
+    console.log('Sample customer data:', currentDisplayedItems[0]);
+    console.log('Available fields:', Object.keys(currentDisplayedItems[0]));
+  }
 
   if (showAddCustomerForm) {
     return (
       <Card className="max-w-full p-4 sm:p-6 bg-white mx-2 sm:mx-4">
-        <p className="font-semibold text-2xl ">Add New Customer</p>
+        <p className="font-semibold text-2xl ">
+          {editingCustomer ? "Edit Customer" : "Add New Customer"}
+        </p>
         <CardContent className="mt-2 ">
-          <MultiStepForm onCancel={() => setShowAddCustomerForm(false)} />
+          <MultiStepForm 
+            onCancel={() => {
+              setShowAddCustomerForm(false);
+              setEditingCustomer(null);
+            }} 
+            initialData={editingCustomer}
+          />
         </CardContent>
       </Card>
     );
@@ -452,7 +690,7 @@ export default function CustomerDashboard() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Customers List</h2>
-                <p className="text-sm text-gray-500 mt-1">Total {filteredCustomers.length} customers</p>
+                <p className="text-sm text-gray-500 mt-1">Total {hasActiveFilters ? allFilteredCustomers.length : (totalPages * ITEMS_PER_PAGE)} customers</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -490,15 +728,37 @@ export default function CustomerDashboard() {
                     {/* Last Invoice Date */}
                     <div>
                       <p className="text-sm font-medium mb-1">Last Invoice Date</p>
-                      <Select onValueChange={setDateFilter} defaultValue="__any">
+                      <Select value={dateFilter} onValueChange={setDateFilter}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select range" />
+                          <SelectValue placeholder="Select range">
+                            {dateFilter === "custom" && customDate
+                              ? customDate.toDateString()
+                              : undefined}
+                          </SelectValue>
                         </SelectTrigger>
+
                         <SelectContent>
                           <SelectItem value="__any">Any</SelectItem>
                           <SelectItem value="7">Last 7 days</SelectItem>
                           <SelectItem value="30">Last 30 days</SelectItem>
                           <SelectItem value="365">Last 1 year</SelectItem>
+
+                          {/* Inline custom date picker */}
+                          <div
+                            className="p-2 border-t cursor-pointer"
+                            onClick={() => setDateFilter("custom")}
+                          >
+                            <p className="text-sm mb-2">Custom Date</p>
+                            {dateFilter === "custom" && (
+                              <SingleDatePicker
+                                selectedDate={customDate ?? undefined}
+                                onDateChange={(date) => {
+                                  setCustomDate(date)
+                                  setDateFilter("custom")
+                                }}
+                              />
+                            )}
+                          </div>
                         </SelectContent>
                       </Select>
                     </div>
@@ -506,41 +766,40 @@ export default function CustomerDashboard() {
                     {/* Outstanding Balance */}
                     <div>
                       <p className="text-sm font-medium mb-1">Outstanding Balance</p>
-                      <Select onValueChange={setBalanceFilter} defaultValue="__any">
+
+                      <Select value={balanceFilter} onValueChange={setBalanceFilter}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select balance" />
+                          <SelectValue placeholder="Select balance">
+                            {balanceFilter === "custom" && customBalance
+                              ? `₹${customBalance}`
+                              : undefined}
+                          </SelectValue>
                         </SelectTrigger>
+
                         <SelectContent>
                           <SelectItem value="__any">Any</SelectItem>
                           <SelectItem value="low">Less than 10k</SelectItem>
                           <SelectItem value="medium">10k - 50k</SelectItem>
                           <SelectItem value="high">More than 50k</SelectItem>
+
+                          {/* Custom input field */}
+                          <div
+                            className="p-2 border-t space-y-2 cursor-pointer"
+                            onClick={() => setBalanceFilter("custom")}
+                          >
+                            <p className="text-sm">Custom Amount</p>
+                            {balanceFilter === "custom" && (
+                              <Input
+                                type="number"
+                                placeholder="Enter balance"
+                                value={customBalance}
+                                onChange={(e) => setCustomBalance(e.target.value)}
+                              />
+                            )}
+                          </div>
                         </SelectContent>
                       </Select>
                     </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Export / Import Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      Export/Import
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48 p-2 bg-white text-black">
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportCompanyWise(); }}>
-                      Export as Company wise
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportExcel(); }}>
-                      Export as Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleExportPDF(); }}>
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); triggerFileSelect(); }}>
-                      Import (Excel/CSV)
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -549,7 +808,9 @@ export default function CustomerDashboard() {
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls,.csv"
-                  style={{ display: "none" }}
+                  className="hidden"
+                  aria-label="Import customers from Excel or CSV file"
+                  title="Import customers from Excel or CSV file"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
                     handleImportFile(f);
@@ -561,68 +822,123 @@ export default function CustomerDashboard() {
 
           {/* Table */}
           <div className="w-full overflow-x-auto rounded-md border">
-            <table className="min-w-[900px]">
+            <table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Company Name</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Phone Number</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Status</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Last Invoice Date</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Outstanding Balance</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
+                  <th className="w-1/4 px-6 py-3 text-left text-sm font-medium text-gray-500">Company Name</th>
+                  <th className="w-1/6 px-6 py-3 text-left text-sm font-medium text-gray-500">Customer Name</th>
+                  <th className="w-1/8 px-6 py-3 text-left text-sm font-medium text-gray-500">Phone Number</th>
+                  <th className="w-1/8 px-6 py-3 text-left text-sm font-medium text-gray-500">Date</th>
+                  <th className="w-1/8 px-6 py-3 text-left text-sm font-medium text-gray-500">Status</th>
+                  <th className="w-1/12 px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((c, i) => (
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-500">Loading customers...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-red-500 mb-2">Error loading customers</p>
+                        <p className="text-gray-500 text-sm">{error}</p>
+                        <Button onClick={() => fetchCustomers()} className="mt-4" variant="outline">
+                          Try Again
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : currentDisplayedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-gray-500 mb-2">No customers found</p>
+                        <p className="text-gray-400 text-sm">Add your first customer to get started</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : currentDisplayedItems.map((c, i) => (
                   <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-3 py-4 sm:px-6">
+                     <td className="w-1/4 px-6 py-4">
+                       <div className="flex items-center gap-2">
+                         <Avatar className="h-8 w-8">
+                           <AvatarImage src={c.company?.logo || c.logo} />
+                           <AvatarFallback className="text-xs">
+                             {(c.company?.name || c.company || "Company")?.[0] || "C"}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div>
+                           <p className="font-medium text-gray-900">{c.company?.name || c.company || "No Company"}</p>
+                           <p className="text-sm text-gray-500">
+                             {c.company?.email || c.email || "No Email"}
+                           </p>
+                         </div>
+                       </div>
+                     </td>
+                    <td className="w-1/6 px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={c.company?.logo} />
+                          <AvatarImage src={c.customer?.avatar || c.avatar} />
                           <AvatarFallback className="text-xs">
-                            {c.company?.name?.[0] || "C"}
+
+                            {(c.customer?.name || c.name || "User")?.[0] || "U"}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900">{c.company?.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {c.company?.email}
-                          </p>
-                        </div>
+                        <p className="text-gray-900">{c.customer?.name || c.name || "No Name"}</p>
+
                       </div>
                     </td>
-                    <td className="px-3 py-4 sm:px-6">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={c.customer?.avatar} />
-                          <AvatarFallback className="text-xs">
-                            {c.customer?.name?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <p className="text-gray-900">{c.customer?.name || "Unknown"}</p>
-                      </div>
+                    <td className="w-1/8 px-6 py-4 text-sm text-gray-900">{c.phone}</td>
+                    <td className="w-1/8 px-6 py-4 text-sm text-gray-900">
+                      {c.lastInvoice || '-'}
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.phone}</td>
-                    <td className="px-3 py-4 sm:px-6">
+                    <td className="w-1/8 px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${c.status === "Active"
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${c.status?.toLowerCase() === "active"
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
                           }`}
                       >
-                        {c.status}
+                        {c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : '-'}
                       </span>
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{c.lastInvoice}</td>
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{c.balance}</td>
-                    <td className="px-3 py-4 sm:px-6">
+                    <td className="w-1/12 px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0 hover:bg-gray-100"
+
+                          onClick={() => handleEditCustomer(c)}
+                          title="Edit customer"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:bg-red-100 text-red-600 hover:text-red-700"
+                          onClick={() => handleDeleteCustomer(c.id || c._id)}
+                          title="Delete customer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:bg-gray-100"
                           onClick={() => handleDownloadCustomerPDF(c)}
+                          title="Download customer PDF report"
+
+                        // onClick={() => handleDownloadCustomerPDF(c)}
+
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -630,9 +946,9 @@ export default function CustomerDashboard() {
                     </td>
                   </tr>
                 ))}
-                {filteredCustomers.length === 0 && (
+                {currentDisplayedItems.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-gray-500 sm:px-6">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                       No customers found for selected filter.
                     </td>
                   </tr>
@@ -642,25 +958,25 @@ export default function CustomerDashboard() {
           </div>
 
           {/* Pagination */}
-          {filteredCustomers.length > 0 && (
+          {currentDisplayedItems.length > 0 && (
             <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 <div className="text-center text-sm text-gray-700 sm:text-left">
-                  Showing {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length} results
-                  {totalPages > 1 && ` (Page ${page} of ${totalPages})`}
+                  Showing {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, currentTotalItems)} of {currentTotalItems} results
+                  {currentTotalPages > 1 && ` (Page ${page} of ${currentTotalPages})`}
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                     disabled={page === 1}
                   >
                     <MoveLeft className="h-4 w-4 mr-1" /> Previous
                   </Button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    {Array.from({ length: currentTotalPages }, (_, i) => i + 1).map((pageNum) => (
                       <Button
                         key={pageNum}
                         variant={page === pageNum ? "default" : "outline"}
@@ -672,11 +988,11 @@ export default function CustomerDashboard() {
                       </Button>
                     ))}
                   </div>
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))} 
-                    disabled={page === totalPages}
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.min(prev + 1, currentTotalPages))}
+                    disabled={page === currentTotalPages}
                   >
                     Next <MoveRight className="h-4 w-4 ml-1" />
                   </Button>

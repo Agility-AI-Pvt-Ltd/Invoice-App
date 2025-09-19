@@ -7,20 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
-import Cookies from "js-cookie";
-import axios from "axios";
-
-export async function fetchBusinessLogo(token: string): Promise<string> {
-  const response = await axios.get(
-    "https://invoice-backend-604217703209.asia-south1.run.app/api/profile/logo",
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: "blob",
-    }
-  );
-
-  return URL.createObjectURL(response.data); // returns usable image URL
-}
+// Removed fetchBusinessLogo - moved to services/api/settings.ts to fix HMR issues
 
 export default function Settings() {
   const { toast } = useToast();
@@ -86,8 +73,7 @@ export default function Settings() {
   // 🔹 Function to refresh logo
   const refreshLogo = async () => {
     try {
-      const token = Cookies.get('authToken') || "";
-      const logoUrl = await fetchBusinessLogo(token);
+      const logoUrl = await fetchBusinessLogo();
       setFormData(prev => ({ ...prev, logoUrl }));
       setOriginalData(prev => ({ ...prev, logoUrl }));
     } catch (e) {
@@ -100,11 +86,10 @@ export default function Settings() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const token = Cookies.get('authToken') || "";
-        const userData = await getUserProfile(token);
+        const userData = await getUserProfile();
         let logoUrl = "";
         try {
-          logoUrl = await fetchBusinessLogo(token);
+          logoUrl = await fetchBusinessLogo();
         } catch (e) {
           console.warn("No logo found, using fallback");
         }
@@ -162,15 +147,14 @@ export default function Settings() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = Cookies.get('authToken') || "";
-      await updateUserProfile(token, formData);
+      await updateUserProfile(formData);
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
       setMessage({ type: "success", text: "Profile updated successfully" });
 
-      const updatedProfile = await getUserProfile(token);
+      const updatedProfile = await getUserProfile();
       setUserProfile(updatedProfile);
       
       // 🔹 Update original data to match current form data after successful save
@@ -208,8 +192,7 @@ export default function Settings() {
     }
 
     try {
-      const token = Cookies.get('authToken') || "";
-      await changePassword(token, {
+      await changePassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });
@@ -266,8 +249,7 @@ export default function Settings() {
 
     try {
       setUploadingLogo(true);
-      const token = Cookies.get('authToken') || "";
-      await uploadBusinessLogo(token, selectedFile);
+      await uploadBusinessLogo(selectedFile);
 
       toast({
         title: "Success",
@@ -275,7 +257,7 @@ export default function Settings() {
       });
       setMessage({ type: "success", text: "Logo uploaded successfully" });
 
-      const updatedProfile = await getUserProfile(token);
+      const updatedProfile = await getUserProfile();
       setUserProfile(updatedProfile);
 
       // 🔹 Refresh logo after upload
@@ -411,7 +393,7 @@ export default function Settings() {
                   <Input
                     id="email"
                     value={userProfile?.data?.email ?? ""}
-                    disabled
+                    readOnly
                     className="bg-muted border-input"
                   />
                 </div>
@@ -523,10 +505,9 @@ export default function Settings() {
                   <Input
                     id="phone"
                     placeholder="+91 xxxxxxxxxx"
-                    className="bg-background border-input"
+                    className="bg-muted border-input"
                     value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    disabled={true}
+                    readOnly
                   />
                 </div>
                 <div className="space-y-2">
@@ -551,8 +532,9 @@ export default function Settings() {
                   <Input
                     id="dateformat"
                     placeholder="DD/MM/YYYY"
-                    className="bg-background border-input"
+                    className="bg-muted border-input"
                     value={userProfile?.data.dateFormat}
+                    readOnly
                   />
                 </div>
                 <div className="space-y-2">

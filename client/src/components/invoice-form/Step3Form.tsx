@@ -72,7 +72,13 @@ export default function Step3ItemTable({ items: propItems, setItems: propSetItem
 }
 
 export function AddItem({ items: externalItems, setItems: externalSetItems }: Props) {
-  const ctx = useContext(InvoiceContext) as any | undefined;
+  const ctx = useContext(InvoiceContext) as unknown as {
+    invoice?: { items?: Item[] };
+    setInvoice?: (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => void;
+    fieldErrors?: Record<string, string>;
+    clearFieldError?: (path: string) => void;
+    setFieldErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  } | undefined;
   const fieldErrors: Record<string, string> = ctx?.fieldErrors ?? {};
 
   // local fallback state (kept for compatibility if parent doesn't pass items)
@@ -85,7 +91,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   const [inventorySuggestions, setInventorySuggestions] = useState<Record<number, EnhancedInventory[]>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
   const [showSuggestions, setShowSuggestions] = useState<Record<number, boolean>>({});
-  const searchTimeoutRefs = useRef<Record<number, NodeJS.Timeout | null>>({});
+  const searchTimeoutRefs = useRef<Record<number, ReturnType<typeof setTimeout> | null>>({});
 
   // Determine whether we should use external props or context or local
   const usingExternal = !!(externalItems && externalSetItems);
@@ -94,20 +100,18 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   const items = usingExternal
     ? (externalItems as Item[])
     : usingContext
-    ? ((ctx.invoice?.items as Item[]) || [])
-    : localItems;
+      ? ((ctx.invoice?.items as Item[]) || [])
+      : localItems;
 
   const setItems = usingExternal
     ? (externalSetItems as (items: Item[]) => void)
     : usingContext
-    ? ((
-        updated: Item[]
-      ) =>
-        ctx.setInvoice((prev: any) => ({
-          ...prev,
-          items: updated,
-        })))
-    : setLocalItems;
+      ? ((updated: Item[]) =>
+      (ctx?.setInvoice?.((prev: Record<string, unknown>) => ({
+        ...(prev || {}),
+        items: updated,
+      })) as unknown))
+      : setLocalItems;
 
   // ensure at least one row exists (compatible with previous behavior)
   useEffect(() => {
@@ -125,8 +129,9 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       ctx.clearFieldError(path);
     } else if (typeof ctx.setFieldErrors === "function") {
       // conservative fallback (if setFieldErrors exists)
-      ctx.setFieldErrors((prev: any) => {
-        const copy = { ...(prev || {}) };
+      ctx.setFieldErrors((prev) => {
+        const previous = (prev || {}) as Record<string, string>;
+        const copy: Record<string, string> = { ...previous };
         delete copy[path];
         return copy;
       });
@@ -156,7 +161,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   useEffect(() => {
     Object.entries(inventorySearchTerms).forEach(([rowIndexStr, searchTerm]) => {
       const rowIndex = parseInt(rowIndexStr);
-      
+
       if (searchTimeoutRefs.current[rowIndex]) {
         clearTimeout(searchTimeoutRefs.current[rowIndex]);
       }
@@ -170,8 +175,9 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       }
     });
 
+    const currentTimeouts = searchTimeoutRefs.current;
     return () => {
-      Object.values(searchTimeoutRefs.current).forEach(timeout => {
+      Object.values(currentTimeouts).forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
     };
@@ -180,8 +186,8 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   // Handle inventory selection and autofill
   const handleInventorySelect = (inventory: EnhancedInventory, rowIndex: number) => {
     const updated = [...items];
-    const existing = { ...(updated[rowIndex] as any) };
-    
+    const existing = { ...(updated[rowIndex] as Item) } as Item;
+
     updated[rowIndex] = {
       ...existing,
       description: existing.description || (inventory.name || inventory.description || ""),
@@ -189,27 +195,27 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       unitPrice: existing.unitPrice || (inventory.unit_price || inventory.price || inventory.selling_price || 0),
       gst: existing.gst || (inventory.gst_rate || inventory.gst || inventory.tax_rate || 0),
       discount: existing.discount ?? (inventory.discount || 0),
-    } as any;
-    
+    } as Item;
+
     setItems(updated);
 
     // Clear search and suggestions for this row
-    setInventorySearchTerms(prev => ({ ...prev, [rowIndex]: inventory.hsn_code || inventory.hsn || "" }));
+    setInventorySearchTerms(prev => ({ ...prev, [rowIndex]: inventory.name || inventory.description || "" }));
     setInventorySuggestions(prev => ({ ...prev, [rowIndex]: [] }));
     setShowSuggestions(prev => ({ ...prev, [rowIndex]: false }));
   };
 
-  // Handle HSN input change
+  // Handle Item Name input change (used for inventory suggestions)
   const handleHsnChange = (index: number, value: string) => {
     setInventorySearchTerms(prev => ({ ...prev, [index]: value }));
-    
+
     // Show suggestions if there are any
     if (inventorySuggestions[index] && inventorySuggestions[index].length > 0) {
       setShowSuggestions(prev => ({ ...prev, [index]: true }));
     }
   };
 
-  // Handle HSN input focus
+  // Handle Item Name input focus
   const handleHsnFocus = (index: number) => {
     if (inventorySuggestions[index] && inventorySuggestions[index].length > 0) {
       setShowSuggestions(prev => ({ ...prev, [index]: true }));
@@ -231,12 +237,12 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
 
   const handleChange = (index: number, field: keyof Item, value: string) => {
     const updatedItems = [...items];
-    const current = { ...(updatedItems[index] as any) };
+    const current = { ...(updatedItems[index] as Item) } as Item;
 
     if (field === "description" || field === "hsn") {
       current[field] = value;
-      // If it's HSN field, also update search term
-      if (field === "hsn") {
+      // Trigger inventory search based on Item Name only
+      if (field === "description") {
         handleHsnChange(index, value);
       }
     } else {
@@ -267,7 +273,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
 
 
   const handleNumericFocus = (index: number, field: keyof Item) => {
-    const current = items[index]?.[field as keyof Item] as any;
+    const current = items[index]?.[field as keyof Item] as unknown;
     if (current === 0 || current === "0") {
       const updated = [...items];
       updated[index] = { ...updated[index], [field]: "" };
@@ -276,7 +282,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   };
 
   const handleNumericBlur = (index: number, field: keyof Item) => {
-    const current = items[index]?.[field as keyof Item] as any;
+    const current = items[index]?.[field as keyof Item] as unknown;
     if (current === "" || current === null || typeof current === "undefined") {
       const updated = [...items];
       updated[index] = { ...updated[index], [field]: "0" };
@@ -305,7 +311,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       ...items,
       { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
     ]);
-    
+
     // Initialize search state for new row
     setInventorySearchTerms(prev => ({ ...prev, [newIndex]: "" }));
     setInventorySuggestions(prev => ({ ...prev, [newIndex]: [] }));
@@ -315,14 +321,14 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
 
   const removeItem = (id: number | string) => {
     const indexToRemove = items.findIndex(item => item.id === id);
-    
+
     // if only one item remains, keep at least one (consistent behavior)
     const updated = items.filter((it) => it.id !== id);
     if (updated.length === 0) {
       setItems([
         { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
       ]);
-      
+
       // Reset search state for the remaining row
       setInventorySearchTerms({ 0: "" });
       setInventorySuggestions({ 0: [] });
@@ -330,7 +336,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       setShowSuggestions({ 0: false });
     } else {
       setItems(updated);
-      
+
       // Clean up search state for removed row
       if (indexToRemove >= 0) {
         setInventorySearchTerms(prev => {
@@ -406,35 +412,22 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
               <TableRow key={item.id ?? index}>
                 <TableCell>{index + 1}</TableCell>
 
-                {/* Item Name => description (mandatory) */}
-                <TableCell>
-                  <Input
-                    className="w-full"
-                    value={item.description as string}
-                    onChange={(e) => handleChange(index, "description", e.target.value)}
-                    aria-invalid={!!fieldErrors[`items.${index}.description`]}
-                  />
-                  {fieldErrors[`items.${index}.description`] && (
-                    <p className="text-sm text-red-600 mt-1">{fieldErrors[`items.${index}.description`]}</p>
-                  )}
-                </TableCell>
-
-                {/* HSN with Search */}
+                {/* Item Name => description (mandatory) with inventory suggestions */}
                 <TableCell>
                   <div className="relative inventory-search-container">
                     <Input
                       className="w-full pr-10"
-                      value={item.hsn as string}
-                      onChange={(e) => handleChange(index, "hsn", e.target.value)}
+                      value={item.description as string}
+                      onChange={(e) => handleChange(index, "description", e.target.value)}
                       onFocus={() => handleHsnFocus(index)}
-                      placeholder="Start typing HSN code..."
-                      aria-invalid={!!fieldErrors[`items.${index}.hsn`]}
+                      placeholder="Start typing item name..."
+                      aria-invalid={!!fieldErrors[`items.${index}.description`]}
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
                       {isSearching[index] && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
                       <Search className="h-4 w-4 text-gray-400" />
                     </div>
-                    
+
                     {/* Inventory Suggestions Dropdown */}
                     {showSuggestions[index] && inventorySuggestions[index] && inventorySuggestions[index].length > 0 && (
                       <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -448,8 +441,8 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                               {inventory.name || inventory.description}
                             </div>
                             <div className="text-xs text-gray-500">
-                              HSN: {inventory.hsn_code || inventory.hsn} • 
-                              Price: ₹{inventory.unit_price || inventory.price || inventory.selling_price || 0} • 
+                              HSN: {inventory.hsn_code || inventory.hsn} •
+                              Price: ₹{inventory.unit_price || inventory.price || inventory.selling_price || 0} •
                               GST: {inventory.gst_rate || inventory.gst || inventory.tax_rate || 0}%
                             </div>
                           </div>
@@ -457,6 +450,20 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
                       </div>
                     )}
                   </div>
+                  {fieldErrors[`items.${index}.description`] && (
+                    <p className="text-sm text-red-600 mt-1">{fieldErrors[`items.${index}.description`]}</p>
+                  )}
+                </TableCell>
+
+                {/* HSN Code (manual input) */}
+                <TableCell>
+                  <Input
+                    className="w-full"
+                    value={item.hsn as string}
+                    onChange={(e) => handleChange(index, "hsn", e.target.value)}
+                    placeholder="Enter HSN code"
+                    aria-invalid={!!fieldErrors[`items.${index}.hsn`]}
+                  />
                   {fieldErrors[`items.${index}.hsn`] && (
                     <p className="text-sm text-red-600 mt-1">{fieldErrors[`items.${index}.hsn`]}</p>
                   )}

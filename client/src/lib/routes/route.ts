@@ -1,13 +1,15 @@
-const BACKEND_URL = "https://invoice-backend-604217703209.asia-south1.run.app";
-// const BACKEND_URL = import.meta.env.DEV ? "" : BACKEND_URL;
+import { getApiBaseUrl } from '../api-config';
+
+const BACKEND_URL = getApiBaseUrl();
 
 export const routes = {
     auth: {
-        sendOtpRegister: `${BACKEND_URL}/api/send-otp-register`,
-        verifyOtpAndRegister: `${BACKEND_URL}/api/verify-otp-register`,
+        sendOtpRegister: `${BACKEND_URL}/api/auth/send-otp-register`,
+        verifyOtpAndRegister: `${BACKEND_URL}/api/auth/verify-otp-register`,
         login: `${BACKEND_URL}/api/login`,
         getProfile: `${BACKEND_URL}/api/profile`,
         updateProfile: `${BACKEND_URL}/api/profile/update`,
+        getLogo: `${BACKEND_URL}/api/profile/logo`,
     },
     tax: {
         metrics: `${BACKEND_URL}/api/tax/metrics`,

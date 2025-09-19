@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { PURCHASE_API } from '../routes/purchase';
 
 // Types
@@ -49,15 +49,11 @@ export interface PurchaseFilters {
 /**
  * Get purchase metrics (total, current month, orders)
  */
-export const getPurchaseMetrics = async (token: string): Promise<PurchaseMetrics> => {
+export const getPurchaseMetrics = async (): Promise<PurchaseMetrics> => {
   try {
     // Since there's no dedicated purchase metrics API, we'll use sales stats as a proxy
     // and calculate purchase-related metrics from expense invoices
-    const response = await axios.get(PURCHASE_API.METRICS, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(PURCHASE_API.METRICS);
     return response.data;
   } catch (error) {
     console.error('Error fetching purchase metrics:', error);
@@ -68,9 +64,9 @@ export const getPurchaseMetrics = async (token: string): Promise<PurchaseMetrics
 /**
  * Get purchase summary cards data
  */
-export const getSummaryCardsData = async (token: string): Promise<SummaryCardData[]> => {
+export const getSummaryCardsData = async (): Promise<SummaryCardData[]> => {
   try {
-    const metrics = await getPurchaseMetrics(token);
+    const metrics = await getPurchaseMetrics();
 
     return [
       {
@@ -113,16 +109,12 @@ export const getSummaryCardsData = async (token: string): Promise<SummaryCardDat
  * Get purchase items with pagination and filters
  */
 export const getPurchaseItems = async (
-  token: string,
   page: number = 1,
   limit: number = 10,
   filters?: PurchaseFilters
 ): Promise<{ items: PurchaseItem[]; total: number; page: number; totalPages: number }> => {
   try {
-    const response = await axios.get(PURCHASE_API.GET_ALL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(PURCHASE_API.GET_ALL, {
       params: {
         page,
         limit,
@@ -181,14 +173,13 @@ export const getPurchaseItems = async (
 /**
  * Import purchases from file
  */
-export const importPurchases = async (token: string, file: File): Promise<{ imported: number; skipped: number }> => {
+export const importPurchases = async (file: File): Promise<{ imported: number; skipped: number }> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await axios.post(PURCHASE_API.IMPORT, formData, {
+    const response = await api.post(PURCHASE_API.IMPORT, formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
     });
@@ -202,12 +193,9 @@ export const importPurchases = async (token: string, file: File): Promise<{ impo
 /**
  * Export purchases to CSV
  */
-export const exportPurchases = async (token: string): Promise<Blob> => {
+export const exportPurchases = async (): Promise<Blob> => {
   try {
-    const response = await axios.get(PURCHASE_API.EXPORT, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(PURCHASE_API.EXPORT, {
       responseType: 'blob',
     });
     return response.data;

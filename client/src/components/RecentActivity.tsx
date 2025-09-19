@@ -77,9 +77,7 @@ const RecentActivityTable = () => {
     useEffect(() => {
         const fetchActivities = async () => {
             try {
-                const token = Cookies.get("authToken");
-                if (!token) return;
-                const activities = await getRecentActivity(token, 10);
+                const activities = await getRecentActivity(10);
                 setData(activities);
             } catch (err) {
                 console.error("Error fetching recent activity:", err);

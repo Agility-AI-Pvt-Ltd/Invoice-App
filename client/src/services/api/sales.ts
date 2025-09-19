@@ -1,25 +1,22 @@
 // client/src/services/api/sales.ts
 
-import axios from "axios";
-import Cookies from "js-cookie";
-
-const BASE_URL = "https://invoice-backend-604217703209.asia-south1.run.app";
+import api from "@/lib/api";
 
 export const SALES_API = {
-  STATS: `${BASE_URL}/api/sales/stats`,
-  PERFORMANCE: `${BASE_URL}/api/sales/performance`,
-  REGIONS: `${BASE_URL}/api/sales/regions`,
-  ITEMS: `${BASE_URL}/api/inventory/items`,
-  SUMMARY: `${BASE_URL}/api/inventory/summary`,
-  EXPORT: `${BASE_URL}/api/sales/export`,
-  IMPORT: `${BASE_URL}/api/inventory/import`,
-  CATEGORIES: `${BASE_URL}/api/inventory/categories`,
-  LIST: `${BASE_URL}/api/sales`,
+  STATS: `/api/sales/stats`,
+  PERFORMANCE: `/api/sales/performance`,
+  REGIONS: `/api/sales/regions`,
+  ITEMS: `/api/inventory/items`,
+  SUMMARY: `/api/inventory/summary`,
+  EXPORT: `/api/sales/export`,
+  IMPORT: `/api/inventory/import`,
+  CATEGORIES: `/api/inventory/categories`,
+  LIST: `/api/sales`,
 
-  DETAIL: (id: string) => `${BASE_URL}/api/sales/${id}`,
-  PDF: (id: string) => `${BASE_URL}/api/sales/${id}/pdf`,
-  SEND: (id: string) => `${BASE_URL}/api/sales/${id}/send`,
-  BULK: `${BASE_URL}/api/sales/bulk`,
+  DETAIL: (id: string) => `/api/sales/${id}`,
+  PDF: (id: string) => `/api/sales/${id}/pdf`,
+  SEND: (id: string) => `/api/sales/${id}/send`,
+  BULK: `/api/sales/bulk`,
 };
 
 // ---- Types ----
@@ -52,10 +49,7 @@ export interface SalesStats {
  * Fetch sales data
  */
 export const getSalesData = async (): Promise<SalesRecord[]> => {
-  const token = Cookies.get("authToken") || "";
-  const response = await axios.get(SALES_API.LIST, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const response = await api.get(SALES_API.LIST);
   return response.data;
 };
 
@@ -66,13 +60,11 @@ export const getSalesStats = async (
   from?: string,
   to?: string
 ): Promise<SalesStats> => {
-  const token = Cookies.get("authToken") || "";
   const params: Record<string, string> = {};
   if (from) params.from = from;
   if (to) params.to = to;
 
-  const response = await axios.get(SALES_API.STATS, {
-    headers: { Authorization: `Bearer ${token}` },
+  const response = await api.get(SALES_API.STATS, {
     params,
   });
 
@@ -86,13 +78,11 @@ export const getSalesStats = async (
 export const getSalesPerformance = async (
   interval: "day" | "week" | "month" = "month"
 ): Promise<{ month: string; value: number }[]> => {
-  const token = Cookies.get("authToken") || "";
   const params: Record<string, string> = { interval };
   const url = SALES_API.PERFORMANCE;
 
   try {
-    const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await api.get(url, {
       params,
     });
     const series = Array.isArray(response.data?.series)
@@ -125,13 +115,11 @@ export const getRegionalSales = async (
   from?: string,
   to?: string
 ): Promise<{ region: string; value: number; percentage: string }[]> => {
-  const token = Cookies.get("authToken") || "";
   const params: Record<string, string> = {};
   if (from) params.from = from;
   if (to) params.to = to;
 
-  const response = await axios.get(SALES_API.REGIONS, {
-    headers: { Authorization: `Bearer ${token}` },
+  const response = await api.get(SALES_API.REGIONS, {
     params,
   });
 
@@ -157,26 +145,18 @@ export const getRegionalSales = async (
 
 /** Delete sale by id */
 export const deleteSale = async (id: string) => {
-  const token = Cookies.get("authToken") || "";
-  await axios.delete(SALES_API.DETAIL(id), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  await api.delete(SALES_API.DETAIL(id));
 };
 
 /** Send sale (mark invoice as sent) */
 export const sendSale = async (id: string, payload?: any) => {
-  const token = Cookies.get("authToken") || "";
-  const res = await axios.post(SALES_API.SEND(id), payload || {}, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await api.post(SALES_API.SEND(id), payload || {});
   return res.data;
 };
 
 /** Get sale invoice PDF */
 export const getSalePDF = async (id: string): Promise<Blob> => {
-  const token = Cookies.get("authToken") || "";
-  const res = await axios.get(SALES_API.PDF(id), {
-    headers: { Authorization: `Bearer ${token}` },
+  const res = await api.get(SALES_API.PDF(id), {
     responseType: "blob",
   });
   return res.data;
@@ -184,9 +164,7 @@ export const getSalePDF = async (id: string): Promise<Blob> => {
 
 /** Export sales as CSV */
 export const exportSalesCSV = async (filters?: any): Promise<Blob> => {
-  const token = Cookies.get("authToken") || "";
-  const res = await axios.post(SALES_API.EXPORT, filters || {}, {
-    headers: { Authorization: `Bearer ${token}` },
+  const res = await api.post(SALES_API.EXPORT, filters || {}, {
     responseType: "blob",
   });
   return res.data;
@@ -194,9 +172,6 @@ export const exportSalesCSV = async (filters?: any): Promise<Blob> => {
 
 /** Bulk create sales from parsed rows */
 export const createSalesBulk = async (rows: any[]) => {
-  const token = Cookies.get("authToken") || "";
-  const res = await axios.post(SALES_API.BULK, rows, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await api.post(SALES_API.BULK, rows);
   return res.data;
 };

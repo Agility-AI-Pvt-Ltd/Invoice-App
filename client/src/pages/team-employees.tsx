@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { BASE_URL } from "@/lib/api-config";
 import {
   Table,
   TableBody,
@@ -71,7 +72,7 @@ interface TeamMemberUpdate {
   status?: "Active" | "Inactive";
 }
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+// Removed hardcoded production URL - now using API service
 
 export default function TeamManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,6 +82,11 @@ export default function TeamManagement() {
   // const [isImporting, setIsImporting] = useState(false);
   //@ts-ignore
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  
+  // Debug: Log when teamMembers state changes
+  console.log("🎯 Component render - teamMembers.length:", teamMembers.length);
+  console.log("🎯 Component render - teamMembers:", teamMembers);
+  console.log("🚨 Component render - loading state:", loading);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -119,27 +125,84 @@ export default function TeamManagement() {
     limit = 10,
     params: { search?: string } = {},
   ) => {
-    const q = new URLSearchParams();
-    q.append("page", String(page));
-    q.append("limit", String(limit));
-    if (params.search) q.append("search", params.search);
+    try {
+      // Use direct fetch to ensure consistency with create/update/delete operations
+      const searchParam = params.search ? `&search=${encodeURIComponent(params.search)}` : '';
+      const url = `${BASE_URL}/api/team-members?page=${page}&limit=${limit}${searchParam}`;
+      
+      console.log("🔗 Fetching from URL:", url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: buildAuthHeaders(token),
+      });
 
-    const url = `${API_BASE}/api/team-members?${q.toString()}`;
-    const res = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) {
-      // try to parse error body
-      let errText = `Failed to fetch team members (status ${res.status})`;
-      try {
-        const body = await res.json();
-        errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) {}
-      throw new Error(errText);
+      console.log("📡 Response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("📋 Raw API result:", result);
+      console.log("📋 API result.data:", result.data);
+      console.log("📋 API result.data type:", typeof result.data);
+      
+      // Handle the API response structure: {success: true, message: '...', data: {...}}
+      let data = [];
+      let pagination = {};
+      
+      if (result.success && result.data) {
+        console.log("📋 Processing successful API response");
+        console.log("📋 result.data contents:", result.data);
+        
+        // Check if result.data has team members array
+        if (Array.isArray(result.data)) {
+          data = result.data;
+          console.log("📋 Found array directly in result.data");
+        } else if (result.data.teamMembers && Array.isArray(result.data.teamMembers)) {
+          data = result.data.teamMembers;
+          pagination = result.data.pagination || {};
+          console.log("📋 Found teamMembers array in result.data");
+        } else if (result.data.data && Array.isArray(result.data.data)) {
+          data = result.data.data;
+          pagination = result.data.pagination || {};
+          console.log("📋 Found data array in result.data.data");
+        } else {
+          // Look for any array property in result.data
+          for (const [key, value] of Object.entries(result.data)) {
+            console.log(`📋 Checking result.data.${key}:`, value);
+            if (Array.isArray(value)) {
+              data = value;
+              console.log(`📋 Found array in result.data.${key}`);
+              break;
+            }
+          }
+        }
+        
+        // Get pagination if it exists
+        pagination = result.data.pagination || result.pagination || {};
+      } else {
+        console.log("📋 API response not successful or no data");
+        console.log("📋 result.success:", result.success);
+        console.log("📋 result.data exists:", !!result.data);
+      }
+      
+      console.log("📋 Final extracted data:", data);
+      console.log("📋 Final extracted pagination:", pagination);
+
+      return {
+        data: data,
+        pagination: {
+          totalPages: pagination.totalPages || Math.ceil((pagination.totalItems || data.length) / limit),
+          totalItems: pagination.totalItems || data.length,
+          currentPage: pagination.currentPage || page
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error fetching team members:', error);
+      throw new Error(`Failed to fetch team members: ${error.message}`);
     }
-
-    const json = await res.json();
-    return json;
   };
 
   const generateRandomPassword = (len = 10) => {
@@ -176,7 +239,7 @@ export default function TeamManagement() {
     // helpful debug during dev; remove in production
     // console.log("Creating team member payload:", payload);
 
-    const res = await fetch(`${API_BASE}/api/team-members`, {
+    const res = await fetch(`${BASE_URL}/api/team-members`, {
       method: "POST",
       headers: buildAuthHeaders(token),
       body: JSON.stringify(payload),
@@ -255,7 +318,7 @@ export default function TeamManagement() {
     if (update.phone) cleaned.phone = update.phone;
     if (update.status) cleaned.status = update.status.toLowerCase();
 
-    const res = await fetch(`${API_BASE}/api/team-members/${id}`, {
+    const res = await fetch(`${BASE_URL}/api/team-members/${id}`, {
       method: "PUT",
       headers: buildAuthHeaders(token),
       body: JSON.stringify(cleaned),
@@ -274,7 +337,7 @@ export default function TeamManagement() {
   };
 
   const apiDeleteTeamMember = async (token: string | undefined, id: string) => {
-    const res = await fetch(`${API_BASE}/api/team-members/${id}`, {
+    const res = await fetch(`${BASE_URL}/api/team-members/${id}`, {
       method: "DELETE",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -301,7 +364,7 @@ export default function TeamManagement() {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/team-members/import`, {
+    const res = await fetch(`${BASE_URL}/api/team-members/import`, {
       method: "POST",
       headers: headers, // Don't set Content-Type, let browser set it for FormData
       body: formData,
@@ -337,7 +400,7 @@ export default function TeamManagement() {
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     const res = await fetch(
-      `${API_BASE}/api/team-members/export?format=${format}`,
+      `${BASE_URL}/api/team-members/export?format=${format}`,
       {
         method: "GET",
         headers: headers,
@@ -433,7 +496,11 @@ export default function TeamManagement() {
         }
       }
 
-      const mapped = data.map((m: any) => {
+      console.log("🔄 Starting to map", data.length, "team members");
+      
+      const mapped = data.map((m: any, index: number) => {
+        console.log(`🔄 Mapping member ${index + 1}:`, m);
+        
         const rawRole = (m.role || "").toString();
         const roleCapitalized = rawRole
           ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1)
@@ -446,7 +513,8 @@ export default function TeamManagement() {
           (m.joiningDate
             ? new Date(m.joiningDate).toISOString().split("T")[0]
             : null);
-        return {
+            
+        const mappedMember = {
           id: m.id || m._id || m.memberId || String(m._id || m.id || ""),
           name: m.name || m.fullName || "",
           role: roleCapitalized,
@@ -457,15 +525,31 @@ export default function TeamManagement() {
           status,
           avatar: m.avatar || m.profilePicture || null,
         } as TeamMember;
+        
+        console.log(`✅ Mapped member ${index + 1}:`, mappedMember);
+        return mappedMember;
       });
+      
+      console.log("📋 All mapped team members:", mapped);
 
+      console.log("📊 Setting team members state with", mapped.length, "members");
       setTeamMembers(mapped);
       console.log(mapped, "TEAM");
-      setPagination({
+      
+      const paginationData = {
         currentPage: page,
         totalPages: totalPages || 1,
         totalItems: total || mapped.length,
-      });
+      };
+      
+      console.log("📊 Setting pagination state:", paginationData);
+      setPagination(paginationData);
+      
+      // Add a small delay to check if state was actually updated
+      setTimeout(() => {
+        console.log("🔍 State check - Current teamMembers length:", teamMembers.length);
+        console.log("🔍 State check - Current teamMembers:", teamMembers);
+      }, 100);
     } catch (error: unknown) {
       console.error("Error fetching team members:", error);
       const errorMessage =
@@ -799,7 +883,7 @@ export default function TeamManagement() {
                       </div>
                       {/* Export Dropdown */}
                       <DropdownMenu>
-                        <DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="outline"
                             className={`h-10 border-slate-200 px-4 text-slate-600 hover:bg-slate-50 hover:text-black`}
@@ -979,7 +1063,11 @@ export default function TeamManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {teamMembers.length === 0 ? (
+                      {(() => {
+                        console.log("🎯 Render condition check - teamMembers.length:", teamMembers.length);
+                        console.log("🎯 Render condition check - showing empty?", teamMembers.length === 0);
+                        return teamMembers.length === 0;
+                      })() ? (
                         <TableRow>
                           <TableCell
                             colSpan={8}
@@ -989,7 +1077,11 @@ export default function TeamManagement() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        teamMembers.map((member) => (
+                        (() => {
+                          console.log("🎯 Rendering team members list with", teamMembers.length, "members");
+                          return teamMembers.map((member, index) => {
+                            console.log(`🎯 Rendering member ${index + 1}:`, member.name);
+                            return (
                           <TableRow
                             key={member.id}
                             className="border-b border-slate-100 hover:bg-slate-50"
@@ -1065,7 +1157,9 @@ export default function TeamManagement() {
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))
+                            );
+                          });
+                        })()
                       )}
                     </TableBody>
                   </Table>

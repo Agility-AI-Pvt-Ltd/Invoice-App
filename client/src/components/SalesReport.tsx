@@ -75,9 +75,7 @@ const SalesReportCard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const token = Cookies.get("authToken");
-                if (!token) return;
-                const data = await getSalesReport(token, period);
+                const data = await getSalesReport(period);
                 // Ensure Chart.js expected format is preserved
                 setChartData({
                     labels: data.labels,

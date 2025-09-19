@@ -33,11 +33,11 @@ import { format } from "date-fns";
 import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
+import api from "@/lib/api";
+import type { SalesReturn } from "@/types/salesReturn";
+import { fetchSalesReturns } from "@/services/api/salesReturn";
 
-
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
-
-type Tab = "invoices" | "credit-notes" | "debit-notes";
+type Tab = "invoices" | "credit-notes" | "debit-notes" | "sales-returns";
 
 interface InvoiceData {
   id: string;
@@ -79,6 +79,7 @@ export default function Receipts() {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNoteData[]>([]);
   const [debitNotes, setDebitNotes] = useState<DebitNoteData[]>([]);
+  const [salesReturns, setSalesReturns] = useState<SalesReturn[]>([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -175,11 +176,8 @@ export default function Receipts() {
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
       console.log("Fetching invoices with params:", params.toString()); // Debug log
-      const res = await fetch(`${API_BASE}/api/invoices?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!res.ok) throw new Error(`Failed to fetch invoices (${res.status})`);
-      const data = await res.json();
+      const res = await api.get(`/api/invoices?${params.toString()}`);
+      const data = res.data;
       console.log("Invoices API response:", data); // Debug log
       const arr = Array.isArray(data) ? data : data.data || data.invoices || [];
       const mapped = arr.map((invoice: any) => ({
@@ -265,15 +263,8 @@ export default function Receipts() {
         ...(searchTerm && { search: searchTerm }),
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
-      const res = await fetch(
-        `${API_BASE}/api/credit-notes?${params.toString()}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        },
-      );
-      if (!res.ok)
-        throw new Error(`Failed to fetch credit notes (${res.status})`);
-      const data = await res.json();
+      const res = await api.get(`/api/credit-notes?${params.toString()}`);
+      const data = res.data;
       const arr = Array.isArray(data) ? data : data.data || data.notes || [];
       const mapped = arr.map((n: any) => ({
         id: n._id || n.id || n.creditNoteId || String(n._id || n.id || ""),
@@ -363,15 +354,8 @@ export default function Receipts() {
         ...(searchTerm && { search: searchTerm }),
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
-      const res = await fetch(
-        `${API_BASE}/api/debit-notes?${params.toString()}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        },
-      );
-      if (!res.ok)
-        throw new Error(`Failed to fetch debit notes (${res.status})`);
-      const data = await res.json();
+      const res = await api.get(`/api/debit-notes?${params.toString()}`);
+      const data = res.data;
       const arr = Array.isArray(data) ? data : data.data || data.notes || [];
       const mapped = arr.map((n: any) => ({
         id: n._id || n.id || n.debitNoteId || String(n._id || n.id || ""),
@@ -456,6 +440,37 @@ export default function Receipts() {
           status: "Rejected",
         },
       ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pagination.perPage, searchTerm, selectedDate]);
+
+  // Fetch sales returns
+  const fetchSalesReturnsData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = Cookies.get("authToken") || undefined;
+      const filters = {
+        ...(searchTerm && { search: searchTerm }),
+      };
+      
+      const response = await fetchSalesReturns(token, currentPage, pagination.perPage, filters);
+      const { data, pagination: paginationData } = response;
+      
+      console.log("Sales returns API response:", response);
+      console.log("Sales returns pagination:", paginationData);
+      
+      setPagination({
+        currentPage: paginationData.currentPage || currentPage,
+        totalPages: paginationData.totalPages || 1,
+        totalItems: paginationData.totalItems || 0,
+        perPage: pagination.perPage,
+      });
+      
+      setSalesReturns(data || []);
+    } catch (e) {
+      console.error("Error fetching sales returns:", e);
+      setSalesReturns([]);
     } finally {
       setLoading(false);
     }
@@ -574,6 +589,8 @@ export default function Receipts() {
       return creditNotes;
     } else if (activeTab === "debit-notes") {
       return debitNotes;
+    } else if (activeTab === "sales-returns") {
+      return salesReturns;
     }
     return [];
   };
@@ -617,36 +634,32 @@ export default function Receipts() {
     let endpoint = "";
     switch (type) {
       case "invoices":
-        endpoint = `${API_BASE}/api/invoices/import`;
+        endpoint = `/api/invoices/import`;
         break;
       case "credit-notes":
-        endpoint = `${API_BASE}/api/credit-notes/import`;
+        endpoint = `/api/credit-notes/import`;
         break;
       case "debit-notes":
-        endpoint = `${API_BASE}/api/debit-notes/import`;
+        endpoint = `/api/debit-notes/import`;
         break;
       default:
         throw new Error("Invalid type for import");
     }
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: headers,
-      body: formData,
-    });
-
-    if (!res.ok) {
-      let errText = `Failed to import ${type} (status ${res.status})`;
-      try {
-        const body = await res.json();
-        errText = body.detail || body.message || JSON.stringify(body);
-      } catch (err) {
-        console.log(err);
+    try {
+      const res = await api.post(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return res.data;
+    } catch (error: any) {
+      let errText = `Failed to import ${type}`;
+      if (error.response?.data) {
+        errText = error.response.data.detail || error.response.data.message || errText;
       }
       throw new Error(errText);
     }
-
-    return await res.json();
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -671,14 +684,13 @@ export default function Receipts() {
     let endpoint = "";
     switch (type) {
       case "invoices":
-        // For invoices, we might need to use a different endpoint or handle differently
-        endpoint = `${API_BASE}/api/invoices/export?format=${format}`;
+        endpoint = `/api/invoices/export?format=${format}`;
         break;
       case "credit-notes":
-        endpoint = `${API_BASE}/api/credit-notes/export?format=${format}`;
+        endpoint = `/api/credit-notes/export?format=${format}`;
         break;
       case "debit-notes":
-        endpoint = `${API_BASE}/api/debit-notes/export?format=${format}`;
+        endpoint = `/api/debit-notes/export?format=${format}`;
         break;
       default:
         throw new Error("Invalid type for export");
@@ -686,26 +698,25 @@ export default function Receipts() {
 
     console.log(`Attempting to export ${type} from endpoint: ${endpoint}`);
 
-    const res = await fetch(endpoint, { method: "GET", headers });
-
-    console.log(`Export response status: ${res.status}`);
-
-    if (!res.ok) {
-      if (res.status === 204) {
+    try {
+      const res = await api.get(endpoint, {
+        responseType: 'blob',
+        headers: {
+          ...headers,
+        }
+      });
+      return res;
+    } catch (error: any) {
+      if (error.response?.status === 204) {
         throw new Error(`No ${type} found to export`);
       }
 
-      let errText = `Failed to export ${type} (status ${res.status})`;
-      try {
-        const body = await res.json();
-        errText = body.detail || body.message || JSON.stringify(body);
-      } catch (err) {
-        console.log(err);
+      let errText = `Failed to export ${type}`;
+      if (error.response?.data) {
+        errText = error.response.data.detail || error.response.data.message || errText;
       }
       throw new Error(errText);
     }
-
-    return res;
   };
 
   const getExportFilename = (
@@ -972,6 +983,8 @@ export default function Receipts() {
         await fetchCreditNotes();
       } else if (activeTab === "debit-notes") {
         await fetchDebitNotes();
+      } else if (activeTab === "sales-returns") {
+        await fetchSalesReturnsData();
       }
 
       event.target.value = "";
@@ -1005,26 +1018,15 @@ export default function Receipts() {
 
       let endpoint = "";
       if (activeTab === "invoices") {
-        endpoint = `${API_BASE}/api/invoices/${item.id}`;
+        endpoint = `/api/invoices/${item.id}`;
       } else if (activeTab === "credit-notes") {
-        endpoint = `${API_BASE}/api/credit-notes/${item.id}`;
+        endpoint = `/api/credit-notes/${item.id}`;
       } else if (activeTab === "debit-notes") {
-        endpoint = `${API_BASE}/api/debit-notes/${item.id}`;
+        endpoint = `/api/debit-notes/${item.id}`;
       }
 
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-
-      const detailedData = await response.json();
+      const response = await api.get(endpoint);
+      const detailedData = response.data;
       console.log(`Fetched detailed data for ${activeTab}:`, detailedData); // Debug log
 
       if (activeTab === "invoices") {
@@ -1115,9 +1117,76 @@ export default function Receipts() {
         });
 
         doc.save(`${item.noteNo}.pdf`);
+      } else if (activeTab === "sales-returns") {
+        // Sales Return PDF with all required fields
+        doc.setFontSize(16);
+        doc.text("Sales Return", 14, 20);
+
+        // Company/Header info
+        doc.setFontSize(12);
+        let yPos = 35;
+        
+        // Party and Bill Details
+        doc.text(`Party Name: ${item.partyName || ""}`, 14, yPos);
+        yPos += 10;
+        doc.text(`Bill No: ${item.billNo || ""}`, 14, yPos);
+        yPos += 10;
+        doc.text(`Date: ${item.date ? new Date(item.date).toLocaleDateString() : ""}`, 14, yPos);
+        yPos += 10;
+        doc.text(`GSTIN: ${item.gstin || ""}`, 14, yPos);
+        yPos += 10;
+        doc.text(`State: ${item.state || ""}`, 14, yPos);
+        yPos += 15;
+
+        // Product/Item Details Table
+        autoTable(doc, {
+          startY: yPos,
+          head: [["Description", "HSN", "Qty", "Rate", "Taxable", "IGST", "CGST", "SGST", "Total"]],
+          body: [
+            [
+              "Sales Return Item",
+              item.hsn || "",
+              item.qty?.toString() || "0",
+              `₹${item.rate || 0}`,
+              `₹${item.taxable || 0}`,
+              `₹${item.igst || 0}`,
+              `₹${item.cgst || 0}`,
+              `₹${item.sgst || 0}`,
+              `₹${item.total || 0}`,
+            ],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [100, 100, 100] },
+          styles: { fontSize: 9, cellPadding: 3 },
+        });
+
+        // Additional Details
+        // @ts-ignore
+        const finalY = doc.lastAutoTable.finalY + 15;
+        
+        // Tax Summary
+        doc.setFontSize(10);
+        doc.text("Tax Summary:", 14, finalY);
+        doc.text(`IGST: ₹${item.igst || 0}`, 14, finalY + 10);
+        doc.text(`CGST: ₹${item.cgst || 0}`, 14, finalY + 20);
+        doc.text(`SGST: ₹${item.sgst || 0}`, 14, finalY + 30);
+        
+        // Total Amount
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text(`Total Amount: ₹${item.total || 0}`, 14, finalY + 45);
+        
+        // Remarks
+        if (item.remark) {
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(10);
+          doc.text(`Remarks: ${item.remark}`, 14, finalY + 60);
+        }
+
+        doc.save(`sales-return-${item.billNo || item.id}.pdf`);
       }
     } catch (err: any) {
-      alert(err.message || `Failed to generate ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : "debit note"} PDF`);
+      alert(err.message || `Failed to generate ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : activeTab === "debit-notes" ? "debit note" : "sales return"} PDF`);
     }
   };
 
@@ -1133,24 +1202,14 @@ export default function Receipts() {
 
       let endpoint = "";
       if (activeTab === "invoices") {
-        endpoint = `${API_BASE}/api/invoices/${itemId}`;
+        endpoint = `/api/invoices/${itemId}`;
       } else if (activeTab === "credit-notes") {
-        endpoint = `${API_BASE}/api/credit-notes/${itemId}`;
+        endpoint = `/api/credit-notes/${itemId}`;
       } else if (activeTab === "debit-notes") {
-        endpoint = `${API_BASE}/api/debit-notes/${itemId}`;
+        endpoint = `/api/debit-notes/${itemId}`;
       }
 
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
+      await api.delete(endpoint);
 
       toast({
         title: "Success",
@@ -1164,6 +1223,8 @@ export default function Receipts() {
         fetchCreditNotes();
       } else if (activeTab === "debit-notes") {
         fetchDebitNotes();
+      } else if (activeTab === "sales-returns") {
+        fetchSalesReturnsData();
       }
     } catch (error) {
       console.error("Error deleting item:", error);
@@ -1184,9 +1245,11 @@ export default function Receipts() {
         fetchCreditNotes();
       } else if (activeTab === "debit-notes") {
         fetchDebitNotes();
+      } else if (activeTab === "sales-returns") {
+        fetchSalesReturnsData();
       }
     }
-  }, [activeTab, currentPage, searchTerm, selectedDate, fetchInvoices, fetchCreditNotes, fetchDebitNotes]);
+  }, [activeTab, currentPage, searchTerm, selectedDate, fetchInvoices, fetchCreditNotes, fetchDebitNotes, fetchSalesReturnsData]);
 
   // If navigated here with state.openInvoiceForm -> open the invoice form
   useEffect(() => {
@@ -1397,6 +1460,17 @@ export default function Receipts() {
                 <span className="hidden sm:inline">Debit Note</span>
                 <span className="sm:hidden">DN</span>
               </button>
+              <button
+                className={`border-b-2 px-1 py-4 font-medium ${
+                  activeTab === "sales-returns"
+                    ? "border-[#b5a3ff]"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("sales-returns")}
+              >
+                <span className="hidden sm:inline">Sales Returns</span>
+                <span className="sm:hidden">SR</span>
+              </button>
             </div>
           </div>
 
@@ -1518,11 +1592,15 @@ export default function Receipts() {
             accept=".csv"
             onChange={handleImport}
             className="hidden"
+            aria-label="Import CSV file"
+            title="Import CSV file"
           />
           <input
             id="import-excel"
             type="file"
             accept=".xlsx,.xls"
+            aria-label="Import Excel file"
+            title="Import Excel file"
             onChange={handleImport}
             className="hidden"
           />
@@ -1613,6 +1691,31 @@ export default function Receipts() {
                       </th>
                     </>
                   )}
+                  {activeTab === "sales-returns" && (
+                    <>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        Bill No
+                      </th>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        Party Name
+                      </th>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        Date
+                      </th>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        State
+                      </th>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        Quantity
+                      </th>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        Total
+                      </th>
+                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
+                        Action
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -1633,7 +1736,9 @@ export default function Receipts() {
                         ? "invoices"
                         : activeTab === "credit-notes"
                           ? "credit notes"
-                          : "debit notes"}{" "}
+                          : activeTab === "debit-notes"
+                            ? "debit notes"
+                            : "sales returns"}{" "}
                       found
                     </td>
                   </tr>
@@ -1793,6 +1898,48 @@ export default function Receipts() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-gray-900 text-white" align="end">
+                                  <DropdownMenuItem onClick={() => handleDownload(item)}>
+                                    <Download className="mr-2 h-4 w-4" /> Download
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(item.id)}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {activeTab === "sales-returns" && (
+                        <>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            {(item as SalesReturn).billNo}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {(item as SalesReturn).partyName}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {new Date((item as SalesReturn).date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {(item as SalesReturn).state || "-"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {(item as SalesReturn).qty}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            ₹{(item as SalesReturn).total.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="sm">

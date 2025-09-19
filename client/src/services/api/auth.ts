@@ -1,17 +1,9 @@
-import axios from 'axios';
-import Cookies from 'js-cookie';
+import api from '@/lib/api';
 import { routes } from '@/lib/routes/route';
-
-const config = {
-    withCredentials: true,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-};
 
 export const signup = async (data: any) => {
     try {
-        const res = await axios.post(routes.auth.sendOtpRegister, data, config);
+        const res = await api.post(routes.auth.sendOtpRegister, data);
         return res.data;
     } catch (err: any) {
         const message = err.response?.data?.error || 'Registration failed';
@@ -23,7 +15,7 @@ export const signup = async (data: any) => {
 // Login user
 export const login = async (data: { email: string; password: string }) => {
     try {
-        const res = await axios.post(routes.auth.login, data, config);
+        const res = await api.post(routes.auth.login, data);
         console.log(res)
         return res.data;
     } catch (err: any) {
@@ -36,17 +28,15 @@ export const login = async (data: { email: string; password: string }) => {
 // Get user profile
 export const getProfile = async () => {
     try {
-        const token = Cookies.get('authToken');
-        const res = await axios.get(routes.auth.getProfile, {
-            ...config,
-            headers: {
-                ...config.headers,
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const res = await api.get(routes.auth.getProfile);
+        // Ensure we have valid data before returning
+        if (!res.data || typeof res.data !== 'object') {
+            throw new Error('Invalid profile data received');
+        }
         return res.data;
     } catch (err: any) {
-        const message = err.response?.data?.error || 'Failed to fetch profile';
+        console.error('Profile fetch error:', err);
+        const message = err.response?.data?.error || err.message || 'Failed to fetch profile';
         throw { message };
     }
 };
@@ -54,14 +44,7 @@ export const getProfile = async () => {
 // Update user profile
 export const updateProfile = async (data: any) => {
     try {
-        const token = Cookies.get('authToken');
-        const res = await axios.post(routes.auth.updateProfile, data, {
-            ...config,
-            headers: {
-                ...config.headers,
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const res = await api.post(routes.auth.updateProfile, data);
         return res.data;
     } catch (err: any) {
         const message = err.response?.data?.error || 'Profile update failed';
