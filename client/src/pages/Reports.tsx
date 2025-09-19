@@ -21,8 +21,9 @@ import { useToast } from "@/hooks/use-toast";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
 import CreditDebitTable from "@/components/reports/CreditDebitTable";
+import { getApiBaseUrl } from "@/lib/api-config";
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+const API_BASE = getApiBaseUrl();
 
 type Tab = "sales" | "credit-notes" | "debit-notes";
 

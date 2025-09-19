@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 interface FormSectionProps {
     title: string;
@@ -74,7 +75,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
+    const API_URL = `${getApiBaseUrl()}/api`;
 
     // calculate profit/loss
     const calculateProfitLoss = () => {

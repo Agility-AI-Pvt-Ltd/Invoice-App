@@ -10,6 +10,7 @@ import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useToast } from "@/hooks/use-toast";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
@@ -28,7 +29,7 @@ const steps = [
   { label: "Sub Total", icon: CurlyBraces },
 ];
 
-const API_BASE = "http://localhost:3001";
+const API_BASE = getApiBaseUrl();
 
 /* ------------------ Helpers ------------------ */
 
@@ -508,7 +509,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       console.log("📤 Full payload:", JSON.stringify(payload, null, 2));
       console.log("📤 Payload keys:", Object.keys(payload));
       console.log("📤 Required fields check:");
-      console.log("📤 - customerName:", payload.customerName || "MISSING");
+      console.log("📤 - customerName:", payload.billTo?.name || "MISSING");
       console.log("📤 - date:", payload.date || "MISSING");
       console.log("📤 - items:", payload.items ? `${payload.items.length} items` : "MISSING");
       console.log("📤 - total:", payload.total || "MISSING");
