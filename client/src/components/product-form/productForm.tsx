@@ -6,6 +6,8 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { getApiBaseUrl } from "@/lib/api-config";
 
+// added Select imports (uses your existing UI Select component)
+
 interface FormSectionProps {
   title: string;
   children: React.ReactNode;
@@ -72,6 +74,7 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   // Images/attachments
   // productImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
   const [productImage, setProductImage] = useState<string>(initial?.productImage || "");
+  // Removed unused variables
 
   const [remark, setRemark] = useState<string>(initial?.remark || "");
 
@@ -79,32 +82,8 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-
   const API_URL = `${getApiBaseUrl()}/api`;
-  // calculate profit/loss
-  const calculateProfitLoss = () => {
-    const pp = Number(purchasePrice) || 0;
-    const sp = Number(sellingPrice) || 0;
-    const disc = Number(discount) || 0;
-
-    // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
-    let effectiveSP = sp;
-    if (disc > 0) {
-      // assuming % discount for now
-      effectiveSP = sp - (sp * disc) / 100;
-    }
-
-    const diff = effectiveSP - pp;
-
-    return {
-      effectiveSP,
-      diff,
-      type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
-    };
-  };
-
-  const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
-
+  // calculate profit/loss - removed unused function
 
 
   useEffect(() => {
@@ -127,6 +106,7 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       setVendorName(initial.vendorName || "");
       setVendorProductCode(initial.vendorProductCode || "");
       setProductImage(initial.productImage || initial.image || "");
+      // Removed unused setProductImageName call
       setRemark(initial.remark || initial.note || "");
       setError(null);
     }
@@ -225,6 +205,9 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     }
   };
 
+  // File handling removed - unused
+
+  // File handling functions removed - unused
 
   const handleCancel = () => {
     onClose?.();

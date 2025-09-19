@@ -93,12 +93,14 @@ const parseExpenseDate = (dateString: string): Date | null => {
     try {
       const d = new Date(dateString);
       if (!isNaN(d.getTime())) return d;
-    } catch { }
+    } catch {}
     console.warn(`Failed to parse date: ${dateString}`, error);
     return null;
   }
 };
 
+/* Auth helpers: try localStorage, cookies, document.cookie (non-HttpOnly) */
+// Removed unused getAuthToken function
 
 
 export default function Expenses() {
@@ -368,8 +370,8 @@ export default function Expenses() {
       setExpenses((prev) =>
         prev.map((e) =>
           e.expenseId === mapped.expenseId ||
-            e.id === mapped.id ||
-            e.id === mapped._id
+          e.id === mapped.id ||
+          e.id === mapped._id
             ? mapped
             : e,
         ),
@@ -419,8 +421,8 @@ export default function Expenses() {
         setExpenses((prev) =>
           prev.map((e) =>
             e.expenseId === mapped.expenseId ||
-              e.id === mapped.id ||
-              e.id === mapped._id
+            e.id === mapped.id ||
+            e.id === mapped._id
               ? mapped
               : e,
           ),
