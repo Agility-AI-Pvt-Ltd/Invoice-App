@@ -10,7 +10,6 @@ import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
-import Cookies from "js-cookie";
 import { getTopProducts, type TopProductsData } from "@/services/api/dashboard";
 // import { topProductsGraphData } from "@/lib/constants/dashboard";
 

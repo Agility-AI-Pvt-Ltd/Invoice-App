@@ -168,7 +168,7 @@ export default function Receipts() {
     console.log("🔄 fetchInvoices called with currentPage:", currentPage, "activeTab:", activeTab);
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -256,7 +256,7 @@ export default function Receipts() {
   const fetchCreditNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -347,7 +347,7 @@ export default function Receipts() {
   const fetchDebitNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -449,15 +449,19 @@ export default function Receipts() {
   const fetchSalesReturnsData = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
       const filters = {
         ...(searchTerm && { search: searchTerm }),
       };
       
-      const response = await fetchSalesReturns(token, currentPage, pagination.perPage, filters);
-      const { data, pagination: paginationData } = response;
+      const data = await fetchSalesReturns(filters);
+      const paginationData = {
+        currentPage: currentPage,
+        totalPages: Math.ceil(data.length / pagination.perPage),
+        totalItems: data.length
+      };
       
-      console.log("Sales returns API response:", response);
+      console.log("Sales returns API response:", data);
       console.log("Sales returns pagination:", paginationData);
       
       setPagination({
@@ -623,7 +627,7 @@ export default function Receipts() {
   const apiImportReceipts = async (
     token: string | undefined,
     file: File,
-    type: "invoices" | "credit-notes" | "debit-notes",
+    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
   ) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -641,6 +645,9 @@ export default function Receipts() {
         break;
       case "debit-notes":
         endpoint = `/api/debit-notes/import`;
+        break;
+      case "sales-returns":
+        endpoint = `/api/sales/returns/import`;
         break;
       default:
         throw new Error("Invalid type for import");
@@ -676,7 +683,7 @@ export default function Receipts() {
   const apiExportReceipts = async (
     token: string | undefined,
     format: "csv" | "excel" | "pdf",
-    type: "invoices" | "credit-notes" | "debit-notes",
+    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
   ) => {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -691,6 +698,9 @@ export default function Receipts() {
         break;
       case "debit-notes":
         endpoint = `/api/debit-notes/export?format=${format}`;
+        break;
+      case "sales-returns":
+        endpoint = `/api/sales/returns/export?format=${format}`;
         break;
       default:
         throw new Error("Invalid type for export");
@@ -721,7 +731,7 @@ export default function Receipts() {
 
   const getExportFilename = (
     format: "csv" | "excel" | "pdf",
-    type: "invoices" | "credit-notes" | "debit-notes",
+    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
   ) => {
     const timestamp = new Date().toISOString().split("T")[0];
     const typeName = type.replace("-", "_");
@@ -805,7 +815,7 @@ export default function Receipts() {
   const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
 
       toast({
         title: "Exporting...",
@@ -815,10 +825,10 @@ export default function Receipts() {
       // For invoices, try server export first, fallback to client-side export
       if (activeTab === "invoices") {
         try {
-          const response = await apiExportReceipts(token, format, activeTab);
-          const blob = await response.blob();
+          const response = await apiExportReceipts(undefined, format, activeTab);
+          const blob = response.data;
           const contentDisposition =
-            response.headers.get("content-disposition") || "";
+            response.headers["content-disposition"] || "";
           let filename = getExportFilename(format, activeTab);
 
           if (contentDisposition) {
@@ -863,10 +873,10 @@ export default function Receipts() {
       }
 
       // For other types or formats, use server export
-      const response = await apiExportReceipts(token, format, activeTab);
-      const blob = await response.blob();
+      const response = await apiExportReceipts(undefined, format, activeTab);
+      const blob = response.data;
       const contentDisposition =
-        response.headers.get("content-disposition") || "";
+        response.headers["content-disposition"] || "";
       let filename = getExportFilename(format, activeTab);
 
       if (contentDisposition) {
@@ -962,14 +972,14 @@ export default function Receipts() {
 
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
 
       toast({
         title: "Importing...",
         description: `Uploading ${activeTab} file`,
       });
 
-      const response = await apiImportReceipts(token, file, activeTab);
+      const response = await apiImportReceipts(undefined, file, activeTab);
 
       toast({
         title: "Success",

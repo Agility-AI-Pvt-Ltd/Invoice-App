@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
+import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, fetchBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
 // Removed fetchBusinessLogo - moved to services/api/settings.ts to fix HMR issues
 

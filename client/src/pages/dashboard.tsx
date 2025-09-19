@@ -9,7 +9,6 @@ import { useProfile } from '@/contexts/ProfileContext';
 import Layout from '@/layouts/dashboard-layout';
 import { Navigate } from 'react-router-dom';
 import { getDashboardStats, type DashboardStat } from '@/services/api/dashboard';
-import Cookies from 'js-cookie';
 
 const Dashboard = () => {
   const { loading, error, isAuthenticated } = useProfile();

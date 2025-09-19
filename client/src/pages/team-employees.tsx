@@ -194,14 +194,14 @@ export default function TeamManagement() {
       return {
         data: data,
         pagination: {
-          totalPages: pagination.totalPages || Math.ceil((pagination.totalItems || data.length) / limit),
-          totalItems: pagination.totalItems || data.length,
-          currentPage: pagination.currentPage || page
+          totalPages: Math.ceil(data.length / limit),
+          totalItems: data.length,
+          currentPage: page
         }
       };
     } catch (error) {
       console.error('❌ Error fetching team members:', error);
-      throw new Error(`Failed to fetch team members: ${error.message}`);
+      throw new Error(`Failed to fetch team members: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -466,27 +466,27 @@ export default function TeamManagement() {
 
       if (Array.isArray(response)) {
         data = response;
-      } else if (response.success && Array.isArray(response.data)) {
-        data = response.data;
-        const p = response.pagination || response.page || {};
-        page = p.currentPage || response.page || currentPage;
+      } else if ((response as any).success && Array.isArray((response as any).data)) {
+        data = (response as any).data;
+        const p = (response as any).pagination || (response as any).page || {};
+        page = p.currentPage || (response as any).page || currentPage;
         totalPages =
-          (response.pagination && response.pagination.totalPages) ||
-          response.totalPages ||
+          ((response as any).pagination && (response as any).pagination.totalPages) ||
+          (response as any).totalPages ||
           1;
         total =
-          (response.pagination && response.pagination.totalItems) ||
-          response.total ||
+          ((response as any).pagination && (response as any).pagination.totalItems) ||
+          (response as any).total ||
           data.length;
-      } else if (response.data && Array.isArray(response.data)) {
-        data = response.data;
-        page = response.page || response.pagination?.currentPage || currentPage;
+      } else if ((response as any).data && Array.isArray((response as any).data)) {
+        data = (response as any).data;
+        page = (response as any).page || (response as any).pagination?.currentPage || currentPage;
         totalPages =
-          response.totalPages || response.pagination?.totalPages || 1;
+          (response as any).totalPages || (response as any).pagination?.totalPages || 1;
         total =
-          response.total || response.pagination?.totalItems || data.length;
-      } else if (response.members && Array.isArray(response.members)) {
-        data = response.members;
+          (response as any).total || (response as any).pagination?.totalItems || data.length;
+      } else if ((response as any).members && Array.isArray((response as any).members)) {
+        data = (response as any).members;
       } else {
         for (const k of Object.keys(response)) {
           if (Array.isArray((response as any)[k])) {

@@ -68,10 +68,14 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
                 // If profile fetch fails, create a minimal mock profile to prevent null reference errors
                 console.warn("Profile fetch failed, using mock profile:", profileError);
                 setProfile({
-                    id: 'mock-user',
+                    _id: 'mock-user',
                     name: 'User',
                     email: 'user@example.com',
                     company: 'Company',
+                    address: '',
+                    phone: '',
+                    panNumber: '',
+                    isGstRegistered: false,
                     // Add other common profile fields as needed
                 });
                 setIsAuthenticated(true);

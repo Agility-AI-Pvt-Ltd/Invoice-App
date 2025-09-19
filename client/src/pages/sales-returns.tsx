@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/badge";
 import { BASE_URL } from "@/lib/api-config";
 import {
   Table,
@@ -19,18 +18,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  Calendar,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
 import type { SalesReturn, SalesReturnCreate, SalesReturnUpdate } from "@/types/salesReturn";
 
@@ -106,28 +96,28 @@ export default function SalesReturns() {
       console.log("📋 Raw API result:", result);
       
       let data = [];
-      let pagination = {};
+      // let pagination = {}; // Removed unused variable
       
       if (result.success && result.data) {
         if (Array.isArray(result.data)) {
           data = result.data;
         } else if (result.data.data && Array.isArray(result.data.data)) {
           data = result.data.data;
-          pagination = result.data.pagination || {};
+          // pagination = result.data.pagination || {}; // Removed unused assignment
         }
       }
 
       return {
         data: data,
         pagination: {
-          totalPages: pagination.totalPages || Math.ceil((pagination.totalItems || data.length) / limit),
-          totalItems: pagination.totalItems || data.length,
-          currentPage: pagination.currentPage || page
+          totalPages: Math.ceil(data.length / limit),
+          totalItems: data.length,
+          currentPage: page
         }
       };
     } catch (error) {
       console.error('❌ Error fetching sales returns:', error);
-      throw new Error(`Failed to fetch sales returns: ${error.message}`);
+      throw new Error(`Failed to fetch sales returns: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

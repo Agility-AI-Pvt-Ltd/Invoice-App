@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import ProfileAvatar from "./ui/ProfileAvatar";
 import { fetchBusinessLogo } from "@/services/api/settings";
-import Cookies from "js-cookie";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 
 const Header: React.FC<any> = ({ label }: { label: string }) => {
     const [avatarUrl, setAvatarUrl] = useState<any>(); // fallback
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string>("");
+    const [error] = useState<string>("");
     function toTitleCase(input: string = ""): string {
         return input
             .replace(/-/g, " ") // Replace hyphens with spaces

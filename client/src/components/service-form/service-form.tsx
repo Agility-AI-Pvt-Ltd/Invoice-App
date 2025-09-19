@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -66,8 +65,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
     // Images/attachments
     // serviceImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
     const [serviceImage, setServiceImage] = useState<string>(initial?.serviceImage || initial?.productImage || "");
-    const [serviceImageName, setServiceImageName] = useState<string>(initial?.serviceImageName || initial?.productImageName || (initial?.imageName ?? ""));
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    // Removed unused variables
 
     const [remark, setRemark] = useState<string>(initial?.remark || "");
 
@@ -77,27 +75,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
 
     const API_URL = `${getApiBaseUrl()}/api`;
 
-    // calculate profit/loss
-    const calculateProfitLoss = () => {
-        const pp = Number(purchasePrice) || 0;
-        const sp = Number(sellingPrice) || 0;
-        const disc = Number(discount) || 0;
-
-        // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
-        let effectiveSP = sp;
-        if (disc > 0) {
-            // assuming % discount for now
-            effectiveSP = sp - (sp * disc) / 100;
-        }
-
-        const diff = effectiveSP - pp;
-
-        return {
-            effectiveSP,
-            diff,
-            type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
-        };
-    };
+    // calculate profit/loss - removed unused function
 
     useEffect(() => {
         // If initial changes after mount, populate fields
@@ -115,7 +93,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
             setVendorName(initial.vendorName || "");
             setVendorServiceCode(initial.vendorServiceCode || initial.vendorProductCode || "");
             setServiceImage(initial.serviceImage || initial.productImage || initial.image || "");
-            setServiceImageName(initial.serviceImageName || initial.productImageName || initial.imageName || "");
+            // Removed unused setServiceImageName call
             setRemark(initial.remark || initial.note || "");
             setError(null);
         }
@@ -201,26 +179,9 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
         }
     };
 
-    // File handling: read chosen image as base64 and set name
-    const handleFileSelect = (file?: File | null) => {
-        if (!file) return;
-        setServiceImageName(file.name);
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result as string;
-            setServiceImage(result); // base64 data URL
-        };
-        reader.readAsDataURL(file);
-    };
+    // File handling removed - unused
 
-    const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const f = e.target.files?.[0] ?? null;
-        handleFileSelect(f);
-    };
-
-    const triggerFilePicker = () => {
-        if (fileInputRef.current) fileInputRef.current.click();
-    };
+    // File handling functions removed - unused
 
     const handleCancel = () => {
         onClose?.();
