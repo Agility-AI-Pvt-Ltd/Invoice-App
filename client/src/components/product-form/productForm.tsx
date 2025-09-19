@@ -1,19 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
-
-// added Select imports (uses your existing UI Select component)
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface FormSectionProps {
   title: string;
@@ -81,8 +71,6 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   // Images/attachments
   // productImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
   const [productImage, setProductImage] = useState<string>(initial?.productImage || "");
-  const [productImageName, setProductImageName] = useState<string>(initial?.productImageName || (initial?.imageName ?? ""));
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [remark, setRemark] = useState<string>(initial?.remark || "");
 
@@ -91,27 +79,6 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
-  // calculate profit/loss
-  const calculateProfitLoss = () => {
-    const pp = Number(purchasePrice) || 0;
-    const sp = Number(sellingPrice) || 0;
-    const disc = Number(discount) || 0;
-
-    // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
-    let effectiveSP = sp;
-    if (disc > 0) {
-      // assuming % discount for now
-      effectiveSP = sp - (sp * disc) / 100;
-    }
-
-    const diff = effectiveSP - pp;
-
-    return {
-      effectiveSP,
-      diff,
-      type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
-    };
-  };
 
 
   useEffect(() => {
@@ -134,7 +101,6 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       setVendorName(initial.vendorName || "");
       setVendorProductCode(initial.vendorProductCode || "");
       setProductImage(initial.productImage || initial.image || "");
-      setProductImageName(initial.productImageName || initial.imageName || "");
       setRemark(initial.remark || initial.note || "");
       setError(null);
     }
@@ -233,26 +199,6 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     }
   };
 
-  // File handling: read chosen image as base64 and set name
-  const handleFileSelect = (file?: File | null) => {
-    if (!file) return;
-    setProductImageName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setProductImage(result); // base64 data URL
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    handleFileSelect(f);
-  };
-
-  const triggerFilePicker = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
 
   const handleCancel = () => {
     onClose?.();

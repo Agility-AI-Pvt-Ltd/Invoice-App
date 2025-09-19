@@ -168,7 +168,7 @@ export default function Receipts() {
     console.log("🔄 fetchInvoices called with currentPage:", currentPage, "activeTab:", activeTab);
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Unused variable
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -200,7 +200,7 @@ export default function Receipts() {
       const serverTotalPages = pg.totalPages || data.totalPages || 1;
       const serverTotalItems = pg.total || data.total || 0;
       const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-      
+
       console.log("Full API response:", data);
       console.log("Pagination data:", pg);
       console.log("Server pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
@@ -210,19 +210,19 @@ export default function Receipts() {
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       setPagination({
         currentPage: serverCurrentPage,
         totalPages: serverTotalPages,
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       // Update current page if server returned different page
       if (serverCurrentPage !== currentPage) {
         setCurrentPage(serverCurrentPage);
       }
-      
+
       setInvoices(mapped);
     } catch (err) {
       console.error("Error fetching invoices:", err);
@@ -256,7 +256,7 @@ export default function Receipts() {
   const fetchCreditNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Unused variable
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -286,22 +286,22 @@ export default function Receipts() {
       const serverTotalPages = pg.totalPages || data.totalPages || 1;
       const serverTotalItems = pg.total || data.total || 0;
       const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-      
+
       console.log("Credit notes API response:", data);
       console.log("Credit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
-      
+
       setPagination({
         currentPage: serverCurrentPage,
         totalPages: serverTotalPages,
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       // Update current page if server returned different page
       if (serverCurrentPage !== currentPage) {
         setCurrentPage(serverCurrentPage);
       }
-      
+
       setCreditNotes(mapped);
     } catch (e) {
       console.error(e);
@@ -347,7 +347,7 @@ export default function Receipts() {
   const fetchDebitNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Unused variable
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -370,7 +370,7 @@ export default function Receipts() {
         amount: n.total ?? n.amount ?? 25000,
         status: n.status || "Open",
       }));
-      
+
       // Update pagination state with server response
       // Handle both pagination object and root-level pagination properties
       const pg = data.pagination || {};
@@ -378,22 +378,22 @@ export default function Receipts() {
       const serverTotalPages = pg.totalPages || data.totalPages || 1;
       const serverTotalItems = pg.total || data.total || 0;
       const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-      
+
       console.log("Debit notes API response:", data);
       console.log("Debit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
-      
+
       setPagination({
         currentPage: serverCurrentPage,
         totalPages: serverTotalPages,
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       // Update current page if server returned different page
       if (serverCurrentPage !== currentPage) {
         setCurrentPage(serverCurrentPage);
       }
-      
+
       setDebitNotes(mapped);
     } catch (e) {
       console.error(e);
@@ -449,24 +449,23 @@ export default function Receipts() {
   const fetchSalesReturnsData = useCallback(async () => {
     try {
       setLoading(true);
-      const token = Cookies.get("authToken") || undefined;
+      // const token = Cookies.get("authToken") || undefined; // Unused variable
       const filters = {
         ...(searchTerm && { search: searchTerm }),
       };
-      
-      const response = await fetchSalesReturns(token, currentPage, pagination.perPage, filters);
-      const { data, pagination: paginationData } = response;
-      
-      console.log("Sales returns API response:", response);
-      console.log("Sales returns pagination:", paginationData);
-      
+
+      const data = await fetchSalesReturns(filters);
+
+      console.log("Sales returns API response:", data);
+
+      // Note: fetchSalesReturns doesn't return pagination data, using defaults
       setPagination({
-        currentPage: paginationData.currentPage || currentPage,
-        totalPages: paginationData.totalPages || 1,
-        totalItems: paginationData.totalItems || 0,
+        currentPage: currentPage,
+        totalPages: 1,
+        totalItems: data.length,
         perPage: pagination.perPage,
       });
-      
+
       setSalesReturns(data || []);
     } catch (e) {
       console.error("Error fetching sales returns:", e);
@@ -596,7 +595,7 @@ export default function Receipts() {
   };
 
   const filteredData = getFilteredData();
-  
+
   // Use server-side pagination data
   const currentData = filteredData;
 
@@ -607,12 +606,12 @@ export default function Receipts() {
 
   // Debug pagination state
   useEffect(() => {
-    console.log("📊 Pagination state changed:", { 
-      currentPage, 
-      totalPages: pagination.totalPages, 
+    console.log("📊 Pagination state changed:", {
+      currentPage,
+      totalPages: pagination.totalPages,
       totalItems: pagination.totalItems,
       activeTab,
-      filteredDataLength: filteredData.length 
+      filteredDataLength: filteredData.length
     });
   }, [currentPage, pagination.totalPages, pagination.totalItems, activeTab, filteredData.length]);
 
@@ -623,7 +622,7 @@ export default function Receipts() {
   const apiImportReceipts = async (
     token: string | undefined,
     file: File,
-    type: "invoices" | "credit-notes" | "debit-notes",
+    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
   ) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -641,6 +640,9 @@ export default function Receipts() {
         break;
       case "debit-notes":
         endpoint = `/api/debit-notes/import`;
+        break;
+      case "sales-returns":
+        endpoint = `/api/sales-returns/import`;
         break;
       default:
         throw new Error("Invalid type for import");
@@ -676,7 +678,7 @@ export default function Receipts() {
   const apiExportReceipts = async (
     token: string | undefined,
     format: "csv" | "excel" | "pdf",
-    type: "invoices" | "credit-notes" | "debit-notes",
+    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
   ) => {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -691,6 +693,9 @@ export default function Receipts() {
         break;
       case "debit-notes":
         endpoint = `/api/debit-notes/export?format=${format}`;
+        break;
+      case "sales-returns":
+        endpoint = `/api/sales-returns/export?format=${format}`;
         break;
       default:
         throw new Error("Invalid type for export");
@@ -721,7 +726,7 @@ export default function Receipts() {
 
   const getExportFilename = (
     format: "csv" | "excel" | "pdf",
-    type: "invoices" | "credit-notes" | "debit-notes",
+    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
   ) => {
     const timestamp = new Date().toISOString().split("T")[0];
     const typeName = type.replace("-", "_");
@@ -816,9 +821,9 @@ export default function Receipts() {
       if (activeTab === "invoices") {
         try {
           const response = await apiExportReceipts(token, format, activeTab);
-          const blob = await response.blob();
+          const blob = response.data; // response.data is already a blob when responseType is 'blob'
           const contentDisposition =
-            response.headers.get("content-disposition") || "";
+            response.headers["content-disposition"] || "";
           let filename = getExportFilename(format, activeTab);
 
           if (contentDisposition) {
@@ -864,9 +869,9 @@ export default function Receipts() {
 
       // For other types or formats, use server export
       const response = await apiExportReceipts(token, format, activeTab);
-      const blob = await response.blob();
+      const blob = response.data; // response.data is already a blob when responseType is 'blob'
       const contentDisposition =
-        response.headers.get("content-disposition") || "";
+        response.headers["content-disposition"] || "";
       let filename = getExportFilename(format, activeTab);
 
       if (contentDisposition) {
@@ -1125,7 +1130,7 @@ export default function Receipts() {
         // Company/Header info
         doc.setFontSize(12);
         let yPos = 35;
-        
+
         // Party and Bill Details
         doc.text(`Party Name: ${item.partyName || ""}`, 14, yPos);
         yPos += 10;
@@ -1163,19 +1168,19 @@ export default function Receipts() {
         // Additional Details
         // @ts-ignore
         const finalY = doc.lastAutoTable.finalY + 15;
-        
+
         // Tax Summary
         doc.setFontSize(10);
         doc.text("Tax Summary:", 14, finalY);
         doc.text(`IGST: ₹${item.igst || 0}`, 14, finalY + 10);
         doc.text(`CGST: ₹${item.cgst || 0}`, 14, finalY + 20);
         doc.text(`SGST: ₹${item.sgst || 0}`, 14, finalY + 30);
-        
+
         // Total Amount
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text(`Total Amount: ₹${item.total || 0}`, 14, finalY + 45);
-        
+
         // Remarks
         if (item.remark) {
           doc.setFont(undefined, 'normal');
@@ -1193,7 +1198,7 @@ export default function Receipts() {
   // Handle delete functionality
   const handleDelete = async (itemId: string | number) => {
     if (!confirm(`Are you sure you want to delete this ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : "debit note"}?`)) return;
-    
+
     try {
       const token = Cookies.get("authToken");
       if (!token) {
@@ -1428,44 +1433,40 @@ export default function Receipts() {
           <div className="border-b border-gray-200">
             <div className="flex space-x-4 px-4 sm:space-x-8 sm:px-6">
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "invoices"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "invoices"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("invoices")}
               >
                 <span className="hidden sm:inline">Invoices</span>
                 <span className="sm:hidden">Inv</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "credit-notes"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "credit-notes"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("credit-notes")}
               >
                 <span className="hidden sm:inline">Credit Note</span>
                 <span className="sm:hidden">CN</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "debit-notes"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "debit-notes"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("debit-notes")}
               >
                 <span className="hidden sm:inline">Debit Note</span>
                 <span className="sm:hidden">DN</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "sales-returns"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "sales-returns"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("sales-returns")}
               >
                 <span className="hidden sm:inline">Sales Returns</span>
@@ -1570,7 +1571,7 @@ export default function Receipts() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <Button 
+                  <Button
                     className="flex items-center gap-2 bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8]"
                     onClick={activeTab === "credit-notes" ? handleCreditNoteForm : handleDebitNoteForm}
                   >
@@ -1976,10 +1977,10 @@ export default function Receipts() {
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage - 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" /> Previous
@@ -1997,10 +1998,10 @@ export default function Receipts() {
                       </Button>
                     ))}
                   </div>
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage + 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage + 1)}
                     disabled={currentPage === pagination.totalPages}
                   >
                     Next <ChevronRight className="h-4 w-4 ml-1" />
