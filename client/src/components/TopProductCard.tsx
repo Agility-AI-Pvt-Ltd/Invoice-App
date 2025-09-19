@@ -51,9 +51,9 @@ const TopProductsCard = () => {
       try {
         setIsLoading(true);
         setGraphErrorMessage("");
-        
+
         const data = await getTopProducts(sortBy, period);
-        
+
         // Check if data exists and has the required structure
         if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
           setGraphErrorMessage("No Data Found");
@@ -83,15 +83,15 @@ const TopProductsCard = () => {
         // If we reach here, data is valid - clear error message and set chart data
         setGraphErrorMessage("");
         setChartData(data);
-                      } catch (err) {
-          console.error("Error fetching top products:", err);
-          setGraphErrorMessage("Failed to fetch data");
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchData();
-    }, [sortBy, period]);
+      } catch (err) {
+        console.error("Error fetching top products:", err);
+        setGraphErrorMessage("Failed to fetch data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [sortBy, period]);
 
   return (
     <Card className="flex h-full w-full flex-col bg-white">

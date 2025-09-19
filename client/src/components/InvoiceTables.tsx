@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 
 // import Cookies from "js-cookie";
-import { getSalesData, type SalesRecord } from "@/services/api/sales";
+import { getInvoices, type Invoice } from "@/services/api/invoice";
 import autoTable from "jspdf-autotable";
 import jsPDF from "jspdf";
 import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
@@ -49,7 +49,7 @@ interface FilterState {
 }
 
 export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice }: InvoiceTableProps) {
-  const [invoices, setInvoices] = useState<SalesRecord[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,10 +80,9 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     setLoading(true);
     setError(null);
     try {
-      const res = await getSalesData();
-      // Ensure res is always an array
-      const invoicesArray = Array.isArray(res) ? res : [];
-      setInvoices(invoicesArray);
+      // Use the proper invoices API instead of sales API
+      const response = await getInvoices(currentPage, itemsPerPage);
+      setInvoices(response.data || []);
     } catch (err: any) {
       setError(err.message || "Failed to fetch invoices");
       setInvoices([]); // Set empty array on error
@@ -141,10 +140,10 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
   //   }
   // };
 
-  // Initial fetch (mount) and re-fetch when selectedDate or external refreshFlag change
+  // Initial fetch (mount) and re-fetch when selectedDate, currentPage, or external refreshFlag change
   useEffect(() => {
     fetchInvoices();
-  }, [selectedDate, refreshFlag]);
+  }, [selectedDate, refreshFlag, currentPage]);
 
   // If navigated here with state.openSalesForm -> open the invoice form (Step 1) and clear history state.
   useEffect(() => {
@@ -189,7 +188,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       window.removeEventListener("invoice:deleted", handleInvoiceEvent);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, activeStatusFilter, refreshFlag]);
+  }, [selectedDate, activeStatusFilter, refreshFlag, currentPage]);
 
   // Map backend payment statuses to filter categories
   const mapStatusToFilter = (paymentStatus: string): string => {
@@ -232,7 +231,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     // Status filter
     if (activeStatusFilter !== "all") {
       filtered = filtered.filter(invoice =>
-        mapStatusToFilter(invoice.paymentStatus || "") === activeStatusFilter
+        mapStatusToFilter(invoice.status || "") === activeStatusFilter
       );
     }
 
@@ -241,8 +240,8 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       const searchLower = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(invoice =>
         (invoice.invoiceNumber || "").toString().toLowerCase().includes(searchLower) ||
-        (invoice.customerName || "").toLowerCase().includes(searchLower) ||
-        (invoice.product || "").toLowerCase().includes(searchLower)
+        (invoice.billTo?.name || "").toLowerCase().includes(searchLower) ||
+        (invoice.items?.[0]?.description || "").toLowerCase().includes(searchLower)
       );
     }
 
@@ -250,7 +249,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     if (filters.customerName) {
       const customerLower = filters.customerName.toLowerCase();
       filtered = filtered.filter(invoice =>
-        (invoice.customerName || "").toLowerCase().includes(customerLower)
+        (invoice.billTo?.name || "").toLowerCase().includes(customerLower)
       );
     }
 
@@ -278,7 +277,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     // Amount range filter
     if (filters.amountMin || filters.amountMax) {
       filtered = filtered.filter(invoice => {
-        const amount = Number(invoice.totalAmount || 0);
+        const amount = Number(invoice.total || 0);
         const minAmount = filters.amountMin ? parseFloat(filters.amountMin) : null;
         const maxAmount = filters.amountMax ? parseFloat(filters.amountMax) : null;
 
@@ -321,31 +320,80 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     }
   };
 
-  const downloadCSV = (data: SalesRecord[], filename: string) => {
-    const csvRows = [
-      [
-        "Invoice Number",
-        "Customer Name",
-        "Product",
-        "Quantity",
-        "Unit Price",
-        "Total Amount",
-        "Date of Sale",
-        "Payment Status",
-      ],
-      ...data.map((sale) => [
-        sale.invoiceNumber,
-        sale.customerName,
-        sale.product,
-        sale.quantity,
-        sale.unitPrice,
-        sale.totalAmount,
-        sale.dateOfSale,
-        sale.paymentStatus,
-      ]),
+  // Fallback helpers for resilient display
+  const getInvoiceNumber = (
+    inv: Partial<Invoice> & { number?: string; invoiceNo?: string; invoice_id?: string }
+  ) => inv?.invoiceNumber || inv?.number || inv?.invoiceNo || inv?.invoice_id || "";
+
+  const getCustomerName = (
+    inv: Partial<Invoice> & { customerName?: string; clientName?: string; companyName?: string }
+  ) => inv?.billTo?.name || inv?.customerName || inv?.clientName || inv?.companyName || "N/A";
+
+  const formatDatePretty = (value?: string) => {
+    if (!value) return "";
+    try {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return format(d, "MMMM d, yyyy");
+    } catch {
+      return String(value);
+    }
+  };
+
+  const formatDueDate = (value?: string) => {
+    if (!value) return "N/A";
+    try {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return format(d, "MMMM d, yyyy");
+    } catch {
+      return String(value);
+    }
+  };
+
+  const downloadCSV = (data: Invoice[], filename: string) => {
+    const headers = [
+      "Invoice Number",
+      "Customer Name",
+      "Items Count",
+      "Total Amount",
+      "Date",
+      "Due Date",
+      "Status",
     ];
 
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
+    const rows = (Array.isArray(data) ? data : []).map((inv: Invoice) => {
+      const invoiceNumber = getInvoiceNumber(inv);
+      const customerName = getCustomerName(inv);
+      const itemsCount = Array.isArray(inv.items) ? inv.items.length : 0;
+      const totalAmount = inv?.total ?? 0;
+      const datePretty = formatDatePretty(inv.date);
+      const duePretty = formatDueDate(inv.dueDate);
+      const status = inv?.status || "Pending";
+
+      return [
+        invoiceNumber,
+        customerName,
+        String(itemsCount),
+        String(totalAmount),
+        datePretty,
+        duePretty,
+        status,
+      ];
+    });
+
+    const csvRows = [headers, ...rows];
+    const csvContent = csvRows
+      .map((row) =>
+        row
+          .map((cell) => {
+            const str = cell == null ? "" : String(cell);
+            return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+          })
+          .join(",")
+      )
+      .join("\n");
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
@@ -362,7 +410,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     try {
       await invoicesAPI.delete(invoiceId);
       // remove by id or _id to be safe
-      setInvoices(prev => Array.isArray(prev) ? prev.filter(inv => inv.id !== invoiceId && (inv as any)._id !== invoiceId) : []);
+      setInvoices(prev => Array.isArray(prev) ? prev.filter(inv => (inv as any).id !== invoiceId && (inv as any)._id !== invoiceId) : []);
       // re-fetch to make sure UI matches server
       fetchInvoices();
     } catch (err: any) {
@@ -370,8 +418,18 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     }
   };
 
-  const handleDownload = (invoice: SalesRecord) => {
+  const handleDownload = (invoice: Invoice) => {
     try {
+      const inv: Invoice = (invoice ?? ({} as Invoice)) as Invoice;
+      const invoiceNumber = getInvoiceNumber(inv) || "Invoice";
+      const customerName = getCustomerName(inv) || "Customer";
+      const datePretty = formatDatePretty(inv.date) || "";
+      const duePretty = formatDueDate(inv.dueDate) || "";
+      const status = inv.status || "Pending";
+
+      const cleanFilePart = (s: string) => s.replace(/[^a-z0-9\- _]/gi, "").trim();
+      const filename = `${cleanFilePart(customerName)} - ${cleanFilePart(invoiceNumber)}.pdf`;
+
       const doc = new jsPDF();
 
       // Title
@@ -380,32 +438,37 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
 
       // Invoice details
       doc.setFontSize(12);
-      doc.text(`Invoice Number: ${invoice.invoiceNumber}`, 14, 35);
-      doc.text(`Customer: ${invoice.customerName}`, 14, 45);
-      doc.text(`Date of Sale: ${invoice.dateOfSale}`, 14, 55);
-      doc.text(`Status: ${invoice.paymentStatus}`, 14, 65);
+      doc.text(`Invoice Number: ${invoiceNumber}`, 14, 35);
+      doc.text(`Customer: ${customerName}`, 14, 45);
+      doc.text(`Date: ${datePretty || "N/A"}`, 14, 55);
+      doc.text(`Due Date: ${duePretty || "N/A"}`, 14, 65);
+      doc.text(`Status: ${status}`, 14, 75);
 
-      // Product Table
+      // Items Table
+      const tableData = Array.isArray(inv.items) && inv.items.length > 0
+        ? inv.items.map((item: { description?: string; quantity?: number; unitPrice?: number; amount?: number }) => [
+          item?.description || "N/A",
+          String(item?.quantity ?? 0),
+          `₹${item?.unitPrice ?? 0}`,
+          `₹${item?.amount ?? ((item?.quantity || 0) * (item?.unitPrice || 0))}`,
+        ])
+        : [["No items", "", "", ""]];
+
       autoTable(doc, {
-        startY: 80,
-        head: [["Product", "Quantity", "Unit Price", "Total"]],
-        body: [
-          [
-            invoice.product,
-            invoice.quantity,
-            `₹${invoice.unitPrice}`,
-            `₹${invoice.totalAmount}`,
-          ],
-        ],
+        startY: 90,
+        head: [["Description", "Quantity", "Unit Price", "Amount"]],
+        body: tableData,
       });
 
       // Footer / total
+      const totalAmount = inv.total ?? 0;
       doc.setFontSize(12);
-      // @ts-ignore
-      doc.text(`Total Amount: ₹${invoice.totalAmount}`, 14, doc.lastAutoTable.finalY + 20);
+      // @ts-expect-error: autoTable types not exposed
+      const endY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 110;
+      doc.text(`Total Amount: ₹${totalAmount}`, 14, endY);
 
-      // Save the file
-      doc.save(`${invoice.invoiceNumber}.pdf`);
+      // Save the file with a standardized name
+      doc.save(filename);
     } catch (err: any) {
       alert(err.message || "Failed to generate invoice PDF");
     }
@@ -427,7 +490,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       ...btn,
       count: btn.value === "all"
         ? safeInvoices.length
-        : safeInvoices.filter(inv => mapStatusToFilter(inv.paymentStatus || "") === btn.value).length
+        : safeInvoices.filter(inv => mapStatusToFilter(inv.status || "") === btn.value).length
     }));
   };
 
@@ -709,27 +772,32 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                 <tr className="border-b border-gray-200">
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Invoice Number</th>
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Product</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Quantity</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Unit Price</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Items</th>
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Total Amount</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Date of Sale</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Payment Status</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Date</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Due Date</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Status</th>
                   <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {currentInvoices && currentInvoices.map((invoice) => (
-                  <tr key={invoice.id || (invoice as any)._id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{invoice.invoiceNumber}</td>
-                    <td className="px-3 py-4 sm:px-6">{invoice.customerName}</td>
-                    <td className="px-3 py-4 sm:px-6">{invoice.product}</td>
-                    <td className="px-3 py-4 sm:px-6">{invoice.quantity}</td>
-                    <td className="px-3 py-4 sm:px-6">₹{(invoice as any).unitPrice?.toLocaleString?.()}</td>
-                    <td className="px-3 py-4 sm:px-6">₹{(invoice as any).totalAmount?.toLocaleString?.()}</td>
-                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{(invoice as any).dateOfSale || (invoice as any).date}</td>
-                    <td className="px-3 py-4 sm:px-6">{getStatusBadge(invoice.paymentStatus)}</td>
+                  <tr key={(invoice as any)._id || (invoice as any).id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{getInvoiceNumber(invoice)}</td>
+                    <td className="px-3 py-4 sm:px-6">{getCustomerName(invoice)}</td>
+                    <td className="px-3 py-4 sm:px-6">
+                      {invoice.items?.length || 0} item{invoice.items?.length !== 1 ? 's' : ''}
+                      {invoice.items?.[0]?.description && (
+                        <div className="text-xs text-gray-500 truncate max-w-[150px]">
+                          {invoice.items[0].description}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 sm:px-6">₹{invoice.total?.toLocaleString?.() || 0}</td>
+                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{invoice.date}</td>
+                    <td className="px-3 py-4 sm:px-6">{formatDueDate((invoice as any).dueDate)}</td>
+                    <td className="px-3 py-4 sm:px-6">{getStatusBadge(invoice.status || 'pending')}</td>
                     <td className="px-3 py-4 sm:px-6">
                       <div className="flex items-center gap-2">
                         <DropdownMenu>
@@ -742,7 +810,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                             <DropdownMenuItem onClick={() => handleDownload(invoice)}>
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(invoice.id || (invoice as any)._id)}>
+                            <DropdownMenuItem className="text-red-500" onClick={() => handleDelete((invoice as any)._id || (invoice as any).id)}>
                               <Trash className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
