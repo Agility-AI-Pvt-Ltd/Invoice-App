@@ -15,7 +15,7 @@ export function CashFlowCard() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await getCashFlow(token);
+        const data = await getCashFlow();
         setCashFlow(data);
       } catch (error) {
         console.error("Failed to load cash flow:", error);
