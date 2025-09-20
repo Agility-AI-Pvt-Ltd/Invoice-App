@@ -2,6 +2,7 @@ import { useState } from 'react';
 import FloatingInput from './ui/FloatingInput';
 import Checkbox from '@/components/ui/custom-checkbox';
 import SocialButton from '@/components/ui/SocialButtons';
+import GoogleSignInButton from '@/components/ui/GoogleSignInButton';
 import { AiFillApple, AiFillFacebook } from "react-icons/ai";
 import { login } from '@/services/api/auth';
 import { useNavigate } from 'react-router-dom';
@@ -21,21 +22,36 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [generalError, setGeneralError] = useState('');
+  const [googleError, setGoogleError] = useState('');
+
+  // Handle Google authentication success
+  const handleGoogleSuccess = (user: { id: string; email: string; name: string; picture?: string }) => {
+    console.log('✅ Google login successful:', user);
+    setGoogleError('');
+    // Navigation is handled in GoogleSignInButton component
+  };
+
+  // Handle Google authentication error
+  const handleGoogleError = (error: string) => {
+    console.error('❌ Google login error:', error);
+    setGoogleError(error);
+  };
 
   const handleLogin = async () => {
     // Reset errors
     setEmailError('');
     setPasswordError('');
     setGeneralError('');
+    setGoogleError('');
     setLoading(true);
 
     try {
       const res = await login({ email, password });
       console.log(res)
-      
+
       // Determine if we're in production (HTTPS) or development (HTTP)
       const isProduction = import.meta.env.VITE_NODE_ENV === 'production' || window.location.protocol === 'https:';
-      
+
       Cookies.set('authToken', res.data.token, {
         expires: 1, // 1 day
         secure: isProduction, // Only secure in production/HTTPS
@@ -43,13 +59,16 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
       });
 
       navigate("/app/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       // 🔑 handle backend error properly
       let errorMsg = 'Login failed';
-      if (err.response && err.response.data) {
-        errorMsg = err.response.data.detail || errorMsg;
-      } else if (err.message) {
-        errorMsg = err.message;
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { detail?: string } } };
+        if (axiosError.response?.data?.detail) {
+          errorMsg = axiosError.response.data.detail;
+        }
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errorMsg = (err as { message: string }).message;
       }
 
       // Decide where to show error
@@ -98,6 +117,7 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
       </div>
 
       {generalError && <p className="text-red-500 text-sm">{generalError}</p>}
+      {googleError && <p className="text-red-500 text-sm">{googleError}</p>}
 
       <div className="flex justify-between items-center text-sm">
         <Checkbox id="remember" label="Remember me" />
@@ -123,33 +143,31 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
         <div className="flex-grow h-px bg-gray-300"></div>
       </div>
 
-      <div className="flex space-x-3">
-        <SocialButton
-          icon={<AiFillFacebook size={18} className="text-[#1877F2]" />}
-          label="Facebook"
+      <div className="space-y-3">
+        {/* Google Sign-In Button */}
+        <GoogleSignInButton
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          className="w-full"
         />
-        <SocialButton
-          icon={<GoogleLogo />}
-          label="Google"
-        />
-        <SocialButton
-          icon={<AiFillApple size={18} className="text-black" />}
-          label="Apple"
-        />
+
+        {/* Other Social Buttons */}
+        <div className="flex space-x-3">
+          <SocialButton
+            icon={<AiFillFacebook size={18} className="text-[#1877F2]" />}
+            label="Facebook"
+          />
+          <SocialButton
+            icon={<AiFillApple size={18} className="text-black" />}
+            label="Apple"
+          />
+        </div>
       </div>
     </div>
   );
 }
 
 
-const GoogleLogo = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-  </svg>
-);
 
 // const AppleLogo = () => (
 //   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

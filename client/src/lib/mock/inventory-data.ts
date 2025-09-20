@@ -11,7 +11,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 9800000.0,
         status: "In Stock",
-        image: "https://m.media-amazon.com/images/I/71fVoqRC0wL._SL1500_.jpg",
     },
     {
         id: "2",
@@ -22,7 +21,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 11700000.0,
         status: "In Stock",
-        image: "https://m.media-amazon.com/images/I/71cQWYVtcBL._SL1500_.jpg",
     },
     {
         id: "3",
@@ -33,7 +31,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 15000000.0,
         status: "In Stock",
-        image: "https://m.media-amazon.com/images/I/61u9zNveEHL._UL1440_.jpg",
     },
     {
         id: "4",
@@ -44,7 +41,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 0.0,
         status: "Out of Stock",
-        image: "https://m.media-amazon.com/images/I/61u9zNveEHL._UL1440_.jpg",
     },
     {
         id: "5",
@@ -55,7 +51,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 0.0,
         status: "Out of Stock",
-        image: "https://m.media-amazon.com/images/I/61u9zNveEHL._UL1440_.jpg",
     },
     {
         id: "6",
@@ -66,7 +61,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 11400000.0,
         status: "Low in Stock",
-        image: "https://m.media-amazon.com/images/I/71d7rfSl0wL._SL1500_.jpg",
     },
     {
         id: "7",
@@ -77,7 +71,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 11700000.0,
         status: "In Stock",
-        image: "https://m.media-amazon.com/images/I/71cQWYVtcBL._SL1500_.jpg",
     },
     {
         id: "8",
@@ -88,7 +81,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 9800000.0,
         status: "Low in Stock",
-        image: "https://m.media-amazon.com/images/I/71fVoqRC0wL._SL1500_.jpg",
     },
     {
         id: "9",
@@ -99,7 +91,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 11700000.0,
         status: "In Stock",
-        image: "https://m.media-amazon.com/images/I/71cQWYVtcBL._SL1500_.jpg",
     },
     {
         id: "10",
@@ -110,7 +101,6 @@ const allInventoryItems: InventoryItem[] = [
         discount: 0.0,
         totalValue: 15000000.0,
         status: "In Stock",
-        image: "https://m.media-amazon.com/images/I/61u9zNveEHL._UL1440_.jpg",
     },
 ]
 
