@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/label";
+import axios from "axios";
+import Cookies from "js-cookie";
 
-import { BASE_URL } from "@/lib/api-config";
+import { BASE_URL, getApiBaseUrl } from "@/lib/api-config";
 
 
 // added Select imports (uses your existing UI Select component)
@@ -62,32 +66,17 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
 
 
   // Removed unused state variables to clean up the code
-  // Stock/payment-related (UI labels were payment oriented; we keep them but also track general values)
-  const [paymentStatus, setPaymentStatus] = useState<string>(initial?.paymentStatus || "Unpaid");
-  const [amountReceived, setAmountReceived] = useState<string | number>(initial?.amountReceived ?? "");
-  const [paymentMethod, setPaymentMethod] = useState<string>(initial?.paymentMethod || "Online");
-  const [dueAmount, setDueAmount] = useState<string | number>(initial?.dueAmount ?? "");
-
-  // Supplier/vendor
-  const [vendorName, setVendorName] = useState<string>(initial?.vendorName || "");
-  const [vendorProductCode, setVendorProductCode] = useState<string>(initial?.vendorProductCode || "");
-
-  // Images/attachments
-  // productImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
-  const [productImage, setProductImage] = useState<string>(initial?.productImage || "");
-  // Removed unused variables
-
-  const [remark, setRemark] = useState<string>(initial?.remark || "");
 
   // UI state
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  // Temporary: Use direct URL until environment variable is properly loaded
-  const API_URL = "https://api-gateway-914987176295.asia-south1.run.app/api";
+
+  // API URL configuration
+  const API_URL = `${getApiBaseUrl()}/api`;
+
+  // Debug logging
   console.log("🔍 API_URL being used:", API_URL);
   console.log("🔍 BASE_URL from config:", BASE_URL);
-
-  const API_URL = `${getApiBaseUrl()}/api`;
   // calculate profit/loss - removed unused function
 
 
@@ -106,15 +95,7 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       setDiscount(initial.discount ?? 0);
       setTaxRate(initial.taxRate ?? "");
       setQuantity(initial.quantity ?? initial.inStock ?? "");
-      setPaymentStatus(initial.paymentStatus || "Unpaid");
-      setAmountReceived(initial.amountReceived ?? "");
-      setPaymentMethod(initial.paymentMethod || "Online");
-      setDueAmount(initial.dueAmount ?? "");
-      setVendorName(initial.vendorName || "");
-      setVendorProductCode(initial.vendorProductCode || "");
-      setProductImage(initial.productImage || initial.image || "");
-      // Removed unused setProductImageName call
-      setRemark(initial.remark || initial.note || "");
+      // Removed unused setters for unused state variables
       setError(null);
     }
   }, [initial]);
