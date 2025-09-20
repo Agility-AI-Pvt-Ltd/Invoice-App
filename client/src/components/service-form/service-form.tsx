@@ -65,6 +65,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
     // Images/attachments
     // serviceImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
     const [serviceImage, setServiceImage] = useState<string>(initial?.serviceImage || initial?.productImage || "");
+    // Removed unused variables
 
     const [remark, setRemark] = useState<string>(initial?.remark || "");
     const [duration, setDuration] = useState<string>(initial?.duration ? String(initial.duration) : "1");
@@ -75,6 +76,8 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
 
 
     const API_URL = `${BASE_URL}/api`;
+
+    // calculate profit/loss - removed unused function
 
     useEffect(() => {
         // If initial changes after mount, populate fields
@@ -92,6 +95,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
             setVendorName(initial.vendorName || "");
             setVendorServiceCode(initial.vendorServiceCode || initial.vendorProductCode || "");
             setServiceImage(initial.serviceImage || initial.productImage || initial.image || "");
+            // Removed unused setServiceImageName call
             setRemark(initial.remark || initial.note || "");
             setDuration(initial.duration ? String(initial.duration) : "1");
             setError(null);
@@ -218,6 +222,9 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
         }
     };
 
+    // File handling removed - unused
+
+    // File handling functions removed - unused
 
     const handleCancel = () => {
         onClose?.();

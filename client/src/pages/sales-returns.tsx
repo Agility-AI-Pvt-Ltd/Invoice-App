@@ -78,9 +78,9 @@ export default function SalesReturns() {
     try {
       const searchParam = params.search ? `&search=${encodeURIComponent(params.search)}` : '';
       const url = `${BASE_URL}/api/sales/returns?page=${page}&limit=${limit}${searchParam}`;
-
+      
       console.log("🔗 Fetching sales returns from URL:", url);
-
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: buildAuthHeaders(token),
@@ -94,25 +94,25 @@ export default function SalesReturns() {
 
       const result = await response.json();
       console.log("📋 Raw API result:", result);
-
+      
       let data = [];
-      let pagination = {};
-
+      // let pagination = {}; // Removed unused variable
+      
       if (result.success && result.data) {
         if (Array.isArray(result.data)) {
           data = result.data;
         } else if (result.data.data && Array.isArray(result.data.data)) {
           data = result.data.data;
-          pagination = result.data.pagination || {};
+          // pagination = result.data.pagination || {}; // Removed unused assignment
         }
       }
 
       return {
         data: data,
         pagination: {
-          totalPages: (pagination as any).totalPages || Math.ceil(((pagination as any).totalItems || data.length) / limit),
-          totalItems: (pagination as any).totalItems || data.length,
-          currentPage: (pagination as any).currentPage || page
+          totalPages: Math.ceil(data.length / limit),
+          totalItems: data.length,
+          currentPage: page
         }
       };
     } catch (error) {
@@ -183,9 +183,9 @@ export default function SalesReturns() {
     try {
       setLoading(true);
       const token = Cookies.get("authToken");
-
+      
       console.log("🔄 Fetching sales returns...", { currentPage, searchTerm, token: !!token });
-
+      
       const response = await apiGetSalesReturns(token, currentPage, 10, {
         search: searchTerm || undefined,
       });
@@ -197,13 +197,13 @@ export default function SalesReturns() {
 
       console.log("📋 Final mapped sales returns:", data);
       setSalesReturns(data);
-
+      
       setPagination({
         currentPage: responsePage || currentPage,
         totalPages: totalPages || 1,
         totalItems: totalItems || data.length,
       });
-
+      
     } catch (error: unknown) {
       console.error("❌ Error fetching sales returns:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -225,7 +225,7 @@ export default function SalesReturns() {
     const taxableAmount = formData.rate * formData.qty;
     const totalTax = formData.igst + formData.cgst + formData.sgst;
     const total = taxableAmount + totalTax;
-
+    
     setFormData(prev => ({
       ...prev,
       taxable: taxableAmount,
@@ -258,7 +258,7 @@ export default function SalesReturns() {
         console.log("➕ Creating new sales return with data:", formData);
         const newReturn = await apiCreateSalesReturn(token, formData);
         console.log("✅ Sales return created successfully:", newReturn);
-
+        
         toast({
           title: "Success",
           description: "Sales return added successfully!",
@@ -285,7 +285,7 @@ export default function SalesReturns() {
       });
       setEditingReturn(null);
       setShowAddForm(false);
-
+      
       // Add a small delay to ensure the backend has processed the request
       setTimeout(() => {
         console.log("⏰ Fetching sales returns after delay...");

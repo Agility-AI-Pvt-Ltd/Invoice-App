@@ -82,7 +82,7 @@ export default function TeamManagement() {
   // const [isImporting, setIsImporting] = useState(false);
   //@ts-ignore
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-
+  
   // Debug: Log when teamMembers state changes
   console.log("🎯 Component render - teamMembers.length:", teamMembers.length);
   console.log("🎯 Component render - teamMembers:", teamMembers);
@@ -129,9 +129,9 @@ export default function TeamManagement() {
       // Use direct fetch to ensure consistency with create/update/delete operations
       const searchParam = params.search ? `&search=${encodeURIComponent(params.search)}` : '';
       const url = `${BASE_URL}/api/team-members?page=${page}&limit=${limit}${searchParam}`;
-
+      
       console.log("🔗 Fetching from URL:", url);
-
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: buildAuthHeaders(token),
@@ -147,15 +147,15 @@ export default function TeamManagement() {
       console.log("📋 Raw API result:", result);
       console.log("📋 API result.data:", result.data);
       console.log("📋 API result.data type:", typeof result.data);
-
+      
       // Handle the API response structure: {success: true, message: '...', data: {...}}
-      let data: any[] = [];
-      let pagination: { totalPages?: number; totalItems?: number; currentPage?: number } = {};
-
+      let data = [];
+      let pagination = {};
+      
       if (result.success && result.data) {
         console.log("📋 Processing successful API response");
         console.log("📋 result.data contents:", result.data);
-
+        
         // Check if result.data has team members array
         if (Array.isArray(result.data)) {
           data = result.data;
@@ -179,7 +179,7 @@ export default function TeamManagement() {
             }
           }
         }
-
+        
         // Get pagination if it exists
         pagination = result.data.pagination || result.pagination || {};
       } else {
@@ -187,22 +187,21 @@ export default function TeamManagement() {
         console.log("📋 result.success:", result.success);
         console.log("📋 result.data exists:", !!result.data);
       }
-
+      
       console.log("📋 Final extracted data:", data);
       console.log("📋 Final extracted pagination:", pagination);
 
       return {
         data: data,
         pagination: {
-          totalPages: pagination.totalPages || Math.ceil((pagination.totalItems || data.length) / limit),
-          totalItems: pagination.totalItems || data.length,
-          currentPage: pagination.currentPage || page,
-        },
+          totalPages: Math.ceil(data.length / limit),
+          totalItems: data.length,
+          currentPage: page
+        }
       };
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('❌ Error fetching team members:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to fetch team members: ${message}`);
+      throw new Error(`Failed to fetch team members: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -254,7 +253,7 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -265,11 +264,11 @@ export default function TeamManagement() {
     res:
       | Response
       | {
-        status?: number;
-        json?: () => Promise<any>;
-        data?: any;
-        statusText?: string;
-      },
+          status?: number;
+          json?: () => Promise<any>;
+          data?: any;
+          statusText?: string;
+        },
   ) => {
     // Parse message if possible
     let msg = "Session expired. Please log in again.";
@@ -287,7 +286,7 @@ export default function TeamManagement() {
             // @ts-ignore
             const text = await (res as Response).text();
             if (text) msg = text;
-          } catch (_) { }
+          } catch (_) {}
         }
       } else if ((res as any).data) {
         // axios error shape
@@ -330,7 +329,7 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -348,7 +347,7 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -376,7 +375,7 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -418,7 +417,7 @@ export default function TeamManagement() {
       try {
         const body = await res.json();
         errText = body.detail || body.message || JSON.stringify(body);
-      } catch (e) { }
+      } catch (e) {}
       throw new Error(errText);
     }
 
@@ -459,17 +458,49 @@ export default function TeamManagement() {
         search: searchTerm || undefined,
       });
 
-      // Use the normalized return shape from apiGetTeamMembers
-      const data: any[] = Array.isArray(response?.data) ? response.data : [];
-      const page = response?.pagination?.currentPage || currentPage;
-      const totalPages = response?.pagination?.totalPages || 1;
-      const total = response?.pagination?.totalItems || data.length;
+      // Normalize possible response shapes:
+      let data: any[] = [];
+      let page = currentPage;
+      let totalPages = 1;
+      let total = 0;
+
+      if (Array.isArray(response)) {
+        data = response;
+      } else if ((response as any).success && Array.isArray((response as any).data)) {
+        data = (response as any).data;
+        const p = (response as any).pagination || (response as any).page || {};
+        page = p.currentPage || (response as any).page || currentPage;
+        totalPages =
+          ((response as any).pagination && (response as any).pagination.totalPages) ||
+          (response as any).totalPages ||
+          1;
+        total =
+          ((response as any).pagination && (response as any).pagination.totalItems) ||
+          (response as any).total ||
+          data.length;
+      } else if ((response as any).data && Array.isArray((response as any).data)) {
+        data = (response as any).data;
+        page = (response as any).page || (response as any).pagination?.currentPage || currentPage;
+        totalPages =
+          (response as any).totalPages || (response as any).pagination?.totalPages || 1;
+        total =
+          (response as any).total || (response as any).pagination?.totalItems || data.length;
+      } else if ((response as any).members && Array.isArray((response as any).members)) {
+        data = (response as any).members;
+      } else {
+        for (const k of Object.keys(response)) {
+          if (Array.isArray((response as any)[k])) {
+            data = (response as any)[k];
+            break;
+          }
+        }
+      }
 
       console.log("🔄 Starting to map", data.length, "team members");
-
+      
       const mapped = data.map((m: any, index: number) => {
         console.log(`🔄 Mapping member ${index + 1}:`, m);
-
+        
         const rawRole = (m.role || "").toString();
         const roleCapitalized = rawRole
           ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1)
@@ -482,7 +513,7 @@ export default function TeamManagement() {
           (m.joiningDate
             ? new Date(m.joiningDate).toISOString().split("T")[0]
             : null);
-
+            
         const mappedMember = {
           id: m.id || m._id || m.memberId || String(m._id || m.id || ""),
           name: m.name || m.fullName || "",
@@ -494,26 +525,26 @@ export default function TeamManagement() {
           status,
           avatar: m.avatar || m.profilePicture || null,
         } as TeamMember;
-
+        
         console.log(`✅ Mapped member ${index + 1}:`, mappedMember);
         return mappedMember;
       });
-
+      
       console.log("📋 All mapped team members:", mapped);
 
       console.log("📊 Setting team members state with", mapped.length, "members");
       setTeamMembers(mapped);
       console.log(mapped, "TEAM");
-
+      
       const paginationData = {
         currentPage: page,
         totalPages: totalPages || 1,
         totalItems: total || mapped.length,
       };
-
+      
       console.log("📊 Setting pagination state:", paginationData);
       setPagination(paginationData);
-
+      
       // Add a small delay to check if state was actually updated
       setTimeout(() => {
         console.log("🔍 State check - Current teamMembers length:", teamMembers.length);
@@ -1051,81 +1082,81 @@ export default function TeamManagement() {
                           return teamMembers.map((member, index) => {
                             console.log(`🎯 Rendering member ${index + 1}:`, member.name);
                             return (
-                              <TableRow
-                                key={member.id}
-                                className="border-b border-slate-100 hover:bg-slate-50"
+                          <TableRow
+                            key={member.id}
+                            className="border-b border-slate-100 hover:bg-slate-50"
+                          >
+                            <TableCell className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage
+                                    src={member.avatar}
+                                    alt={member.name}
+                                  />
+                                  <AvatarFallback className="bg-indigo-100 font-semibold text-indigo-600">
+                                    {member.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-slate-800">
+                                  {member.name}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-6 py-4 text-slate-600">
+                              {member.role}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 sm:table-cell">
+                              {member.email}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 md:table-cell">
+                              {member.phone}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 lg:table-cell">
+                              {member.dateJoined}
+                            </TableCell>
+                            <TableCell className="hidden px-6 py-4 text-slate-600 lg:table-cell">
+                              {member.lastActive}
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <Badge
+                                variant={
+                                  member.status === "Active"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                                className={
+                                  member.status === "Active"
+                                    ? "border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                    : "border-red-200 bg-red-100 text-red-700 hover:bg-red-100"
+                                }
                               >
-                                <TableCell className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <Avatar className="h-10 w-10">
-                                      <AvatarImage
-                                        src={member.avatar}
-                                        alt={member.name}
-                                      />
-                                      <AvatarFallback className="bg-indigo-100 font-semibold text-indigo-600">
-                                        {member.name
-                                          .split(" ")
-                                          .map((n) => n[0])
-                                          .join("")}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-medium text-slate-800">
-                                      {member.name}
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="px-6 py-4 text-slate-600">
-                                  {member.role}
-                                </TableCell>
-                                <TableCell className="hidden px-6 py-4 text-slate-600 sm:table-cell">
-                                  {member.email}
-                                </TableCell>
-                                <TableCell className="hidden px-6 py-4 text-slate-600 md:table-cell">
-                                  {member.phone}
-                                </TableCell>
-                                <TableCell className="hidden px-6 py-4 text-slate-600 lg:table-cell">
-                                  {member.dateJoined}
-                                </TableCell>
-                                <TableCell className="hidden px-6 py-4 text-slate-600 lg:table-cell">
-                                  {member.lastActive}
-                                </TableCell>
-                                <TableCell className="px-6 py-4">
-                                  <Badge
-                                    variant={
-                                      member.status === "Active"
-                                        ? "secondary"
-                                        : "destructive"
-                                    }
-                                    className={
-                                      member.status === "Active"
-                                        ? "border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                        : "border-red-200 bg-red-100 text-red-700 hover:bg-red-100"
-                                    }
-                                  >
-                                    {member.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="px-6 py-4">
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
-                                      onClick={() => handleEdit(member)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
-                                      onClick={() => handleDelete(member.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
+                                {member.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                                  onClick={() => handleEdit(member)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                                  onClick={() => handleDelete(member.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                             );
                           });
                         })()

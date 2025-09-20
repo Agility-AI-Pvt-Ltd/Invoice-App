@@ -10,7 +10,6 @@ import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import api from "@/lib/api";
 
 
-import { getApiBaseUrl } from "@/lib/api-config";
 
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
@@ -31,7 +30,6 @@ const steps = [
 ];
 
 
-const API_BASE = getApiBaseUrl();
 
 
 /* ------------------ Helpers ------------------ */

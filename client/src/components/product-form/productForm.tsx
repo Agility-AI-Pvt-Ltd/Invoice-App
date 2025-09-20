@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { BASE_URL } from "@/lib/api-config";
 
 
+// added Select imports (uses your existing UI Select component)
+
 interface FormSectionProps {
   title: string;
   children: React.ReactNode;
@@ -58,7 +60,24 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [taxRate, setTaxRate] = useState<string | number>(initial?.taxRate ?? "");
   const [quantity, setQuantity] = useState<string | number>(initial?.quantity ?? initial?.inStock ?? "");
 
+
   // Removed unused state variables to clean up the code
+  // Stock/payment-related (UI labels were payment oriented; we keep them but also track general values)
+  const [paymentStatus, setPaymentStatus] = useState<string>(initial?.paymentStatus || "Unpaid");
+  const [amountReceived, setAmountReceived] = useState<string | number>(initial?.amountReceived ?? "");
+  const [paymentMethod, setPaymentMethod] = useState<string>(initial?.paymentMethod || "Online");
+  const [dueAmount, setDueAmount] = useState<string | number>(initial?.dueAmount ?? "");
+
+  // Supplier/vendor
+  const [vendorName, setVendorName] = useState<string>(initial?.vendorName || "");
+  const [vendorProductCode, setVendorProductCode] = useState<string>(initial?.vendorProductCode || "");
+
+  // Images/attachments
+  // productImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
+  const [productImage, setProductImage] = useState<string>(initial?.productImage || "");
+  // Removed unused variables
+
+  const [remark, setRemark] = useState<string>(initial?.remark || "");
 
   // UI state
   const [loading, setLoading] = useState<boolean>(false);
@@ -69,30 +88,7 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   console.log("🔍 BASE_URL from config:", BASE_URL);
 
   const API_URL = `${getApiBaseUrl()}/api`;
-  // calculate profit/loss
-  const calculateProfitLoss = () => {
-    const pp = Number(purchasePrice) || 0;
-    const sp = Number(sellingPrice) || 0;
-    const disc = Number(discount) || 0;
-
-    // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
-    let effectiveSP = sp;
-    if (disc > 0) {
-      // assuming % discount for now
-      effectiveSP = sp - (sp * disc) / 100;
-    }
-
-    const diff = effectiveSP - pp;
-
-    return {
-      effectiveSP,
-      diff,
-      type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
-    };
-  };
-
-  const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
-
+  // calculate profit/loss - removed unused function
 
 
 
@@ -110,6 +106,15 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       setDiscount(initial.discount ?? 0);
       setTaxRate(initial.taxRate ?? "");
       setQuantity(initial.quantity ?? initial.inStock ?? "");
+      setPaymentStatus(initial.paymentStatus || "Unpaid");
+      setAmountReceived(initial.amountReceived ?? "");
+      setPaymentMethod(initial.paymentMethod || "Online");
+      setDueAmount(initial.dueAmount ?? "");
+      setVendorName(initial.vendorName || "");
+      setVendorProductCode(initial.vendorProductCode || "");
+      setProductImage(initial.productImage || initial.image || "");
+      // Removed unused setProductImageName call
+      setRemark(initial.remark || initial.note || "");
       setError(null);
     }
   }, [initial]);
@@ -250,6 +255,9 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     }
   };
 
+  // File handling removed - unused
+
+  // File handling functions removed - unused
 
   const handleCancel = () => {
     onClose?.();
