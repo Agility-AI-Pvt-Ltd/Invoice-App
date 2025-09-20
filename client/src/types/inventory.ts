@@ -7,7 +7,6 @@ export interface InventoryItem {
     discount: number
     totalValue: number
     status: "In Stock" | "Out of Stock" | "Low in Stock"
-    image: string
 }
 
 export interface PaginatedResponse<T> {

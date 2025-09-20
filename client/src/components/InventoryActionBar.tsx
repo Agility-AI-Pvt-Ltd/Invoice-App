@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, Upload, Filter } from "lucide-react"
-import { InventoryFilterMenu } from "./InventoryFilterMenu"
 import { exportToCSV } from "@/lib/helper/exportToCSV"
 import { exportToExcel } from "@/lib/helper/exportToExcel"
 import { exportToPDF } from "@/lib/helper/exportToPDF"
@@ -11,14 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 export function InventoryActionsBar({
-    filters,
-    setFilters,
-    setCurrentPage,
     data,
 }: {
-    filters: any
-    setFilters: React.Dispatch<React.SetStateAction<any>>
-    setCurrentPage: (page: number) => void
     data: any
 }) {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -28,13 +21,7 @@ export function InventoryActionsBar({
         <div className="flex gap-2 items-center">
             {/* Desktop */}
             <div className="hidden sm:flex gap-2">
-                <InventoryFilterMenu
-                    selectedStatus={filters.status || ""}
-                    onStatusChange={(status) => {
-                        setFilters((prev:any) => ({ ...prev, status: status || undefined }))
-                        setCurrentPage(1)
-                    }}
-                />
+
                 <DropdownMenu>
                     <DropdownMenuTrigger>
                         <Button
@@ -56,18 +43,6 @@ export function InventoryActionsBar({
                         <DropdownMenuItem className="hover:bg-gray-100 cursor-pointer text-black" onClick={() => exportToPDF(data?.data || [])}>Export as PDF</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="transition-colors duration-200 ease-in-out 
-                        bg-transparent text-slate-700 dark:text-slate-300 
-                        hover:bg-slate-200 dark:hover:bg-slate-700 
-                        hover:text-slate-900 dark:hover:text-white 
-                        focus:ring-2 focus:ring-slate-400 focus:outline-none"
-                >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import
-                </Button>
             </div>
 
 
@@ -79,16 +54,6 @@ export function InventoryActionsBar({
                             <Filter className="h-5 w-5" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-48">
-                        <InventoryFilterMenu
-                            selectedStatus={filters.status || ""}
-                            onStatusChange={(status) => {
-                                setFilters((prev: any) => ({ ...prev, status: status || undefined }));
-                                setCurrentPage(1);
-                                setIsPopoverOpen(false);
-                            }}
-                        />
-                    </PopoverContent>
                 </Popover>
 
                 {/* Export Icon Button */}
