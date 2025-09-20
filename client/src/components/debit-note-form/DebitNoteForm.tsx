@@ -17,8 +17,9 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useProfile } from "@/contexts/ProfileContext";
 import { searchInventory } from "@/services/api/lookup";
+import { getApiBaseUrl } from "@/lib/api-config";
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+const API_BASE = getApiBaseUrl();
 
 interface DebitNoteFormProps {
   onClose: () => void;

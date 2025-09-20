@@ -9,6 +9,10 @@ import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import api from "@/lib/api";
 
+
+import { getApiBaseUrl } from "@/lib/api-config";
+
+
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
 
@@ -25,6 +29,9 @@ const steps = [
   { label: "Item Details", icon: BanknoteX },
   { label: "Sub Total", icon: CurlyBraces },
 ];
+
+
+const API_BASE = getApiBaseUrl();
 
 
 /* ------------------ Helpers ------------------ */
