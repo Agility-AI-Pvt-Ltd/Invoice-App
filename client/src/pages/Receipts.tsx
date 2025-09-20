@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/card";
@@ -33,6 +33,7 @@ import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
 import api from "@/lib/api";
+import { searchCustomers } from "@/services/api/lookup";
 // Removed sales returns imports
 
 type Tab = "invoices" | "credit-notes" | "debit-notes";
@@ -91,6 +92,12 @@ export default function Receipts() {
   const [editingInvoice, setEditingInvoice] = useState<any>(null);
   const [editingCreditNote, setEditingCreditNote] = useState<any>(null);
   const [editingDebitNote, setEditingDebitNote] = useState<any>(null);
+
+  // Customer search state
+  const [customerSearchResults, setCustomerSearchResults] = useState<any[]>([]);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
 
   const { toast } = useToast();
   const location = useLocation();
@@ -161,6 +168,62 @@ export default function Receipts() {
 
 
 
+  // Fetch invoices for specific customer
+  const fetchInvoicesForCustomer = useCallback(async (customer: any) => {
+    console.log("🔄 fetchInvoicesForCustomer called for:", customer);
+    try {
+      setLoading(true);
+      const customerName = customer.name || customer.customerName || customer.businessName || "";
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        perPage: String(pagination.perPage),
+        customer: customerName, // Add customer filter
+        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
+      });
+
+      console.log("Fetching invoices for customer with params:", params.toString());
+      const res = await api.get(`/api/invoices?${params.toString()}`);
+      const data = res.data;
+      console.log("Customer invoices API response:", data);
+
+      const arr = Array.isArray(data) ? data : data.data || data.invoices || [];
+      const mapped = arr.map((invoice: any) => ({
+        id: invoice._id || invoice.id || String(Math.random()),
+        invoiceNumber: invoice.invoiceNumber || invoice.number || "INV-2024/001",
+        customerName: invoice.billTo?.name || invoice.customerName || invoice.clientName || "Customer Name",
+        status: invoice.paymentStatus || invoice.status || "Pending",
+        date: formatDate(invoice.dateOfSale || invoice.date || invoice.createdAt || ""),
+        dueDate: formatDate(invoice.dueDate || ""),
+        amount: invoice.totalAmount || invoice.amount || 2000,
+      }));
+
+      // Update pagination state
+      const pg = data.pagination || {};
+      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
+      const serverTotalPages = pg.totalPages || data.totalPages || 1;
+      const serverTotalItems = pg.total || data.total || 0;
+      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+
+      setPagination({
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+
+      if (serverCurrentPage !== currentPage) {
+        setCurrentPage(serverCurrentPage);
+      }
+
+      setInvoices(mapped);
+    } catch (err) {
+      console.error("Error fetching customer invoices:", err);
+      setInvoices([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pagination.perPage, selectedDate]);
+
   // Fetch invoices data
   const fetchInvoices = useCallback(async () => {
     console.log("🔄 fetchInvoices called with currentPage:", currentPage, "activeTab:", activeTab);
@@ -198,7 +261,7 @@ export default function Receipts() {
       const serverTotalPages = pg.totalPages || data.totalPages || 1;
       const serverTotalItems = pg.total || data.total || 0;
       const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-      
+
       console.log("Full API response:", data);
       console.log("Pagination data:", pg);
       console.log("Server pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
@@ -208,19 +271,19 @@ export default function Receipts() {
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       setPagination({
         currentPage: serverCurrentPage,
         totalPages: serverTotalPages,
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       // Update current page if server returned different page
       if (serverCurrentPage !== currentPage) {
         setCurrentPage(serverCurrentPage);
       }
-      
+
       setInvoices(mapped);
     } catch (err) {
       console.error("Error fetching invoices:", err);
@@ -249,6 +312,63 @@ export default function Receipts() {
       setLoading(false);
     }
   }, [currentPage, pagination.perPage, searchTerm, selectedDate, toast]);
+
+  // Fetch credit notes for specific customer
+  const fetchCreditNotesForCustomer = useCallback(async (customer: any) => {
+    console.log("🔄 fetchCreditNotesForCustomer called for:", customer);
+    try {
+      setLoading(true);
+      const customerName = customer.name || customer.customerName || customer.businessName || "";
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        perPage: String(pagination.perPage),
+        customer: customerName, // Add customer filter
+        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
+      });
+
+      console.log("Fetching credit notes for customer with params:", params.toString());
+      const res = await api.get(`/api/credit-notes?${params.toString()}`);
+      const data = res.data;
+      console.log("Customer credit notes API response:", data);
+
+      const arr = Array.isArray(data) ? data : data.data || data.notes || [];
+      const mapped = arr.map((n: any) => ({
+        id: n._id || n.id || n.creditNoteId || String(n._id || n.id || ""),
+        noteNo: n.creditNoteNumber || n.noteNo || n.number || "200",
+        invoiceNo: n.againstInvoiceNumber || n.invoiceNo || "IN112030",
+        customerName: n.customerName || n.bussinessName || n.clientName || "Kevin Motors",
+        reason: n.reason || n.noteReason || "Returned Goods",
+        dateIssued: formatDate(n.creditNoteDate || n.dateIssued || n.date || n.createdAt || ""),
+        amount: n.total ?? n.amount ?? 25000,
+        status: n.refund === true ? "Refunded" : n.status || "Open",
+      }));
+
+      // Update pagination state
+      const pg = data.pagination || {};
+      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
+      const serverTotalPages = pg.totalPages || data.totalPages || 1;
+      const serverTotalItems = pg.total || data.total || 0;
+      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+
+      setPagination({
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+
+      if (serverCurrentPage !== currentPage) {
+        setCurrentPage(serverCurrentPage);
+      }
+
+      setCreditNotes(mapped);
+    } catch (err) {
+      console.error("Error fetching customer credit notes:", err);
+      setCreditNotes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pagination.perPage, selectedDate]);
 
   // Fetch credit notes
   const fetchCreditNotes = useCallback(async () => {
@@ -284,22 +404,22 @@ export default function Receipts() {
       const serverTotalPages = pg.totalPages || data.totalPages || 1;
       const serverTotalItems = pg.total || data.total || 0;
       const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-      
+
       console.log("Credit notes API response:", data);
       console.log("Credit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
-      
+
       setPagination({
         currentPage: serverCurrentPage,
         totalPages: serverTotalPages,
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       // Update current page if server returned different page
       if (serverCurrentPage !== currentPage) {
         setCurrentPage(serverCurrentPage);
       }
-      
+
       setCreditNotes(mapped);
     } catch (e) {
       console.error(e);
@@ -341,6 +461,63 @@ export default function Receipts() {
     }
   }, [currentPage, pagination.perPage, searchTerm, selectedDate]);
 
+  // Fetch debit notes for specific customer
+  const fetchDebitNotesForCustomer = useCallback(async (customer: any) => {
+    console.log("🔄 fetchDebitNotesForCustomer called for:", customer);
+    try {
+      setLoading(true);
+      const customerName = customer.name || customer.customerName || customer.businessName || "";
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        perPage: String(pagination.perPage),
+        customer: customerName, // Add customer filter
+        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
+      });
+
+      console.log("Fetching debit notes for customer with params:", params.toString());
+      const res = await api.get(`/api/debit-notes?${params.toString()}`);
+      const data = res.data;
+      console.log("Customer debit notes API response:", data);
+
+      const arr = Array.isArray(data) ? data : data.data || data.notes || [];
+      const mapped = arr.map((n: any) => ({
+        id: n._id || n.id || n.debitNoteId || String(n._id || n.id || ""),
+        noteNo: n.debitNoteNumber || n.noteNo || n.number || "200",
+        invoiceNo: n.againstInvoiceNumber || n.invoiceNo || "IN112030",
+        vendorName: n.vendorName || n.vendor || n.supplierName || "Kevin Motors",
+        reason: n.reason || n.noteReason || "Damaged Goods",
+        dateIssued: formatDate(n.debitNoteDate || n.dateIssued || n.date || n.createdAt || ""),
+        amount: n.total ?? n.amount ?? 25000,
+        status: n.status || "Open",
+      }));
+
+      // Update pagination state
+      const pg = data.pagination || {};
+      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
+      const serverTotalPages = pg.totalPages || data.totalPages || 1;
+      const serverTotalItems = pg.total || data.total || 0;
+      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+
+      setPagination({
+        currentPage: serverCurrentPage,
+        totalPages: serverTotalPages,
+        totalItems: serverTotalItems,
+        perPage: serverPerPage,
+      });
+
+      if (serverCurrentPage !== currentPage) {
+        setCurrentPage(serverCurrentPage);
+      }
+
+      setDebitNotes(mapped);
+    } catch (err) {
+      console.error("Error fetching customer debit notes:", err);
+      setDebitNotes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pagination.perPage, selectedDate]);
+
   // Fetch debit notes
   const fetchDebitNotes = useCallback(async () => {
     try {
@@ -368,7 +545,7 @@ export default function Receipts() {
         amount: n.total ?? n.amount ?? 25000,
         status: n.status || "Open",
       }));
-      
+
       // Update pagination state with server response
       // Handle both pagination object and root-level pagination properties
       const pg = data.pagination || {};
@@ -376,22 +553,22 @@ export default function Receipts() {
       const serverTotalPages = pg.totalPages || data.totalPages || 1;
       const serverTotalItems = pg.total || data.total || 0;
       const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-      
+
       console.log("Debit notes API response:", data);
       console.log("Debit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
-      
+
       setPagination({
         currentPage: serverCurrentPage,
         totalPages: serverTotalPages,
         totalItems: serverTotalItems,
         perPage: serverPerPage,
       });
-      
+
       // Update current page if server returned different page
       if (serverCurrentPage !== currentPage) {
         setCurrentPage(serverCurrentPage);
       }
-      
+
       setDebitNotes(mapped);
     } catch (e) {
       console.error(e);
@@ -445,39 +622,39 @@ export default function Receipts() {
 
   // Removed sales returns fetch function
   // Fetch sales returns
-  const fetchSalesReturnsData = useCallback(async () => {
-    try {
-      setLoading(true);
-      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
-      const filters = {
-        ...(searchTerm && { search: searchTerm }),
-      };
-      
-      const data = await fetchSalesReturns(filters);
-      const paginationData = {
-        currentPage: currentPage,
-        totalPages: Math.ceil(data.length / pagination.perPage),
-        totalItems: data.length
-      };
-      
-      console.log("Sales returns API response:", data);
-      console.log("Sales returns pagination:", paginationData);
-      
-      setPagination({
-        currentPage: paginationData.currentPage || currentPage,
-        totalPages: paginationData.totalPages || 1,
-        totalItems: paginationData.totalItems || 0,
-        perPage: pagination.perPage,
-      });
-      
-      setSalesReturns(data || []);
-    } catch (e) {
-      console.error("Error fetching sales returns:", e);
-      setSalesReturns([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, pagination.perPage, searchTerm, selectedDate]);
+  // const fetchSalesReturnsData = useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     // const token = Cookies.get("authToken") || undefined; // Removed unused variable
+  //     const filters = {
+  //       ...(searchTerm && { search: searchTerm }),
+  //     };
+
+  //     const data = await fetchSalesReturns(filters);
+  //     const paginationData = {
+  //       currentPage: currentPage,
+  //       totalPages: Math.ceil(data.length / pagination.perPage),
+  //       totalItems: data.length
+  //     };
+
+  //     console.log("Sales returns API response:", data);
+  //     console.log("Sales returns pagination:", paginationData);
+
+  //     setPagination({
+  //       currentPage: paginationData.currentPage || currentPage,
+  //       totalPages: paginationData.totalPages || 1,
+  //       totalItems: paginationData.totalItems || 0,
+  //       perPage: pagination.perPage,
+  //     });
+
+  //     setSalesReturns(data || []);
+  //   } catch (e) {
+  //     console.error("Error fetching sales returns:", e);
+  //     setSalesReturns([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, [currentPage, pagination.perPage, searchTerm, selectedDate]);
 
   // Format date helper
   const formatDate = (d: any) => {
@@ -578,10 +755,95 @@ export default function Receipts() {
     return <Badge variant="secondary">{status}</Badge>;
   };
 
-  // Handle search
+  // Customer search function using lookup.ts
+  const performCustomerSearch = async (searchValue: string) => {
+    console.log("🔍 performCustomerSearch called with:", searchValue);
+
+    if (!searchValue || searchValue.length < 2) {
+      console.log("❌ Search value too short, clearing results");
+      setCustomerSearchResults([]);
+      setShowCustomerSuggestions(false);
+      return;
+    }
+
+    try {
+      console.log("🔄 Starting customer search for:", searchValue);
+      setCustomerSearchLoading(true);
+
+      // Use the searchCustomers function from lookup.ts
+      const customers = await searchCustomers(searchValue);
+      console.log("✅ Customer search results:", customers);
+
+      setCustomerSearchResults(customers);
+      setShowCustomerSuggestions(true);
+    } catch (error: any) {
+      console.error("❌ Error searching customers:", error);
+      setCustomerSearchResults([]);
+      setShowCustomerSuggestions(false);
+    } finally {
+      setCustomerSearchLoading(false);
+    }
+  };
+
+  // Debounced search function using useRef to store timeout
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedSearchCustomers = useCallback((value: string) => {
+    console.log("⏰ Debounced search triggered with:", value);
+
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout
+    searchTimeoutRef.current = setTimeout(() => {
+      console.log("⏰ Debounce timeout executed for:", value);
+      if (value.length >= 2) {
+        performCustomerSearch(value);
+      } else {
+        setCustomerSearchResults([]);
+        setShowCustomerSuggestions(false);
+      }
+    }, 300); // 300ms delay
+  }, []);
+
+  // Handle search with debouncing
   const handleSearch = (value: string) => {
+    console.log("🔍 handleSearch called with:", value);
     setSearchTerm(value);
     setCurrentPage(1);
+
+    // Debounced customer search
+    debouncedSearchCustomers(value);
+  };
+
+  // Handle customer selection
+  const handleCustomerSelect = (customer: any) => {
+    const customerName = customer.name || customer.customerName || customer.businessName || "";
+    console.log("🎯 Customer selected:", customer);
+
+    setSearchTerm(customerName);
+    setSelectedCustomer(customer);
+    setShowCustomerSuggestions(false);
+    setCustomerSearchResults([]);
+
+    // Reset to page 1 when filtering
+    setCurrentPage(1);
+
+    // Fetch fresh data for the selected customer
+    if (activeTab === "invoices") {
+      fetchInvoicesForCustomer(customer);
+    } else if (activeTab === "credit-notes") {
+      fetchCreditNotesForCustomer(customer);
+    } else if (activeTab === "debit-notes") {
+      fetchDebitNotesForCustomer(customer);
+    }
+
+    toast({
+      title: "Customer Selected",
+      description: `Loading ${activeTab} for ${customerName}`,
+    });
   };
 
   // Get data based on active tab (server-side filtering)
@@ -597,7 +859,7 @@ export default function Receipts() {
   };
 
   const filteredData = getFilteredData();
-  
+
   // Use server-side pagination data
   const currentData = filteredData;
 
@@ -608,12 +870,12 @@ export default function Receipts() {
 
   // Debug pagination state
   useEffect(() => {
-    console.log("📊 Pagination state changed:", { 
-      currentPage, 
-      totalPages: pagination.totalPages, 
+    console.log("📊 Pagination state changed:", {
+      currentPage,
+      totalPages: pagination.totalPages,
       totalItems: pagination.totalItems,
       activeTab,
-      filteredDataLength: filteredData.length 
+      filteredDataLength: filteredData.length
     });
   }, [currentPage, pagination.totalPages, pagination.totalItems, activeTab, filteredData.length]);
 
@@ -642,9 +904,6 @@ export default function Receipts() {
         break;
       case "debit-notes":
         endpoint = `/api/debit-notes/import`;
-        break;
-      case "sales-returns":
-        endpoint = `/api/sales/returns/import`;
         break;
       default:
         throw new Error("Invalid type for import");
@@ -695,9 +954,6 @@ export default function Receipts() {
         break;
       case "debit-notes":
         endpoint = `/api/debit-notes/export?format=${format}`;
-        break;
-      case "sales-returns":
-        endpoint = `/api/sales/returns/export?format=${format}`;
         break;
       default:
         throw new Error("Invalid type for export");
@@ -1366,92 +1622,6 @@ export default function Receipts() {
         const response = await api.get(`/api/debit-notes/${item.id}`);
         completeItemData = response.data;
         console.log("✅ Complete debit note data received:", completeItemData);
-        // Debit Note PDF
-        doc.setFontSize(16);
-        doc.text("Debit Note", 14, 20);
-
-        doc.setFontSize(12);
-        doc.text(`Debit Note Number: ${item.noteNo}`, 14, 35);
-        doc.text(`Invoice Number: ${item.invoiceNo}`, 14, 45);
-        doc.text(`Vendor: ${item.vendorName}`, 14, 55);
-        doc.text(`Date Issued: ${item.dateIssued}`, 14, 65);
-        doc.text(`Status: ${item.status}`, 14, 75);
-        doc.text(`Reason: ${item.reason}`, 14, 85);
-
-        autoTable(doc, {
-          startY: 100,
-          head: [["Description", "Amount"]],
-          body: [["Total Amount", `₹${item.amount}`]],
-        });
-
-        doc.save(`${item.noteNo}.pdf`);
-      } else if (activeTab === "sales-returns") {
-        // Sales Return PDF with all required fields
-        doc.setFontSize(16);
-        doc.text("Sales Return", 14, 20);
-
-        // Company/Header info
-        doc.setFontSize(12);
-        let yPos = 35;
-        
-        // Party and Bill Details
-        doc.text(`Party Name: ${item.partyName || ""}`, 14, yPos);
-        yPos += 10;
-        doc.text(`Bill No: ${item.billNo || ""}`, 14, yPos);
-        yPos += 10;
-        doc.text(`Date: ${item.date ? new Date(item.date).toLocaleDateString() : ""}`, 14, yPos);
-        yPos += 10;
-        doc.text(`GSTIN: ${item.gstin || ""}`, 14, yPos);
-        yPos += 10;
-        doc.text(`State: ${item.state || ""}`, 14, yPos);
-        yPos += 15;
-
-        // Product/Item Details Table
-        autoTable(doc, {
-          startY: yPos,
-          head: [["Description", "HSN", "Qty", "Rate", "Taxable", "IGST", "CGST", "SGST", "Total"]],
-          body: [
-            [
-              "Sales Return Item",
-              item.hsn || "",
-              item.qty?.toString() || "0",
-              `₹${item.rate || 0}`,
-              `₹${item.taxable || 0}`,
-              `₹${item.igst || 0}`,
-              `₹${item.cgst || 0}`,
-              `₹${item.sgst || 0}`,
-              `₹${item.total || 0}`,
-            ],
-          ],
-          theme: 'grid',
-          headStyles: { fillColor: [100, 100, 100] },
-          styles: { fontSize: 9, cellPadding: 3 },
-        });
-
-        // Additional Details
-        // @ts-ignore
-        const finalY = doc.lastAutoTable.finalY + 15;
-        
-        // Tax Summary
-        doc.setFontSize(10);
-        doc.text("Tax Summary:", 14, finalY);
-        doc.text(`IGST: ₹${item.igst || 0}`, 14, finalY + 10);
-        doc.text(`CGST: ₹${item.cgst || 0}`, 14, finalY + 20);
-        doc.text(`SGST: ₹${item.sgst || 0}`, 14, finalY + 30);
-        
-        // Total Amount
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.text(`Total Amount: ₹${item.total || 0}`, 14, finalY + 45);
-        
-        // Remarks
-        if (item.remark) {
-          doc.setFont(undefined, 'normal');
-          doc.setFontSize(10);
-          doc.text(`Remarks: ${item.remark}`, 14, finalY + 60);
-        }
-
-        doc.save(`sales-return-${item.billNo || item.id}.pdf`);
       }
 
       // Console log the complete backend response data
@@ -1488,7 +1658,7 @@ export default function Receipts() {
   // Handle delete functionality
   const handleDelete = async (itemId: string | number) => {
     if (!confirm(`Are you sure you want to delete this ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : "debit note"}?`)) return;
-    
+
     try {
       const token = Cookies.get("authToken");
       if (!token) {
@@ -1719,48 +1889,34 @@ export default function Receipts() {
           <div className="border-b border-gray-200">
             <div className="flex space-x-4 px-4 sm:space-x-8 sm:px-6">
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "invoices"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "invoices"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("invoices")}
               >
                 <span className="hidden sm:inline">Invoices</span>
                 <span className="sm:hidden">Inv</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "credit-notes"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "credit-notes"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("credit-notes")}
               >
                 <span className="hidden sm:inline">Credit Note</span>
                 <span className="sm:hidden">CN</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "debit-notes"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "debit-notes"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("debit-notes")}
               >
                 <span className="hidden sm:inline">Debit Note</span>
                 <span className="sm:hidden">DN</span>
-              </button>
-              <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "sales-returns"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab("sales-returns")}
-              >
-                <span className="hidden sm:inline">Sales Returns</span>
-                <span className="sm:hidden">SR</span>
               </button>
             </div>
           </div>
@@ -1770,14 +1926,97 @@ export default function Receipts() {
             <div className="flex flex-col justify-between gap-4 sm:flex-row">
               <div className="flex flex-col gap-4 sm:flex-row">
                 {/* Search */}
-                <div className="relative">
-                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder="Search Client, Invoice ID & more..."
-                    className="w-48 pl-10 sm:w-64"
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                  />
+                <div className="relative flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      placeholder="Search by Customer Name..."
+                      className="w-48 pl-10 sm:w-64"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      onFocus={() => {
+                        if (customerSearchResults.length > 0) {
+                          setShowCustomerSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay hiding suggestions to allow clicking on them
+                        setTimeout(() => setShowCustomerSuggestions(false), 200);
+                      }}
+                    />
+
+                    {/* Customer Search Suggestions */}
+                    {showCustomerSuggestions && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {(() => {
+                          console.log("🔍 Rendering suggestions:", {
+                            showCustomerSuggestions,
+                            customerSearchLoading,
+                            customerSearchResults: customerSearchResults.length,
+                            searchTerm
+                          });
+                          return null;
+                        })()}
+                        {customerSearchLoading ? (
+                          <div className="px-4 py-2 text-sm text-gray-500 flex items-center gap-2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"></div>
+                            Searching customers...
+                          </div>
+                        ) : customerSearchResults.length > 0 ? (
+                          customerSearchResults.map((customer, index) => (
+                            <div
+                              key={customer.id || index}
+                              className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={() => handleCustomerSelect(customer)}
+                            >
+                              <div className="font-medium text-gray-900">
+                                {customer.name || customer.customerName || customer.businessName}
+                              </div>
+                              {customer.email && (
+                                <div className="text-xs text-gray-500">{customer.email}</div>
+                              )}
+                              {customer.phone && (
+                                <div className="text-xs text-gray-500">{customer.phone}</div>
+                              )}
+                            </div>
+                          ))
+                        ) : searchTerm.length >= 2 ? (
+                          <div className="px-4 py-2 text-sm text-gray-500">
+                            No customers found for "{searchTerm}"
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Clear Filter Button */}
+                  {selectedCustomer && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setSearchTerm("");
+                        setCurrentPage(1);
+                        // Refresh data without customer filter
+                        if (activeTab === "invoices") {
+                          fetchInvoices();
+                        } else if (activeTab === "credit-notes") {
+                          fetchCreditNotes();
+                        } else if (activeTab === "debit-notes") {
+                          fetchDebitNotes();
+                        }
+                        toast({
+                          title: "Filter Cleared",
+                          description: "Showing all records",
+                        });
+                      }}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
                 </div>
 
                 {/* Enhanced Date Filter */}
@@ -1861,7 +2100,7 @@ export default function Receipts() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <Button 
+                  <Button
                     className="flex items-center gap-2 bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8]"
                     onClick={activeTab === "credit-notes" ? handleCreditNoteForm : handleDebitNoteForm}
                   >
@@ -2201,10 +2440,10 @@ export default function Receipts() {
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage - 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" /> Previous
@@ -2222,10 +2461,10 @@ export default function Receipts() {
                       </Button>
                     ))}
                   </div>
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage + 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage + 1)}
                     disabled={currentPage === pagination.totalPages}
                   >
                     Next <ChevronRight className="h-4 w-4 ml-1" />
