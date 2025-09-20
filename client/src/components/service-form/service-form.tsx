@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { getApiBaseUrl } from "@/lib/api-config";
+import { BASE_URL } from "@/lib/api-config";
 
 interface FormSectionProps {
     title: string;
@@ -68,12 +68,14 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
     // Removed unused variables
 
     const [remark, setRemark] = useState<string>(initial?.remark || "");
+    const [duration, setDuration] = useState<string>(initial?.duration ? String(initial.duration) : "1");
 
     // UI state
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = `${getApiBaseUrl()}/api`;
+
+    const API_URL = `${BASE_URL}/api`;
 
     // calculate profit/loss - removed unused function
 
@@ -95,6 +97,7 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
             setServiceImage(initial.serviceImage || initial.productImage || initial.image || "");
             // Removed unused setServiceImageName call
             setRemark(initial.remark || initial.note || "");
+            setDuration(initial.duration ? String(initial.duration) : "1");
             setError(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,29 +119,63 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
         setLoading(true);
 
         try {
+            // Validate required fields
+            if (!serviceName.trim()) {
+                setError("Service name is required");
+                setLoading(false);
+                return;
+            }
+            if (!serviceCode.trim()) {
+                setError("Service code/SKU is required");
+                setLoading(false);
+                return;
+            }
+            if (!category.trim()) {
+                setError("Category is required");
+                setLoading(false);
+                return;
+            }
+            if (resolveUnitPrice() <= 0) {
+                setError("Selling price or purchase price is required and must be greater than 0");
+                setLoading(false);
+                return;
+            }
+
             const token = Cookies.get("authToken") || "";
-            // Build payload with expected backend fields - using productName for service since API remains same
+            // Build payload with expected Service model fields
             const payload: any = {
-                productName: serviceName || "Untitled Service",
-                category: category || undefined,
-                unitPrice: resolveUnitPrice(),
-                inStock: 0, // Services don't have stock
+                // Core Service model fields
+                name: serviceName || "Untitled Service",
+                description: description || "",
+                serviceCode: serviceCode || `SVC-${Date.now()}`,
+                unitPrice: resolveUnitPrice() || 0,
+                category: category || "Service",
+                duration: duration || "1",
+
+                // Additional optional fields that might be supported
+                subCategory: subCategory || undefined,
+                brandName: brandName || undefined,
                 discount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0,
-                image: serviceImage || undefined, // base64 or URL
+                taxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 0,
+                image: serviceImage || undefined,
                 vendor: vendorName || undefined,
                 vendorProductCode: vendorServiceCode || undefined,
                 note: remark || undefined,
             };
 
+            // Get item ID for edit mode
+            const itemId = initial?.id || initial?._id || null;
+
             console.log("Saving service with payload:", payload);
+            console.log("Using API endpoint:", itemId ? `${API_URL}/services/items/${itemId}` : `${API_URL}/services/items`);
+            console.log("Payload JSON string:", JSON.stringify(payload, null, 2));
 
             // Optionally include a status field for draft (backend can ignore if not supported)
             if (asDraft) payload.status = "draft";
 
             // If this is edit mode (initial provided), call PUT
-            const itemId = initial?.id || initial?._id || null;
             if (itemId) {
-                await axios.put(`${API_URL}/inventory/items/${itemId}`, payload, {
+                await axios.put(`${API_URL}/services/items/${itemId}`, payload, {
                     headers: {
                         Authorization: token ? `Bearer ${token}` : "",
                         "Content-Type": "application/json",
@@ -151,8 +188,8 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
                 return;
             }
 
-            // Create new item via POST
-            const res = await axios.post(`${API_URL}/inventory/items`, payload, {
+            // Create new service via POST
+            const res = await axios.post(`${API_URL}/services/items`, payload, {
                 headers: {
                     Authorization: token ? `Bearer ${token}` : "",
                     "Content-Type": "application/json",
@@ -168,12 +205,18 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
             }
         } catch (err: any) {
             console.error("Save service error:", err);
+            console.error("Error response data:", err?.response?.data);
+            console.error("Error response status:", err?.response?.status);
+            console.error("Error response headers:", err?.response?.headers);
+            console.error("Full error object:", err);
+
             const msg =
                 err?.response?.data?.detail ||
                 err?.response?.data?.message ||
+                err?.response?.data?.error ||
                 err?.message ||
                 "Failed to save service";
-            setError(msg);
+            setError(`Server Error (${err?.response?.status || 'Unknown'}): ${msg}`);
         } finally {
             setLoading(false);
         }
@@ -194,32 +237,72 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
                 {/* Service Details Section */}
                 <FormSection title="Service Details">
                     <div className="grid gap-2">
-                        <Label htmlFor="service-name">Service Name</Label>
-                        <Input id="service-name" value={serviceName} onChange={(e: any) => setServiceName(e.target.value)} />
+                        <Label htmlFor="service-name">Service Name *</Label>
+                        <Input id="service-name" value={serviceName} onChange={(e: any) => setServiceName(e.target.value)} placeholder="Enter service name" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="service-code">Service Code</Label>
-                        <Input id="service-code" value={serviceCode} onChange={(e: any) => setServiceCode(e.target.value)} />
+                        <Label htmlFor="service-code">Service Code/SKU *</Label>
+                        <Input id="service-code" value={serviceCode} onChange={(e: any) => setServiceCode(e.target.value)} placeholder="Enter service code" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Input id="category" value={category} onChange={(e: any) => setCategory(e.target.value)} />
+                        <Label htmlFor="category">Category *</Label>
+                        <Input id="category" value={category} onChange={(e: any) => setCategory(e.target.value)} placeholder="Enter category" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="sub-category">Sub Category</Label>
-                        <Input id="sub-category" value={subCategory} onChange={(e: any) => setSubCategory(e.target.value)} />
+                        <Input id="sub-category" value={subCategory} onChange={(e: any) => setSubCategory(e.target.value)} placeholder="Enter sub category" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="brand-name">Brand Name</Label>
-                        <Input id="brand-name" value={brandName} onChange={(e: any) => setBrandName(e.target.value)} />
+                        <Input id="brand-name" value={brandName} onChange={(e: any) => setBrandName(e.target.value)} placeholder="Enter brand name" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
-                        <Input id="description" value={description} onChange={(e: any) => setDescription(e.target.value)} />
+                        <Input id="description" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="Enter description" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="tax-rate">Tax Rate</Label>
-                        <Input id="tax-rate" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} />
+                        <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                        <Input id="tax-rate" type="number" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} placeholder="Enter tax rate" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="duration">Duration (hours)</Label>
+                        <Input id="duration" type="number" value={duration} onChange={(e: any) => setDuration(e.target.value)} placeholder="Enter duration in hours" />
+                    </div>
+                </FormSection>
+
+                {/* Pricing Section */}
+                <FormSection title="Pricing Details">
+                    <div className="grid gap-2">
+                        <Label htmlFor="purchase-price">Purchase Price</Label>
+                        <Input id="purchase-price" type="number" value={purchasePrice} onChange={(e: any) => setPurchasePrice(e.target.value)} placeholder="Enter purchase price" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="selling-price">Selling Price *</Label>
+                        <Input id="selling-price" type="number" value={sellingPrice} onChange={(e: any) => setSellingPrice(e.target.value)} placeholder="Enter selling price" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="discount">Discount (%)</Label>
+                        <Input id="discount" type="number" value={discount} onChange={(e: any) => setDiscount(e.target.value)} placeholder="Enter discount percentage" />
+                    </div>
+                </FormSection>
+
+                {/* Vendor Details Section */}
+                <FormSection title="Vendor Details">
+                    <div className="grid gap-2">
+                        <Label htmlFor="vendor-name">Vendor Name</Label>
+                        <Input id="vendor-name" value={vendorName} onChange={(e: any) => setVendorName(e.target.value)} placeholder="Enter vendor name" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="vendor-service-code">Vendor Service Code</Label>
+                        <Input id="vendor-service-code" value={vendorServiceCode} onChange={(e: any) => setVendorServiceCode(e.target.value)} placeholder="Enter vendor service code" />
+                    </div>
+                </FormSection>
+
+                {/* Additional Details Section */}
+                <FormSection title="Additional Details">
+                    <div className="grid gap-2">
+                        <Label htmlFor="remark">Remarks/Notes</Label>
+                        <Input id="remark" value={remark} onChange={(e: any) => setRemark(e.target.value)} placeholder="Enter any additional notes" />
                     </div>
                 </FormSection>
 

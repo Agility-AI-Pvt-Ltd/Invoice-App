@@ -16,8 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// Removed jsPDF imports - now using HTML download format
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,10 +33,9 @@ import InvoiceForm from "@/components/invoice-form/InvoiceForm";
 import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
 import api from "@/lib/api";
-import type { SalesReturn } from "@/types/salesReturn";
-import { fetchSalesReturns } from "@/services/api/salesReturn";
+// Removed sales returns imports
 
-type Tab = "invoices" | "credit-notes" | "debit-notes" | "sales-returns";
+type Tab = "invoices" | "credit-notes" | "debit-notes";
 
 interface InvoiceData {
   id: string;
@@ -79,7 +77,7 @@ export default function Receipts() {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNoteData[]>([]);
   const [debitNotes, setDebitNotes] = useState<DebitNoteData[]>([]);
-  const [salesReturns, setSalesReturns] = useState<SalesReturn[]>([]);
+  // Removed sales returns state
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -445,6 +443,7 @@ export default function Receipts() {
     }
   }, [currentPage, pagination.perPage, searchTerm, selectedDate]);
 
+  // Removed sales returns fetch function
   // Fetch sales returns
   const fetchSalesReturnsData = useCallback(async () => {
     try {
@@ -593,8 +592,6 @@ export default function Receipts() {
       return creditNotes;
     } else if (activeTab === "debit-notes") {
       return debitNotes;
-    } else if (activeTab === "sales-returns") {
-      return salesReturns;
     }
     return [];
   };
@@ -627,7 +624,7 @@ export default function Receipts() {
   const apiImportReceipts = async (
     token: string | undefined,
     file: File,
-    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
+    type: "invoices" | "credit-notes" | "debit-notes",
   ) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -683,7 +680,7 @@ export default function Receipts() {
   const apiExportReceipts = async (
     token: string | undefined,
     format: "csv" | "excel" | "pdf",
-    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
+    type: "invoices" | "credit-notes" | "debit-notes",
   ) => {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -731,7 +728,7 @@ export default function Receipts() {
 
   const getExportFilename = (
     format: "csv" | "excel" | "pdf",
-    type: "invoices" | "credit-notes" | "debit-notes" | "sales-returns",
+    type: "invoices" | "credit-notes" | "debit-notes",
   ) => {
     const timestamp = new Date().toISOString().split("T")[0];
     const typeName = type.replace("-", "_");
@@ -993,8 +990,6 @@ export default function Receipts() {
         await fetchCreditNotes();
       } else if (activeTab === "debit-notes") {
         await fetchDebitNotes();
-      } else if (activeTab === "sales-returns") {
-        await fetchSalesReturnsData();
       }
 
       event.target.value = "";
@@ -1064,50 +1059,313 @@ export default function Receipts() {
     }
   };
 
-  // Handle download functionality
-  const handleDownload = (item: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  // Helper functions for HTML generation
+  const safe = (str: any) => {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[<>&"']/g, (m) => {
+      const map: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" };
+      return map[m];
+    });
+  };
+
+  const fmtDate = (dateStr: any) => {
+    if (!dateStr) return "";
     try {
-      const doc = new jsPDF();
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    } catch {
+      return String(dateStr);
+    }
+  };
 
+  const numberToWords = (num: number): string => {
+    // Simple number to words conversion for Indian format
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+
+    if (num === 0) return "Zero";
+    if (num < 10) return ones[num];
+    if (num < 20) return teens[num - 10];
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? " " + ones[num % 10] : "");
+    if (num < 1000) return ones[Math.floor(num / 100)] + " Hundred" + (num % 100 ? " " + numberToWords(num % 100) : "");
+    if (num < 100000) return numberToWords(Math.floor(num / 1000)) + " Thousand" + (num % 1000 ? " " + numberToWords(num % 1000) : "");
+    if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + " Lakh" + (num % 100000 ? " " + numberToWords(num % 100000) : "");
+    return numberToWords(Math.floor(num / 10000000)) + " Crore" + (num % 10000000 ? " " + numberToWords(num % 10000000) : "");
+  };
+
+  const calcRow = (it: any) => {
+    // If backend provides pre-calculated values, use them
+    if (it.taxableAmount && it.total) {
+      console.log("🔢 Using backend item values:", it);
+      return {
+        qty: Number(it.quantity || 0),
+        rate: Number(it.unitPrice || it.rate || 0),
+        gst: Number(it.gst || 0),
+        discountAmount: Number(it.discount || 0),
+        taxable: Number(it.taxableAmount || 0),
+        gstAmount: Number(it.cgst || 0) + Number(it.sgst || 0) + Number(it.igst || 0),
+        net: Number(it.total || 0),
+      };
+    }
+
+    // Fallback to calculation if backend values not available
+    const qty = Number(it.quantity || 0);
+    const rate = Number(it.unitPrice ?? it.rate ?? 0);
+    const gst = Number(it.gst ?? 0);
+    const disc = Number(it.discount ?? 0);
+
+    const base = +(qty * rate); // raw base
+    const discountAmount = disc > 0 && disc <= 100 ? +(base * disc) / 100 : +disc; // percent or absolute
+    const taxable = +(base - (discountAmount || 0));
+    const gstAmount = +(taxable * gst) / 100;
+    const net = +(taxable + gstAmount);
+
+    return {
+      qty,
+      rate: +rate,
+      gst: +gst,
+      discountAmount: +discountAmount,
+      taxable: +taxable,
+      gstAmount: +gstAmount,
+      net: +net,
+    };
+  };
+
+  const computeTotals = (inv: any) => {
+    // If backend provides pre-calculated values, use them
+    if (inv.subtotal && inv.cgst && inv.sgst && inv.amount) {
+      console.log("🔢 Using backend pre-calculated values:", {
+        subtotal: inv.subtotal,
+        cgst: inv.cgst,
+        sgst: inv.sgst,
+        amount: inv.amount,
+        roundOff: inv.roundOff
+      });
+
+      return {
+        taxableTotal: Number(inv.subtotal) - Number(inv.cgst) - Number(inv.sgst),
+        totalGst: Number(inv.cgst) + Number(inv.sgst),
+        cgst: Number(inv.cgst),
+        sgst: Number(inv.sgst),
+        subtotal: Number(inv.subtotal),
+        shipping: Number(inv.shipping || 0),
+        roundOff: Number(inv.roundOff || 0),
+        total: Number(inv.amount),
+      };
+    }
+
+    // Fallback to calculation if backend values not available
+    const items = Array.isArray(inv.invoice_items || inv.items) ? (inv.invoice_items || inv.items) : [];
+    let taxableTotal = 0;
+    let totalGst = 0;
+    let subtotal = 0; // sum of nets (taxable + gst)
+
+    items.forEach((it: any) => {
+      const r = calcRow(it);
+      taxableTotal += r.taxable;
+      totalGst += r.gstAmount;
+      subtotal += r.net;
+    });
+
+    const cgst = +(totalGst / 2).toFixed(2);
+    const sgst = +(totalGst / 2).toFixed(2);
+
+    const shipping = Number(inv.shipping || 0);
+
+    // Subtotal for roundoff calculation should include shipping (if any)
+    const rawTotalBeforeRound = +(subtotal + shipping);
+
+    // Round off to nearest rupee (businessy behavior).
+    const roundedTotal = Math.round(rawTotalBeforeRound);
+    const roundOff = +(roundedTotal - rawTotalBeforeRound).toFixed(2);
+
+    const total = +(rawTotalBeforeRound + roundOff).toFixed(2);
+
+    return {
+      taxableTotal: +taxableTotal.toFixed(2),
+      totalGst: +totalGst.toFixed(2),
+      cgst,
+      sgst,
+      subtotal: +subtotal.toFixed(2),
+      shipping: +shipping.toFixed(2),
+      roundOff,
+      total,
+    };
+  };
+
+  const generatePrintableHTML = (inv: any, docType: string) => {
+    // Handle backend response structure - data might be nested under 'data' property
+    const invoiceData = inv.data || inv;
+    console.log("🔍 Processing invoice data:", invoiceData);
+
+    const t = computeTotals(invoiceData);
+    const itemsHtml = (Array.isArray(invoiceData.invoice_items || invoiceData.items) ? (invoiceData.invoice_items || invoiceData.items) : []).map((it: any, idx: number) => {
+      const r = calcRow(it);
+      return `<tr style="page-break-inside:avoid">
+        <td style="padding:8px;border:1px solid #ddd;text-align:center">${idx + 1}</td>
+        <td style="padding:8px;border:1px solid #ddd">${safe(it.description) || "-"}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:center">${safe(it.hsn || it.hsn_sac || "-")}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.qty}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.rate}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.gst}%</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.taxable}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.net}</td>
+      </tr>`;
+    }).join("\n");
+
+    const style = `
+      html,body{margin:0;padding:0;background:#f7fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;color:#111827}
+      .sheet{max-width:900px;margin:18px auto;background:#fff;padding:20px;border-radius:6px;border:1px solid #e6eef5}
+      .header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+      .seller{font-weight:700;color:#0b5cf3}
+      .muted{color:#6b7280;font-size:13px}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      th{background:#f3f4f6;padding:8px;border:1px solid #e6e6e6;text-align:left;font-weight:700}
+      td{padding:8px;border:1px solid #e6e6e6;font-size:13px}
+      .right{text-align:right}
+      .no-print{display:block}
+      @media print {
+        .no-print{display:none}
+        .sheet{box-shadow:none;border-radius:0;margin:0;padding:12px}
+      }
+      tr{page-break-inside:avoid}
+      @media (max-width:640px){
+        .header{flex-direction:column}
+      }
+    `;
+
+    const docTitle = docType === "invoices" ? "INVOICE" :
+      docType === "credit-notes" ? "CREDIT NOTE" :
+        docType === "debit-notes" ? "DEBIT NOTE" : "DOCUMENT";
+
+    const docNumber = docType === "invoices" ? (invoiceData.number || invoiceData.invoiceNumber || invoiceData.billNo) :
+      docType === "credit-notes" ? (invoiceData.noteNo || invoiceData.billNo) :
+        docType === "debit-notes" ? (invoiceData.noteNo || invoiceData.billNo) : (invoiceData.billNo || invoiceData.id);
+
+    const partyName = docType === "invoices" ? (invoiceData.clientName || invoiceData.partyName || invoiceData.customerName || invoiceData.billTo?.name) :
+      docType === "credit-notes" ? (invoiceData.partyName || invoiceData.customerName) :
+        docType === "debit-notes" ? (invoiceData.partyName || invoiceData.vendorName) : "";
+
+    const html = `<!doctype html>
+      <html>
+      <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${docTitle} ${safe(docNumber)}</title><style>${style}</style></head>
+      <body>
+        <div class="sheet">
+          <div class="header">
+            <div style="flex:1">
+              <div class="seller">${safe(invoiceData.billFrom?.businessName || invoiceData.billFrom?.name || "Seller Name")}</div>
+              <div class="muted">${safe(invoiceData.billFrom?.address || "")}</div>
+              <div class="muted">Phone: ${safe(invoiceData.billFrom?.phone || "")} • Email: ${safe(invoiceData.billFrom?.email || "")}</div>
+              <div class="muted">GSTIN: ${safe(invoiceData.billFrom?.gst || invoiceData.billFrom?.gstin || invoiceData.gstin || "")}</div>
+            </div>
+            <div style="width:340px;text-align:right">
+              <div style="font-size:18px;font-weight:800">${docTitle}</div>
+              <div style="margin-top:8px" class="muted">${docTitle} No: <strong>${safe(docNumber)}</strong></div>
+              <div class="muted">Date: ${fmtDate(invoiceData.issueDate || invoiceData.date || invoiceData.dateOfSale || invoiceData.dateIssued)}</div>
+              ${invoiceData.dueDate ? `<div class="muted">Due Date: ${fmtDate(invoiceData.dueDate)}</div>` : ""}
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+            <div style="flex:1;border:1px solid #eef2f6;padding:10px">
+              <div style="font-weight:700">${docType === "debit-notes" ? "Vendor" : "Customer"} Name & Billing Address</div>
+              <div style="margin-top:6px">${safe(partyName)}</div>
+              <div class="muted">${safe(invoiceData.clientAddress || invoiceData.billTo?.address || invoiceData.address || "")}</div>
+              <div class="muted">GSTIN: ${safe(invoiceData.clientGst || invoiceData.billTo?.gst || invoiceData.billTo?.gstin || invoiceData.gstin || "")}</div>
+              <div class="muted">Phone: ${safe(invoiceData.clientPhone || invoiceData.billTo?.phone || invoiceData.phone || "")}</div>
+              <div class="muted">Email: ${safe(invoiceData.clientEmail || invoiceData.billTo?.email || invoiceData.email || "")}</div>
+            </div>
+
+            <div style="width:320px;border:1px solid #eef2f6;padding:10px">
+              <div style="font-weight:700">Shipping Address</div>
+              <div style="margin-top:6px">${safe(invoiceData.shipTo?.name || "")}</div>
+              <div class="muted">${safe(invoiceData.shipTo?.address || invoiceData.shippingAddress || invoiceData.clientAddress || "")}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;text-align:center">S No</th>
+                  <th>Description</th>
+                  <th style="width:100px;text-align:center">HSN / SAC</th>
+                  <th style="width:60px;text-align:right">Qty</th>
+                  <th style="width:100px;text-align:right">Item Rate</th>
+                  <th style="width:70px;text-align:right">Tax %</th>
+                  <th style="width:110px;text-align:right">Taxable Value</th>
+                  <th style="width:120px;text-align:right">Net Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:12px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:1">
+              <div style="font-weight:700;margin-bottom:6px">Declaration</div>
+              <div class="muted" style="white-space:pre-wrap;margin-top:6px">We declare that this ${docTitle.toLowerCase()} shows the actual price of the goods / services described and that all particulars are true and correct.</div>
+              ${invoiceData.description || invoiceData.remark || invoiceData.reason || invoiceData.notes ? `<div style="margin-top:12px;font-weight:700;margin-bottom:6px">Remarks</div><div class="muted">${safe(invoiceData.description || invoiceData.remark || invoiceData.reason || invoiceData.notes)}</div>` : ""}
+            </div>
+
+            <div style="width:340px">
+              <div style="border:1px solid #eef2f6;padding:10px;background:#fcfeff">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Taxable Amount</div><div class="right">₹${t.taxableTotal}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">CGST</div><div class="right">₹${t.cgst}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">SGST</div><div class="right">₹${t.sgst}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Sub Total</div><div class="right">₹${t.subtotal}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Round Off</div><div class="right">₹${t.roundOff}</div></div>
+                <div style="border-top:1px dashed #e6e6e6;padding-top:8px;margin-top:8px;font-weight:800;display:flex;justify-content:space-between">
+                  <div>Total</div><div class="right">₹${t.total}</div>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#6b7280"><strong>In Words:</strong> ${numberToWords(t.total)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:14px;gap:12px;flex-wrap:wrap">
+            <div style="flex:1"></div>
+            <div style="width:260px;text-align:center">
+              <div style="height:48px"></div>
+              <div style="margin-top:6px;font-weight:700">For ${safe(invoiceData.billFrom?.businessName || invoiceData.billFrom?.name || "Seller")}</div>
+              <div style="height:56px"></div>
+              <div style="border-top:1px solid #e6e6e6;margin-top:6px;padding-top:6px" class="muted">Authorised Signatory</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;text-align:center;font-size:12px;color:#6b7280">Original For Recipient</div>
+        </div>
+      </body>
+      </html>`;
+
+    return html;
+  };
+
+  // Handle download functionality
+  const handleDownload = async (item: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    try {
+      console.log("🔄 Starting download for item:", item);
+
+      // Fetch complete invoice data by ID
+      let completeItemData;
       if (activeTab === "invoices") {
-        // Invoice PDF
-        doc.setFontSize(16);
-        doc.text("Invoice", 14, 20);
-
-        doc.setFontSize(12);
-        doc.text(`Invoice Number: ${item.invoiceNumber}`, 14, 35);
-        doc.text(`Customer: ${item.customerName}`, 14, 45);
-        doc.text(`Date: ${item.date}`, 14, 55);
-        doc.text(`Status: ${item.status}`, 14, 65);
-
-        autoTable(doc, {
-          startY: 80,
-          head: [["Description", "Amount"]],
-          body: [["Total Amount", `₹${item.amount}`]],
-        });
-
-        doc.save(`${item.invoiceNumber}.pdf`);
+        console.log("📥 Fetching complete invoice data for ID:", item.id);
+        const response = await api.get(`/api/invoices/${item.id}`);
+        completeItemData = response.data;
+        console.log("✅ Complete invoice data received:", completeItemData);
       } else if (activeTab === "credit-notes") {
-        // Credit Note PDF
-        doc.setFontSize(16);
-        doc.text("Credit Note", 14, 20);
-
-        doc.setFontSize(12);
-        doc.text(`Credit Note Number: ${item.noteNo}`, 14, 35);
-        doc.text(`Invoice Number: ${item.invoiceNo}`, 14, 45);
-        doc.text(`Customer: ${item.customerName}`, 14, 55);
-        doc.text(`Date Issued: ${item.dateIssued}`, 14, 65);
-        doc.text(`Status: ${item.status}`, 14, 75);
-        doc.text(`Reason: ${item.reason}`, 14, 85);
-
-        autoTable(doc, {
-          startY: 100,
-          head: [["Description", "Amount"]],
-          body: [["Total Amount", `₹${item.amount}`]],
-        });
-
-        doc.save(`${item.noteNo}.pdf`);
+        console.log("📥 Fetching complete credit note data for ID:", item.id);
+        const response = await api.get(`/api/credit-notes/${item.id}`);
+        completeItemData = response.data;
+        console.log("✅ Complete credit note data received:", completeItemData);
       } else if (activeTab === "debit-notes") {
+        console.log("📥 Fetching complete debit note data for ID:", item.id);
+        const response = await api.get(`/api/debit-notes/${item.id}`);
+        completeItemData = response.data;
+        console.log("✅ Complete debit note data received:", completeItemData);
         // Debit Note PDF
         doc.setFontSize(16);
         doc.text("Debit Note", 14, 20);
@@ -1195,8 +1453,35 @@ export default function Receipts() {
 
         doc.save(`sales-return-${item.billNo || item.id}.pdf`);
       }
+
+      // Console log the complete backend response data
+      console.log("📤 Complete backend response data for download:", completeItemData);
+
+      const html = generatePrintableHTML(completeItemData, activeTab);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      const docTitle = activeTab === "invoices" ? "invoice" :
+        activeTab === "credit-notes" ? "credit-note" :
+          activeTab === "debit-notes" ? "debit-note" : "document";
+
+      const docNumber = activeTab === "invoices" ? (completeItemData.invoiceNumber || completeItemData.billNo) :
+        activeTab === "credit-notes" ? (completeItemData.noteNo || completeItemData.billNo) :
+          activeTab === "debit-notes" ? (completeItemData.noteNo || completeItemData.billNo) : (completeItemData.billNo || completeItemData.id);
+
+      const safeName = (docNumber || docTitle).replace(/[^\w-]/g, "_");
+      a.download = `${safeName}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+      console.log("✅ Download completed successfully");
     } catch (err: any) {
-      alert(err.message || `Failed to generate ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : activeTab === "debit-notes" ? "debit note" : "sales return"} PDF`);
+      console.error("❌ Download error:", err);
+      alert(`Could not download ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : activeTab === "debit-notes" ? "debit note" : "document"}. Error: ${err.message || "Unknown error"}`);
     }
   };
 
@@ -1233,8 +1518,6 @@ export default function Receipts() {
         fetchCreditNotes();
       } else if (activeTab === "debit-notes") {
         fetchDebitNotes();
-      } else if (activeTab === "sales-returns") {
-        fetchSalesReturnsData();
       }
     } catch (error) {
       console.error("Error deleting item:", error);
@@ -1255,11 +1538,9 @@ export default function Receipts() {
         fetchCreditNotes();
       } else if (activeTab === "debit-notes") {
         fetchDebitNotes();
-      } else if (activeTab === "sales-returns") {
-        fetchSalesReturnsData();
       }
     }
-  }, [activeTab, currentPage, searchTerm, selectedDate, fetchInvoices, fetchCreditNotes, fetchDebitNotes, fetchSalesReturnsData]);
+  }, [activeTab, currentPage, searchTerm, selectedDate, fetchInvoices, fetchCreditNotes, fetchDebitNotes]);
 
   // If navigated here with state.openInvoiceForm -> open the invoice form
   useEffect(() => {
@@ -1701,31 +1982,6 @@ export default function Receipts() {
                       </th>
                     </>
                   )}
-                  {activeTab === "sales-returns" && (
-                    <>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        Bill No
-                      </th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        Party Name
-                      </th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        Date
-                      </th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        State
-                      </th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        Quantity
-                      </th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        Total
-                      </th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">
-                        Action
-                      </th>
-                    </>
-                  )}
                 </tr>
               </thead>
               <tbody>
@@ -1928,47 +2184,6 @@ export default function Receipts() {
                         </>
                       )}
 
-                      {activeTab === "sales-returns" && (
-                        <>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {(item as SalesReturn).billNo}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {(item as SalesReturn).partyName}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {new Date((item as SalesReturn).date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {(item as SalesReturn).state || "-"}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {(item as SalesReturn).qty}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            ₹{(item as SalesReturn).total.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="bg-gray-900 text-white" align="end">
-                                  <DropdownMenuItem onClick={() => handleDownload(item)}>
-                                    <Download className="mr-2 h-4 w-4" /> Download
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(item.id)}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </td>
-                        </>
-                      )}
                     </tr>
                   ))
                 )}
