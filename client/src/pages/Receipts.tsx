@@ -16,7 +16,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-// Removed jsPDF imports - now using HTML download format
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +48,20 @@ interface InvoiceData {
   date: string;
   dueDate: string;
   amount: number;
+  items?: any[];
+  gstin?: string;
+  partyNumber?: string;
+  // Additional fields from InvoiceModel
+  billFrom?: any;
+  billTo?: any;
+  shipTo?: any;
+  subtotal?: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+  total?: number;
+  notes?: string;
+  currency?: string;
 }
 
 interface CreditNoteData {
@@ -194,7 +210,22 @@ export default function Receipts() {
         status: invoice.paymentStatus || invoice.status || "Pending",
         date: formatDate(invoice.dateOfSale || invoice.date || invoice.createdAt || ""),
         dueDate: formatDate(invoice.dueDate || ""),
-        amount: invoice.totalAmount || invoice.amount || 2000,
+        amount: invoice.totalAmount || invoice.amount || invoice.total || 2000,
+        // Include items array and other fields needed for detailed export
+        items: invoice.items || invoice.invoice_items || [],
+        gstin: invoice.gstin || invoice.billTo?.gst || invoice.billTo?.gstin || "",
+        partyNumber: invoice.partyNumber || invoice.billTo?.pan || "",
+        // Include additional fields from InvoiceModel structure
+        billFrom: invoice.billFrom || {},
+        billTo: invoice.billTo || {},
+        shipTo: invoice.shipTo || {},
+        subtotal: invoice.subtotal || 0,
+        cgst: invoice.cgst || 0,
+        sgst: invoice.sgst || 0,
+        igst: invoice.igst || 0,
+        total: invoice.total || invoice.totalAmount || invoice.amount || 0,
+        notes: invoice.notes || "",
+        currency: invoice.currency || "INR",
       }));
 
       // Update pagination state
@@ -229,7 +260,20 @@ export default function Receipts() {
     console.log("🔄 fetchInvoices called with currentPage:", currentPage, "activeTab:", activeTab);
     try {
       setLoading(true);
-      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
+
+      // First, let's fetch ALL invoices without any filters to see the complete data structure
+      console.log("🔍 Fetching ALL invoices to check data structure...");
+      const allInvoicesRes = await api.get('/api/invoices');
+      console.log("📊 ALL invoices response:", allInvoicesRes.data);
+
+      if (Array.isArray(allInvoicesRes.data) && allInvoicesRes.data.length > 0) {
+        console.log("📋 First invoice from ALL invoices:", allInvoicesRes.data[0]);
+        console.log("📋 First invoice items:", allInvoicesRes.data[0].items);
+        console.log("📋 First invoice billTo:", allInvoicesRes.data[0].billTo);
+        console.log("📋 First invoice billFrom:", allInvoicesRes.data[0].billFrom);
+      }
+
+      // Now fetch with filters for pagination
       const params = new URLSearchParams({
         page: String(currentPage),
         perPage: String(pagination.perPage),
@@ -241,6 +285,11 @@ export default function Receipts() {
       const data = res.data;
       console.log("Invoices API response:", data); // Debug log
       const arr = Array.isArray(data) ? data : data.data || data.invoices || [];
+      console.log("First invoice structure:", arr[0]); // Debug log to see actual structure
+      if (arr[0]) {
+        console.log("First invoice items:", arr[0].items);
+        console.log("First invoice billTo:", arr[0].billTo);
+      }
       const mapped = arr.map((invoice: any) => ({
         id: invoice._id || invoice.id || String(Math.random()),
         invoiceNumber:
@@ -252,7 +301,22 @@ export default function Receipts() {
           invoice.dateOfSale || invoice.date || invoice.createdAt || "",
         ),
         dueDate: formatDate(invoice.dueDate || ""),
-        amount: invoice.totalAmount || invoice.amount || 2000,
+        amount: invoice.totalAmount || invoice.amount || invoice.total || 2000,
+        // Include items array and other fields needed for detailed export
+        items: invoice.items || invoice.invoice_items || [],
+        gstin: invoice.gstin || invoice.billTo?.gst || invoice.billTo?.gstin || "",
+        partyNumber: invoice.partyNumber || invoice.billTo?.pan || "",
+        // Include additional fields from InvoiceModel structure
+        billFrom: invoice.billFrom || {},
+        billTo: invoice.billTo || {},
+        shipTo: invoice.shipTo || {},
+        subtotal: invoice.subtotal || 0,
+        cgst: invoice.cgst || 0,
+        sgst: invoice.sgst || 0,
+        igst: invoice.igst || 0,
+        total: invoice.total || invoice.totalAmount || invoice.amount || 0,
+        notes: invoice.notes || "",
+        currency: invoice.currency || "INR",
       }));
       // Update pagination state with server response
       // Handle both pagination object and root-level pagination properties
@@ -284,6 +348,7 @@ export default function Receipts() {
         setCurrentPage(serverCurrentPage);
       }
 
+      console.log("Mapped invoice data:", mapped[0]); // Debug log to see mapped structure
       setInvoices(mapped);
     } catch (err) {
       console.error("Error fetching invoices:", err);
@@ -297,6 +362,24 @@ export default function Receipts() {
           date: "23 July 2024",
           dueDate: "29 July 2024",
           amount: 2000,
+          items: [
+            {
+              description: "Sample Product 1",
+              quantity: 2,
+              unitPrice: 500,
+              gst: 18,
+              hsn: "1234"
+            },
+            {
+              description: "Sample Product 2",
+              quantity: 1,
+              unitPrice: 1000,
+              gst: 18,
+              hsn: "5678"
+            }
+          ],
+          gstin: "22AAAAA0000A1Z5",
+          partyNumber: "PN001"
         },
         {
           id: "2",
@@ -306,6 +389,17 @@ export default function Receipts() {
           date: "24 July 2024",
           dueDate: "30 July 2024",
           amount: 3500,
+          items: [
+            {
+              description: "Sample Service",
+              quantity: 1,
+              unitPrice: 3500,
+              gst: 18,
+              hsn: "9987"
+            }
+          ],
+          gstin: "33BBBBB0000B2Z6",
+          partyNumber: "PN002"
         },
       ]);
     } finally {
@@ -926,15 +1020,47 @@ export default function Receipts() {
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    try {
+      console.log(`🔄 downloadBlob called with filename: ${filename}`);
+      console.log(`📊 Blob size: ${blob.size} bytes`);
+      console.log(`📊 Blob type: ${blob.type}`);
+
+      // Create object URL
+      const url = window.URL.createObjectURL(blob);
+      console.log(`🔗 Created object URL: ${url}`);
+
+      // Create download link
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.style.display = "none";
+
+      // Add to DOM, click, and remove
+      document.body.appendChild(link);
+      console.log(`🔗 Link added to DOM, triggering click...`);
+      link.click();
+
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        console.log(`🧹 Cleaned up download link and URL`);
+      }, 100);
+
+      console.log(`✅ Download triggered for: ${filename}`);
+    } catch (error) {
+      console.error("❌ Error in downloadBlob:", error);
+      throw new Error(`Failed to download file: ${filename}`);
+    }
   };
+
+  // Test function to verify download mechanism
+  // const testDownload = () => {
+  //   console.log("🧪 Testing download mechanism...");
+  //   const testContent = "Test CSV Content\nInvoice Number,Customer Name,Amount\nINV-001,Test Customer,1000";
+  //   const blob = new Blob([testContent], { type: "text/csv" });
+  //   downloadBlob(blob, "test-export.csv");
+  // };
 
   const apiExportReceipts = async (
     token: string | undefined,
@@ -1000,189 +1126,1522 @@ export default function Receipts() {
     }
   };
 
-  // Client-side CSV export for invoices (fallback)
-  const exportInvoicesToCSV = () => {
-    const csvContent = [
-      // CSV header
-      [
-        "Invoice Number",
-        "Customer Name",
-        "Status",
-        "Date",
-        "Due Date",
-        "Amount",
-      ].join(","),
-      // CSV data
-      ...invoices.map((invoice) =>
-        [
-          invoice.invoiceNumber,
-          invoice.customerName,
-          invoice.status,
-          invoice.date,
-          invoice.dueDate,
-          invoice.amount,
-        ].join(","),
-      ),
-    ].join("\n");
+  // Fetch all invoices for export (without pagination)
+  const fetchAllInvoicesForExport = async () => {
+    try {
+      console.log("🔄 Fetching ALL invoices for export...");
+      console.log("🔐 Checking authentication...");
+      const token = Cookies.get("authToken");
+      console.log("🔐 Auth token exists:", !!token);
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const filename = getExportFilename("csv", "invoices");
-    downloadBlob(blob, filename);
+      // Use the main invoices endpoint to get all invoices with complete data
+      const res = await api.get('/api/invoices');
+      const data = res.data;
+      console.log("📊 All invoices for export response:", res);
+      console.log("📊 All invoices for export data:", data);
+      console.log("📊 Data type:", typeof data);
+      console.log("📊 Is array:", Array.isArray(data));
+
+      if (Array.isArray(data) && data.length > 0) {
+        console.log("📋 Total invoices found:", data.length);
+        console.log("📋 First invoice for export:", data[0]);
+        console.log("📋 First invoice items for export:", data[0].items);
+        console.log("📋 First invoice structure keys:", Object.keys(data[0]));
+
+        // Debug the first item structure if it exists
+        if (data[0].items && data[0].items.length > 0) {
+          console.log("📋 First item structure:", data[0].items[0]);
+          console.log("📋 First item keys:", Object.keys(data[0].items[0]));
+        }
+      } else if (data && data.data && Array.isArray(data.data)) {
+        console.log("📋 Data wrapped in data property, total invoices:", data.data.length);
+        console.log("📋 First invoice for export:", data.data[0]);
+        if (data.data[0].items && data.data[0].items.length > 0) {
+          console.log("📋 First item structure:", data.data[0].items[0]);
+          console.log("📋 First item keys:", Object.keys(data.data[0].items[0]));
+        }
+        return data.data;
+      } else {
+        console.log("⚠️ No invoices found or unexpected data structure");
+        console.log("📊 Data structure:", data);
+      }
+
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error("❌ Error fetching all invoices for export:", error);
+      // Safely extract error details, since error is of type unknown
+      let status, statusText, dataDetail;
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        // @ts-ignore
+        status = error.response?.status;
+        // @ts-ignore
+        statusText = error.response?.statusText;
+        // @ts-ignore
+        dataDetail = error.response?.data;
+      }
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status,
+        statusText,
+        data: dataDetail
+      });
+
+      // Show error toast
+      toast({
+        title: "Export Failed",
+        description: `Failed to fetch invoices: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+
+      return [];
+    }
   };
 
-  // Client-side Excel export for invoices (fallback)
-  const exportInvoicesToExcel = () => {
-    // For Excel, we'll create a CSV-like format that Excel can open
-    const excelContent = [
-      // Header
-      [
-        "Invoice Number",
-        "Customer Name",
-        "Status",
-        "Date",
-        "Due Date",
-        "Amount",
-      ],
-      // Data
-      ...invoices.map((invoice) => [
-        invoice.invoiceNumber,
-        invoice.customerName,
-        invoice.status,
-        invoice.date,
-        invoice.dueDate,
-        invoice.amount,
-      ]),
+  // Professional CSV export for invoices (fallback)
+  const exportInvoicesToCSV = async () => {
+    console.log("🔄 CSV Export - Starting...");
+
+    try {
+      // Fetch all invoices for export
+      const allInvoices = await fetchAllInvoicesForExport();
+      console.log("📊 CSV Export - Received invoices:", allInvoices);
+
+      if (!Array.isArray(allInvoices) || allInvoices.length === 0) {
+        console.log("❌ No invoices found for export");
+        toast({
+          title: "Export Failed",
+          description: "No invoices found to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("🔄 CSV Export - Processing", allInvoices.length, "invoices");
+
+      // Simplified headers with only requested fields
+      const headers = [
+        "INVOICE NUMBER",
+        "DATE",
+        "STATE",
+        "QUANTITY",
+        "HSN",
+        "RATE",
+        "TAXABLE",
+        "IGST",
+        "CGST",
+        "SGST",
+        "GSTIN",
+        "TOTAL"
+      ];
+
+      // Format date as DD/MM/YY
+      const formatDateForCSV = (dateStr: string) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return String(dateStr);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(dateStr);
+        }
+      };
+
+      // Helper function to calculate row values (matching InvoiceForm logic)
+      const calcRow = (item: any) => {
+        console.log("🔍 calcRow - Processing item:", item);
+
+        // Use the correct field names from the payload
+        const qty = Number(item.quantity || 0);
+        const rate = Number(item.unitPrice || 0);
+        const gst = Number(item.gst || 0);
+        const disc = Number(item.discount || 0);
+
+        console.log("🔍 calcRow - Extracted values:", { qty, rate, gst, disc });
+
+        const base = qty * rate;
+        const discountAmount = disc > 0 && disc <= 100 ? (base * disc) / 100 : disc;
+        const taxable = base - discountAmount;
+        const gstAmount = (taxable * gst) / 100;
+        const net = taxable + gstAmount;
+
+        // For CGST/SGST calculation (assuming 18% GST split)
+        const cgst = gstAmount / 2;
+        const sgst = gstAmount / 2;
+        const igst = 0; // Assuming intra-state, so IGST is 0
+
+        const result = {
+          qty: qty.toFixed(2),
+          rate: rate.toFixed(2),
+          gst: gst.toFixed(2),
+          taxable: taxable.toFixed(2),
+          cgst: cgst.toFixed(2),
+          sgst: sgst.toFixed(2),
+          igst: igst.toFixed(2),
+          net: net.toFixed(2)
+        };
+
+        console.log("🔍 calcRow - Calculated result:", result);
+        return result;
+      };
+
+      // Map the fetched data to our export format
+      const mappedInvoices = allInvoices.map((invoice: any) => ({
+        id: invoice._id || invoice.id || String(Math.random()),
+        invoiceNumber: invoice.invoiceNumber || invoice.number || "INV-2024/001",
+        customerName: invoice.billTo?.name || invoice.customerName || invoice.clientName || "Customer Name",
+        status: invoice.paymentStatus || invoice.status || "Pending",
+        date: formatDate(invoice.dateOfSale || invoice.date || invoice.createdAt || ""),
+        dueDate: formatDate(invoice.dueDate || ""),
+        amount: invoice.totalAmount || invoice.amount || invoice.total || 2000,
+        items: invoice.items || invoice.invoice_items || [],
+        gstin: invoice.gstin || invoice.billTo?.gst || invoice.billTo?.gstin || "",
+        partyNumber: invoice.partyNumber || invoice.billTo?.pan || "",
+        billFrom: invoice.billFrom || {},
+        billTo: invoice.billTo || {},
+        shipTo: invoice.shipTo || {},
+        subtotal: invoice.subtotal || 0,
+        cgst: invoice.cgst || 0,
+        sgst: invoice.sgst || 0,
+        igst: invoice.igst || 0,
+        total: invoice.total || invoice.totalAmount || invoice.amount || 0,
+        notes: invoice.notes || "",
+        currency: invoice.currency || "INR",
+      }));
+
+      const rows: string[][] = [];
+
+      mappedInvoices.forEach((invoice) => {
+        const invoiceItems = Array.isArray(invoice.items) ? invoice.items : [];
+        console.log(`CSV Export - Invoice ${invoice.invoiceNumber} items:`, invoiceItems);
+        console.log(`CSV Export - Invoice ${invoice.invoiceNumber} full data:`, invoice);
+
+        if (invoiceItems.length === 0) {
+          // If no items, create a single row with invoice details
+          rows.push([
+            invoice.invoiceNumber,
+            formatDateForCSV(invoice.date),
+            invoice.billTo?.state || "-",
+            "0",
+            "-",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            invoice.billTo?.gst || "-",
+            `₹${invoice.total || invoice.amount || 0}`,
+          ]);
+        } else {
+          // Create a row for each item
+          invoiceItems.forEach((item: any) => {
+            const r = calcRow(item);
+            rows.push([
+              invoice.invoiceNumber,
+              formatDateForCSV(invoice.date),
+              invoice.billTo?.state || "-",
+              r.qty,
+              item.hsn || "-",
+              r.rate,
+              r.taxable,
+              r.igst,
+              r.cgst,
+              r.sgst,
+              invoice.billTo?.gst || "-",
+              `₹${invoice.total || invoice.amount || 0}`,
+            ]);
+          });
+        }
+      });
+
+      // Create professional CSV with proper spacing and structure
+      const csvRows = [headers, ...rows];
+
+      const csvContent = csvRows
+        .map((row) => {
+          const formattedRow = row.map((cell) => {
+            const str = cell == null ? "" : String(cell);
+            const cleanStr = str.replace(/"/g, '""');
+            return `"${cleanStr}"`;
+          });
+
+          // Use consistent separator with proper spacing
+          return formattedRow.join(" , ");
+        })
+        .join("\n");
+
+      // Add professional header and metadata
+      const currentDate = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+
+      const professionalHeader = [
+        "INVOICE REPORT",
+        `Generated on: ${currentDate}`,
+        `Total Records: ${rows.length}`,
+        "", // Empty line for separation
+        csvContent
+      ].join("\n");
+
+      // Add BOM for proper UTF-8 encoding in Excel
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + professionalHeader], { type: "text/csv;charset=utf-8;" });
+      const filename = getExportFilename("csv", "invoices");
+      downloadBlob(blob, filename);
+
+      // Show success message
+      toast({
+        title: "CSV Export Successful",
+        description: `CSV file "${filename}" has been downloaded successfully!`,
+      });
+
+      console.log("✅ CSV export completed successfully");
+    } catch (error) {
+      console.error("❌ CSV export error:", error);
+      toast({
+        title: "CSV Export Failed",
+        description: `Failed to export CSV: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Professional Excel export for invoices (fallback)
+  const exportInvoicesToExcel = async () => {
+    console.log("🔄 Excel Export - Starting...");
+
+    try {
+      // Fetch all invoices for export
+      const allInvoices = await fetchAllInvoicesForExport();
+      console.log("📊 Excel Export - Received invoices:", allInvoices);
+
+      if (!Array.isArray(allInvoices) || allInvoices.length === 0) {
+        console.log("❌ No invoices found for export");
+        toast({
+          title: "Export Failed",
+          description: "No invoices found to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("🔄 Excel Export - Processing", allInvoices.length, "invoices");
+
+      // Create HTML table with professional styling for Excel
+      const formatDateForExcel = (dateStr: string) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return String(dateStr);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(dateStr);
+        }
+      };
+
+      // Helper function to calculate row values (matching InvoiceForm logic)
+      const calcRow = (item: any) => {
+        console.log("🔍 calcRow - Processing item:", item);
+
+        // Use the correct field names from the payload
+        const qty = Number(item.quantity || 0);
+        const rate = Number(item.unitPrice || 0);
+        const gst = Number(item.gst || 0);
+        const disc = Number(item.discount || 0);
+
+        console.log("🔍 calcRow - Extracted values:", { qty, rate, gst, disc });
+
+        const base = qty * rate;
+        const discountAmount = disc > 0 && disc <= 100 ? (base * disc) / 100 : disc;
+        const taxable = base - discountAmount;
+        const gstAmount = (taxable * gst) / 100;
+        const net = taxable + gstAmount;
+
+        // For CGST/SGST calculation (assuming 18% GST split)
+        const cgst = gstAmount / 2;
+        const sgst = gstAmount / 2;
+        const igst = 0; // Assuming intra-state, so IGST is 0
+
+        const result = {
+          qty: qty.toFixed(2),
+          rate: rate.toFixed(2),
+          gst: gst.toFixed(2),
+          taxable: taxable.toFixed(2),
+          cgst: cgst.toFixed(2),
+          sgst: sgst.toFixed(2),
+          igst: igst.toFixed(2),
+          net: net.toFixed(2)
+        };
+
+        console.log("🔍 calcRow - Calculated result:", result);
+        return result;
+      };
+
+      // Map the fetched data to our export format
+      const mappedInvoices = allInvoices.map((invoice: any) => ({
+        id: invoice._id || invoice.id || String(Math.random()),
+        invoiceNumber: invoice.invoiceNumber || invoice.number || "INV-2024/001",
+        customerName: invoice.billTo?.name || invoice.customerName || invoice.clientName || "Customer Name",
+        status: invoice.paymentStatus || invoice.status || "Pending",
+        date: formatDate(invoice.dateOfSale || invoice.date || invoice.createdAt || ""),
+        dueDate: formatDate(invoice.dueDate || ""),
+        amount: invoice.totalAmount || invoice.amount || invoice.total || 2000,
+        items: invoice.items || invoice.invoice_items || [],
+        gstin: invoice.gstin || invoice.billTo?.gst || invoice.billTo?.gstin || "",
+        partyNumber: invoice.partyNumber || invoice.billTo?.pan || "",
+        billFrom: invoice.billFrom || {},
+        billTo: invoice.billTo || {},
+        shipTo: invoice.shipTo || {},
+        subtotal: invoice.subtotal || 0,
+        cgst: invoice.cgst || 0,
+        sgst: invoice.sgst || 0,
+        igst: invoice.igst || 0,
+        total: invoice.total || invoice.totalAmount || invoice.amount || 0,
+        notes: invoice.notes || "",
+        currency: invoice.currency || "INR",
+      }));
+
+      // Generate table rows for all invoice items
+      const tableRows: string[] = [];
+      mappedInvoices.forEach((invoice) => {
+        const invoiceItems = Array.isArray(invoice.items) ? invoice.items : [];
+
+        if (invoiceItems.length === 0) {
+          // If no items, create a single row with invoice details
+          tableRows.push(`
+          <tr>
+            <td>${invoice.invoiceNumber}</td>
+            <td>${invoice.customerName}</td>
+            <td class="status ${invoice.status.toLowerCase()}">${invoice.status}</td>
+            <td>${formatDateForExcel(invoice.date)}</td>
+            <td>${formatDateForExcel(invoice.dueDate)}</td>
+            <td>1</td>
+            <td>No items</td>
+            <td>-</td>
+            <td>0</td>
+            <td>₹0</td>
+            <td>0%</td>
+            <td>₹0</td>
+            <td>₹0</td>
+            <td>₹0</td>
+            <td>₹0</td>
+            <td>₹0</td>
+            <td>${invoice.gstin || "-"}</td>
+            <td>${invoice.partyNumber || "-"}</td>
+            <td class="amount">₹${invoice.amount.toLocaleString()}</td>
+          </tr>
+        `);
+        } else {
+          // Create a row for each item
+          invoiceItems.forEach((item: any, index: number) => {
+            const r = calcRow(item);
+            tableRows.push(`
+            <tr>
+              <td>${invoice.invoiceNumber}</td>
+              <td>${invoice.customerName}</td>
+              <td class="status ${invoice.status.toLowerCase()}">${invoice.status}</td>
+              <td>${formatDateForExcel(invoice.date)}</td>
+              <td>${formatDateForExcel(invoice.dueDate)}</td>
+              <td>${index + 1}</td>
+              <td>${item.description || "-"}</td>
+              <td>${item.hsn || item.hsn_sac || "-"}</td>
+              <td>${r.qty}</td>
+              <td>₹${r.rate}</td>
+              <td>${r.gst}%</td>
+              <td>₹${r.taxable}</td>
+              <td>₹${r.net}</td>
+              <td>₹${r.cgst}</td>
+              <td>₹${r.sgst}</td>
+              <td>₹${r.igst}</td>
+              <td>${invoice.gstin || "-"}</td>
+              <td>${invoice.partyNumber || "-"}</td>
+              <td class="amount">₹${invoice.amount.toLocaleString()}</td>
+            </tr>
+          `);
+          });
+        }
+      });
+
+      // Prepare data for Excel export with simplified fields
+      const excelData = mappedInvoices.map((invoice: any) => {
+        const item = invoice.items[0] || {};
+        const calc = calcRow(item);
+
+        return {
+          "INVOICE NUMBER": invoice.invoiceNumber,
+          "DATE": invoice.date,
+          "STATE": invoice.billTo?.state || "-",
+          "QUANTITY": calc.qty,
+          "HSN": item.hsn || "-",
+          "RATE": calc.rate,
+          "TAXABLE": calc.taxable,
+          "IGST": calc.igst,
+          "CGST": calc.cgst,
+          "SGST": calc.sgst,
+          "GSTIN": invoice.billTo?.gst || "-",
+          "TOTAL": invoice.total || invoice.amount || 0,
+        };
+      });
+
+      // Create Excel workbook using xlsx library
+      const workbook = XLSX.utils.book_new();
+
+      // Create worksheet from data
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths for better readability
+      const columnWidths = [
+        { wch: 15 }, // INVOICE NUMBER
+        { wch: 12 }, // DATE
+        { wch: 15 }, // STATE
+        { wch: 10 }, // QUANTITY
+        { wch: 12 }, // HSN
+        { wch: 12 }, // RATE
+        { wch: 15 }, // TAXABLE
+        { wch: 10 }, // IGST
+        { wch: 10 }, // CGST
+        { wch: 10 }, // SGST
+        { wch: 15 }, // GSTIN
+        { wch: 15 }, // TOTAL
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice Report");
+
+      // Generate Excel file buffer
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+      // Create blob and download
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const filename = getExportFilename("excel", "invoices");
+      downloadBlob(blob, filename);
+
+      // Show success message
+      toast({
+        title: "Excel Export Successful",
+        description: `Excel file "${filename}" has been downloaded successfully!`,
+      });
+
+      console.log("✅ Excel export completed successfully");
+    } catch (error) {
+      console.error("❌ Excel export error:", error);
+      toast({
+        title: "Excel Export Failed",
+        description: `Failed to export Excel: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Professional PDF export for invoices
+  const exportInvoicesToPDF = async () => {
+    try {
+      console.log("🔄 Starting PDF export...");
+
+      // Fetch all invoices for export
+      const allInvoices = await fetchAllInvoicesForExport();
+      console.log("📊 PDF Export - Received invoices:", allInvoices);
+
+      if (!Array.isArray(allInvoices) || allInvoices.length === 0) {
+        console.log("❌ No invoices found for export");
+        toast({
+          title: "Export Failed",
+          description: "No invoices found to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("🔄 PDF Export - Processing", allInvoices.length, "invoices");
+
+      const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation for better table view
+
+      // Professional color scheme - using proper RGB arrays
+      const primaryColor: [number, number, number] = [101, 75, 205]; // Purple theme
+      const headerColor: [number, number, number] = [59, 130, 246]; // Blue for headers
+      const lightGray: [number, number, number] = [248, 250, 252];
+      const darkGray: [number, number, number] = [55, 65, 81];
+
+      // Add header
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 297, 30, 'F');
+
+      // Company logo/name
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DETAILED INVOICE REPORT', 20, 20);
+
+      // Report details
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const currentDate = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      doc.text(`Generated on: ${currentDate}`, 20, 35);
+
+      // Format date as DD/MM/YY
+      const formatDateForPDF = (dateStr: string) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return String(dateStr);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(dateStr);
+        }
+      };
+
+      // Helper function to calculate row values (matching InvoiceForm logic)
+      const calcRow = (item: any) => {
+        console.log("🔍 calcRow - Processing item:", item);
+
+        // Use the correct field names from the payload
+        const qty = Number(item.quantity || 0);
+        const rate = Number(item.unitPrice || 0);
+        const gst = Number(item.gst || 0);
+        const disc = Number(item.discount || 0);
+
+        console.log("🔍 calcRow - Extracted values:", { qty, rate, gst, disc });
+
+        const base = qty * rate;
+        const discountAmount = disc > 0 && disc <= 100 ? (base * disc) / 100 : disc;
+        const taxable = base - discountAmount;
+        const gstAmount = (taxable * gst) / 100;
+        const net = taxable + gstAmount;
+
+        // For CGST/SGST calculation (assuming 18% GST split)
+        const cgst = gstAmount / 2;
+        const sgst = gstAmount / 2;
+        const igst = 0; // Assuming intra-state, so IGST is 0
+
+        const result = {
+          qty: qty.toFixed(2),
+          rate: rate.toFixed(2),
+          gst: gst.toFixed(2),
+          taxable: taxable.toFixed(2),
+          cgst: cgst.toFixed(2),
+          sgst: sgst.toFixed(2),
+          igst: igst.toFixed(2),
+          net: net.toFixed(2)
+        };
+
+        console.log("🔍 calcRow - Calculated result:", result);
+        return result;
+      };
+
+      // Prepare table data with detailed columns
+      const tableHeaders = [
+        'Invoice Number',
+        'Customer Name',
+        'Status',
+        'Date',
+        'Due Date',
+        'S No',
+        'Description',
+        'HSN / SAC',
+        'Quantity',
+        'Item Rate',
+        'Tax %',
+        'Taxable Value',
+        'Net Amount',
+        'CGST',
+        'SGST',
+        'IGST',
+        'GSTIN',
+        'Party Number',
+        'Total Amount'
+      ];
+
+      // Map the fetched data to our export format
+      const mappedInvoices = allInvoices.map((invoice: any) => ({
+        id: invoice._id || invoice.id || String(Math.random()),
+        invoiceNumber: invoice.invoiceNumber || invoice.number || "INV-2024/001",
+        customerName: invoice.billTo?.name || invoice.customerName || invoice.clientName || "Customer Name",
+        status: invoice.paymentStatus || invoice.status || "Pending",
+        date: formatDate(invoice.dateOfSale || invoice.date || invoice.createdAt || ""),
+        dueDate: formatDate(invoice.dueDate || ""),
+        amount: invoice.totalAmount || invoice.amount || invoice.total || 2000,
+        items: invoice.items || invoice.invoice_items || [],
+        gstin: invoice.gstin || invoice.billTo?.gst || invoice.billTo?.gstin || "",
+        partyNumber: invoice.partyNumber || invoice.billTo?.pan || "",
+        billFrom: invoice.billFrom || {},
+        billTo: invoice.billTo || {},
+        shipTo: invoice.shipTo || {},
+        subtotal: invoice.subtotal || 0,
+        cgst: invoice.cgst || 0,
+        sgst: invoice.sgst || 0,
+        igst: invoice.igst || 0,
+        total: invoice.total || invoice.totalAmount || invoice.amount || 0,
+        notes: invoice.notes || "",
+        currency: invoice.currency || "INR",
+      }));
+
+      const tableData: string[][] = [];
+
+      mappedInvoices.forEach((invoice) => {
+        const invoiceItems = Array.isArray(invoice.items) ? invoice.items : [];
+
+        if (invoiceItems.length === 0) {
+          // If no items, create a single row with invoice details
+          tableData.push([
+            invoice.invoiceNumber,
+            invoice.customerName,
+            invoice.status,
+            formatDateForPDF(invoice.date),
+            formatDateForPDF(invoice.dueDate),
+            "1",
+            "No items",
+            "-",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            invoice.gstin || "-",
+            invoice.partyNumber || "-",
+            invoice.amount.toLocaleString()
+          ]);
+        } else {
+          // Create a row for each item
+          invoiceItems.forEach((item: any, index: number) => {
+            const r = calcRow(item);
+            tableData.push([
+              invoice.invoiceNumber,
+              invoice.customerName,
+              invoice.status,
+              formatDateForPDF(invoice.date),
+              formatDateForPDF(invoice.dueDate),
+              (index + 1).toString(),
+              item.description || item.Description || "-",
+              item.hsn || item.hsn_sac || item.HSN || item.HSNSAC || "-",
+              r.qty,
+              r.rate,
+              r.gst,
+              r.taxable,
+              r.net,
+              r.cgst,
+              r.sgst,
+              r.igst,
+              invoice.gstin || "-",
+              invoice.partyNumber || "-",
+              invoice.amount.toLocaleString()
+            ]);
+          });
+        }
+      });
+
+      console.log("📊 Table data prepared:", { headers: tableHeaders, dataLength: tableData.length });
+
+      // Update total records count
+      doc.text(`Total Records: ${tableData.length}`, 150, 35);
+
+      // Check if autoTable is available
+      if (typeof autoTable === 'function') {
+        console.log("✅ autoTable function is available");
+
+        // Add table with professional styling using the imported autoTable
+        autoTable(doc, {
+          head: [tableHeaders],
+          body: tableData,
+          startY: 45,
+          theme: 'grid',
+          headStyles: {
+            fillColor: headerColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 10,
+            halign: 'center'
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: darkGray,
+            halign: 'left'
+          },
+          alternateRowStyles: {
+            fillColor: lightGray
+          },
+          columnStyles: {
+            0: { halign: 'left', cellWidth: 25 }, // Invoice Number
+            1: { halign: 'left', cellWidth: 30 }, // Customer Name
+            2: { halign: 'center', cellWidth: 15 }, // Status
+            3: { halign: 'center', cellWidth: 15 }, // Date
+            4: { halign: 'center', cellWidth: 15 }, // Due Date
+            5: { halign: 'center', cellWidth: 8 }, // S No
+            6: { halign: 'left', cellWidth: 25 }, // Description
+            7: { halign: 'center', cellWidth: 12 }, // HSN / SAC
+            8: { halign: 'right', cellWidth: 10 }, // Quantity
+            9: { halign: 'right', cellWidth: 12 }, // Item Rate
+            10: { halign: 'right', cellWidth: 8 }, // Tax %
+            11: { halign: 'right', cellWidth: 12 }, // Taxable Value
+            12: { halign: 'right', cellWidth: 12 }, // Net Amount
+            13: { halign: 'right', cellWidth: 10 }, // CGST
+            14: { halign: 'right', cellWidth: 10 }, // SGST
+            15: { halign: 'right', cellWidth: 10 }, // IGST
+            16: { halign: 'center', cellWidth: 15 }, // GSTIN
+            17: { halign: 'center', cellWidth: 15 }, // Party Number
+            18: { halign: 'right', cellWidth: 15 }  // Total Amount
+          },
+          margin: { left: 20, right: 20 },
+          tableWidth: 'auto',
+          showHead: 'everyPage',
+          pageBreak: 'auto'
+        });
+
+        console.log("✅ Table added successfully with autoTable");
+      } else {
+        console.log("⚠️ autoTable not available, using fallback method");
+
+        // Fallback: Simple table without autoTable
+        let yPosition = 50;
+        const rowHeight = 6;
+        const colWidths = [25, 30, 15, 15, 15, 8, 25, 12, 10, 12, 8, 12, 12, 10, 10, 10, 15, 15, 15];
+        const xPosition = 10;
+
+        // Draw headers
+        doc.setFillColor(headerColor[0], headerColor[1], headerColor[2]);
+        doc.rect(xPosition, yPosition, colWidths.reduce((a, b) => a + b, 0), rowHeight, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+
+        let currentX = xPosition;
+        tableHeaders.forEach((header, index) => {
+          doc.text(header, currentX + 2, yPosition + 6);
+          currentX += colWidths[index];
+        });
+
+        yPosition += rowHeight;
+
+        // Draw data rows
+        doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+
+        tableData.forEach((row, rowIndex) => {
+          // Alternate row colors
+          if (rowIndex % 2 === 0) {
+            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+            doc.rect(xPosition, yPosition, colWidths.reduce((a, b) => a + b, 0), rowHeight, 'F');
+          }
+
+          currentX = xPosition;
+          row.forEach((cell, colIndex) => {
+            doc.text(String(cell), currentX + 2, yPosition + 6);
+            currentX += colWidths[colIndex];
+          });
+
+          yPosition += rowHeight;
+        });
+
+        console.log("✅ Fallback table added successfully");
+      }
+
+      // Add footer - using proper jsPDF methods
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Page ${i} of ${pageCount}`, 20, (doc as any).internal.pageSize.height - 10);
+        doc.text('Generated by Invoice Management System', (doc as any).internal.pageSize.width - 80, (doc as any).internal.pageSize.height - 10);
+      }
+
+      // Save the PDF
+      const filename = getExportFilename("pdf", "invoices");
+      console.log("💾 Saving PDF with filename:", filename);
+
+      // Save the PDF and trigger download
+      doc.save(filename);
+
+      // Show success message
+      toast({
+        title: "PDF Export Successful",
+        description: `PDF file "${filename}" has been downloaded successfully!`,
+      });
+
+      console.log("✅ PDF export completed successfully");
+    } catch (error) {
+      console.error("❌ PDF export error:", error);
+      console.error("Error details:", error);
+      throw new Error(`PDF export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Client-side export functions for credit notes
+  const exportCreditNotesToCSV = async () => {
+    console.log("🔄 CSV Export - Starting Credit Notes...");
+
+    if (!Array.isArray(creditNotes) || creditNotes.length === 0) {
+      console.log("❌ No credit notes found for export");
+      toast({
+        title: "Export Failed",
+        description: "No credit notes found to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("🔄 CSV Export - Processing", creditNotes.length, "credit notes");
+
+    const headers = [
+      "CREDIT NOTE NO",
+      "INVOICE NO",
+      "CUSTOMER NAME",
+      "REASON",
+      "DATE ISSUED",
+      "AMOUNT",
+      "STATUS"
     ];
 
-    // Convert to CSV format (Excel can open CSV files)
-    const csvContent = excelContent.map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const filename = getExportFilename("excel", "invoices").replace(
-      ".xlsx",
-      ".csv",
-    );
+    const formatDateForCSV = (dateStr: string) => {
+      if (!dateStr) return "N/A";
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear().toString().slice(-2);
+        return `${day}/${month}/${year}`;
+      } catch {
+        return String(dateStr);
+      }
+    };
+
+    const rows: string[][] = creditNotes.map((note) => [
+      note.noteNo,
+      note.invoiceNo,
+      note.customerName,
+      note.reason,
+      formatDateForCSV(note.dateIssued),
+      `₹${note.amount.toLocaleString()}`,
+      note.status
+    ]);
+
+    const csvRows = [headers, ...rows];
+    const csvContent = csvRows
+      .map((row) => {
+        const formattedRow = row.map((cell) => {
+          const str = cell == null ? "" : String(cell);
+          const cleanStr = str.replace(/"/g, '""');
+          return `"${cleanStr}"`;
+        });
+        return formattedRow.join(",");
+      })
+      .join("\n");
+
+    const currentDate = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    const professionalHeader = [
+      "CREDIT NOTES REPORT",
+      `Generated on: ${currentDate}`,
+      `Total Records: ${rows.length}`,
+      "",
+      csvContent
+    ].join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + professionalHeader], { type: "text/csv;charset=utf-8;" });
+    const filename = getExportFilename("csv", "credit-notes");
     downloadBlob(blob, filename);
+
+    // Show success message
+    toast({
+      title: "CSV Export Successful",
+      description: `CSV file "${filename}" has been downloaded successfully!`,
+    });
+  };
+
+  const exportCreditNotesToExcel = async () => {
+    console.log("🔄 Excel Export - Starting Credit Notes...");
+
+    if (!Array.isArray(creditNotes) || creditNotes.length === 0) {
+      console.log("❌ No credit notes found for export");
+      toast({
+        title: "Export Failed",
+        description: "No credit notes found to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formatDateForExcel = (dateStr: string) => {
+      if (!dateStr) return "N/A";
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear().toString().slice(-2);
+        return `${day}/${month}/${year}`;
+      } catch {
+        return String(dateStr);
+      }
+    };
+
+    // Prepare data for Excel export
+    const rows = creditNotes.map((note) => ({
+      "NOTE NO": note.noteNo,
+      "INVOICE NO": note.invoiceNo,
+      "CUSTOMER NAME": note.customerName,
+      "REASON": note.reason,
+      "DATE ISSUED": formatDateForExcel(note.dateIssued),
+      "AMOUNT": note.amount,
+      "STATUS": note.status,
+    }));
+
+
+    // Create Excel workbook using xlsx library
+    const workbook = XLSX.utils.book_new();
+
+    // Create worksheet from data
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // Set column widths for better readability
+    const columnWidths = [
+      { wch: 15 }, // NOTE NO
+      { wch: 15 }, // INVOICE NO
+      { wch: 20 }, // CUSTOMER NAME
+      { wch: 25 }, // REASON
+      { wch: 12 }, // DATE ISSUED
+      { wch: 15 }, // AMOUNT
+      { wch: 12 }, // STATUS
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Credit Notes Report");
+
+    // Generate Excel file buffer
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+    // Create blob and download
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const filename = getExportFilename("excel", "credit-notes");
+    downloadBlob(blob, filename);
+
+    // Show success message
+    toast({
+      title: "Excel Export Successful",
+      description: `Excel file "${filename}" has been downloaded successfully!`,
+    });
+  };
+
+  const exportCreditNotesToPDF = async () => {
+    try {
+      console.log("🔄 Starting PDF export for Credit Notes...");
+
+      if (!Array.isArray(creditNotes) || creditNotes.length === 0) {
+        console.log("❌ No credit notes found for export");
+        toast({
+          title: "Export Failed",
+          description: "No credit notes found to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const doc = new jsPDF('l', 'mm', 'a4');
+      const primaryColor: [number, number, number] = [101, 75, 205];
+      const headerColor: [number, number, number] = [59, 130, 246];
+      const lightGray: [number, number, number] = [248, 250, 252];
+      const darkGray: [number, number, number] = [55, 65, 81];
+
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 297, 30, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CREDIT NOTES REPORT', 20, 20);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const currentDate = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      doc.text(`Generated on: ${currentDate}`, 20, 35);
+      doc.text(`Total Records: ${creditNotes.length}`, 150, 35);
+
+      const formatDateForPDF = (dateStr: string) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return String(dateStr);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(dateStr);
+        }
+      };
+
+      const tableHeaders = [
+        'Credit Note No',
+        'Invoice No',
+        'Customer Name',
+        'Reason',
+        'Date Issued',
+        'Amount',
+        'Status'
+      ];
+
+      const tableData: string[][] = creditNotes.map((note) => [
+        note.noteNo,
+        note.invoiceNo,
+        note.customerName,
+        note.reason,
+        formatDateForPDF(note.dateIssued),
+        note.amount.toLocaleString(),
+        note.status
+      ]);
+
+      if (typeof autoTable === 'function') {
+        autoTable(doc, {
+          head: [tableHeaders],
+          body: tableData,
+          startY: 45,
+          theme: 'grid',
+          headStyles: {
+            fillColor: headerColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 10,
+            halign: 'center'
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: darkGray,
+            halign: 'left'
+          },
+          alternateRowStyles: {
+            fillColor: lightGray
+          },
+          columnStyles: {
+            0: { halign: 'left', cellWidth: 30 },
+            1: { halign: 'left', cellWidth: 30 },
+            2: { halign: 'left', cellWidth: 40 },
+            3: { halign: 'left', cellWidth: 35 },
+            4: { halign: 'center', cellWidth: 25 },
+            5: { halign: 'right', cellWidth: 25 },
+            6: { halign: 'center', cellWidth: 20 }
+          },
+          margin: { left: 20, right: 20 },
+          tableWidth: 'auto',
+          showHead: 'everyPage',
+          pageBreak: 'auto'
+        });
+      }
+
+      const filename = getExportFilename("pdf", "credit-notes");
+      doc.save(filename);
+
+      // Show success message
+      toast({
+        title: "PDF Export Successful",
+        description: `PDF file "${filename}" has been downloaded successfully!`,
+      });
+    } catch (error) {
+      console.error("❌ PDF export error:", error);
+      throw new Error(`PDF export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Client-side export functions for debit notes
+  const exportDebitNotesToCSV = async () => {
+    console.log("🔄 CSV Export - Starting Debit Notes...");
+
+    if (!Array.isArray(debitNotes) || debitNotes.length === 0) {
+      console.log("❌ No debit notes found for export");
+      toast({
+        title: "Export Failed",
+        description: "No debit notes found to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("🔄 CSV Export - Processing", debitNotes.length, "debit notes");
+
+    const headers = [
+      "DEBIT NOTE NO",
+      "INVOICE NO",
+      "VENDOR NAME",
+      "REASON",
+      "DATE ISSUED",
+      "AMOUNT",
+      "STATUS"
+    ];
+
+    const formatDateForCSV = (dateStr: string) => {
+      if (!dateStr) return "N/A";
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear().toString().slice(-2);
+        return `${day}/${month}/${year}`;
+      } catch {
+        return String(dateStr);
+      }
+    };
+
+    const rows: string[][] = debitNotes.map((note) => [
+      note.noteNo,
+      note.invoiceNo,
+      note.vendorName,
+      note.reason,
+      formatDateForCSV(note.dateIssued),
+      `₹${note.amount.toLocaleString()}`,
+      note.status
+    ]);
+
+    const csvRows = [headers, ...rows];
+    const csvContent = csvRows
+      .map((row) => {
+        const formattedRow = row.map((cell) => {
+          const str = cell == null ? "" : String(cell);
+          const cleanStr = str.replace(/"/g, '""');
+          return `"${cleanStr}"`;
+        });
+        return formattedRow.join(",");
+      })
+      .join("\n");
+
+    const currentDate = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    const professionalHeader = [
+      "DEBIT NOTES REPORT",
+      `Generated on: ${currentDate}`,
+      `Total Records: ${rows.length}`,
+      "",
+      csvContent
+    ].join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + professionalHeader], { type: "text/csv;charset=utf-8;" });
+    const filename = getExportFilename("csv", "debit-notes");
+    downloadBlob(blob, filename);
+
+    // Show success message
+    toast({
+      title: "CSV Export Successful",
+      description: `CSV file "${filename}" has been downloaded successfully!`,
+    });
+  };
+
+  const exportDebitNotesToExcel = async () => {
+    console.log("🔄 Excel Export - Starting Debit Notes...");
+
+    if (!Array.isArray(debitNotes) || debitNotes.length === 0) {
+      console.log("❌ No debit notes found for export");
+      toast({
+        title: "Export Failed",
+        description: "No debit notes found to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formatDateForExcel = (dateStr: string) => {
+      if (!dateStr) return "N/A";
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear().toString().slice(-2);
+        return `${day}/${month}/${year}`;
+      } catch {
+        return String(dateStr);
+      }
+    };
+
+    // Prepare data for Excel export
+    const rows = debitNotes.map((note) => ({
+      "NOTE NO": note.noteNo,
+      "INVOICE NO": note.invoiceNo,
+      "VENDOR NAME": note.vendorName,
+      "REASON": note.reason,
+      "DATE ISSUED": formatDateForExcel(note.dateIssued),
+      "AMOUNT": note.amount,
+      "STATUS": note.status,
+    }));
+
+
+    // Create Excel workbook using xlsx library
+    const workbook = XLSX.utils.book_new();
+
+    // Create worksheet from data
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // Set column widths for better readability
+    const columnWidths = [
+      { wch: 15 }, // NOTE NO
+      { wch: 15 }, // INVOICE NO
+      { wch: 20 }, // VENDOR NAME
+      { wch: 25 }, // REASON
+      { wch: 12 }, // DATE ISSUED
+      { wch: 15 }, // AMOUNT
+      { wch: 12 }, // STATUS
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Debit Notes Report");
+
+    // Generate Excel file buffer
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+    // Create blob and download
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const filename = getExportFilename("excel", "debit-notes");
+    downloadBlob(blob, filename);
+
+    // Show success message
+    toast({
+      title: "Excel Export Successful",
+      description: `Excel file "${filename}" has been downloaded successfully!`,
+    });
+  };
+
+  const exportDebitNotesToPDF = async () => {
+    try {
+      console.log("🔄 Starting PDF export for Debit Notes...");
+
+      if (!Array.isArray(debitNotes) || debitNotes.length === 0) {
+        console.log("❌ No debit notes found for export");
+        toast({
+          title: "Export Failed",
+          description: "No debit notes found to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const doc = new jsPDF('l', 'mm', 'a4');
+      const primaryColor: [number, number, number] = [101, 75, 205];
+      const headerColor: [number, number, number] = [59, 130, 246];
+      const lightGray: [number, number, number] = [248, 250, 252];
+      const darkGray: [number, number, number] = [55, 65, 81];
+
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 297, 30, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DEBIT NOTES REPORT', 20, 20);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const currentDate = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      doc.text(`Generated on: ${currentDate}`, 20, 35);
+      doc.text(`Total Records: ${debitNotes.length}`, 150, 35);
+
+      const formatDateForPDF = (dateStr: string) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return String(dateStr);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(dateStr);
+        }
+      };
+
+      const tableHeaders = [
+        'Debit Note No',
+        'Invoice No',
+        'Vendor Name',
+        'Reason',
+        'Date Issued',
+        'Amount',
+        'Status'
+      ];
+
+      const tableData: string[][] = debitNotes.map((note) => [
+        note.noteNo,
+        note.invoiceNo,
+        note.vendorName,
+        note.reason,
+        formatDateForPDF(note.dateIssued),
+        note.amount.toLocaleString(),
+        note.status
+      ]);
+
+      if (typeof autoTable === 'function') {
+        autoTable(doc, {
+          head: [tableHeaders],
+          body: tableData,
+          startY: 45,
+          theme: 'grid',
+          headStyles: {
+            fillColor: headerColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 10,
+            halign: 'center'
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: darkGray,
+            halign: 'left'
+          },
+          alternateRowStyles: {
+            fillColor: lightGray
+          },
+          columnStyles: {
+            0: { halign: 'left', cellWidth: 30 },
+            1: { halign: 'left', cellWidth: 30 },
+            2: { halign: 'left', cellWidth: 40 },
+            3: { halign: 'left', cellWidth: 35 },
+            4: { halign: 'center', cellWidth: 25 },
+            5: { halign: 'right', cellWidth: 25 },
+            6: { halign: 'center', cellWidth: 20 }
+          },
+          margin: { left: 20, right: 20 },
+          tableWidth: 'auto',
+          showHead: 'everyPage',
+          pageBreak: 'auto'
+        });
+      }
+
+      const filename = getExportFilename("pdf", "debit-notes");
+      doc.save(filename);
+
+      // Show success message
+      toast({
+        title: "PDF Export Successful",
+        description: `PDF file "${filename}" has been downloaded successfully!`,
+      });
+    } catch (error) {
+      console.error("❌ PDF export error:", error);
+      throw new Error(`PDF export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   // Handle export
   const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
       setLoading(true);
-      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
 
       toast({
         title: "Exporting...",
         description: `Preparing ${format.toUpperCase()} export...`,
       });
 
-      // For invoices, try server export first, fallback to client-side export
-      if (activeTab === "invoices") {
-        try {
-          const response = await apiExportReceipts(undefined, format, activeTab);
-          const blob = response.data;
-          const contentDisposition =
-            response.headers["content-disposition"] || "";
-          let filename = getExportFilename(format, activeTab);
+      // Try server export first for all types
+      try {
+        const response = await apiExportReceipts(undefined, format, activeTab);
+        const blob = response.data;
+        const contentDisposition = response.headers["content-disposition"] || "";
+        let filename = getExportFilename(format, activeTab);
 
-          if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(
-              /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
-            );
-            if (filenameMatch && filenameMatch[1]) {
-              filename = filenameMatch[1].replace(/['"]/g, "");
-            }
-          }
-
-          downloadBlob(blob, filename);
-          toast({
-            title: "Export Successful",
-            description: `Exported as ${format.toUpperCase()} successfully!`,
-          });
-          return;
-        } catch (error) {
-          console.log(
-            "Server export failed, falling back to client-side export:",
-            error,
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(
+            /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
           );
-          // Fallback to client-side export
-          if (format === "csv") {
-            exportInvoicesToCSV();
-            toast({
-              title: "Export Successful",
-              description: "Exported as CSV successfully! (Client-side)",
-            });
-          } else if (format === "excel") {
-            exportInvoicesToExcel();
-            toast({
-              title: "Export Successful",
-              description: "Exported as Excel successfully! (Client-side)",
-            });
-          } else {
-            // For PDF, we can't do client-side, so show error
-            throw error;
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, "");
           }
-          return;
         }
-      }
 
-      // For other types or formats, use server export
-      const response = await apiExportReceipts(undefined, format, activeTab);
-      const blob = response.data;
-      const contentDisposition =
-        response.headers["content-disposition"] || "";
-      let filename = getExportFilename(format, activeTab);
+        downloadBlob(blob, filename);
+        toast({
+          title: "Export Successful",
+          description: `Exported as ${format.toUpperCase()} successfully!`,
+        });
+        return;
+      } catch (error) {
+        console.log("Server export failed, falling back to client-side export:", error);
 
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(
-          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
-        );
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, "");
+        // Fallback to client-side export based on active tab and format
+        console.log("🔄 Starting client-side export for:", activeTab, format);
+        if (activeTab === "invoices") {
+          if (format === "csv") {
+            console.log("📄 Calling exportInvoicesToCSV()");
+            await exportInvoicesToCSV();
+          } else if (format === "excel") {
+            console.log("📄 Calling exportInvoicesToExcel()");
+            await exportInvoicesToExcel();
+          } else if (format === "pdf") {
+            console.log("📄 Calling exportInvoicesToPDF()");
+            await exportInvoicesToPDF();
+          }
+        } else if (activeTab === "credit-notes") {
+          if (format === "csv") {
+            await exportCreditNotesToCSV();
+          } else if (format === "excel") {
+            await exportCreditNotesToExcel();
+          } else if (format === "pdf") {
+            await exportCreditNotesToPDF();
+          }
+        } else if (activeTab === "debit-notes") {
+          if (format === "csv") {
+            await exportDebitNotesToCSV();
+          } else if (format === "excel") {
+            await exportDebitNotesToExcel();
+          } else if (format === "pdf") {
+            await exportDebitNotesToPDF();
+          }
         }
+
+        toast({
+          title: "Export Successful",
+          description: `Exported as ${format.toUpperCase()} successfully! (Client-side)`,
+        });
+        return;
       }
-
-      downloadBlob(blob, filename);
-
-      toast({
-        title: "Export Successful",
-        description: `Exported as ${format.toUpperCase()} successfully!`,
-      });
     } catch (error) {
       console.error("Error exporting receipts:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
       let userMessage = errorMessage;
       if (errorMessage.includes("No") && errorMessage.includes("found")) {
         userMessage = `No ${activeTab} available to export.`;
-      }
-
-      // For invoices, offer client-side export as fallback
-      if (activeTab === "invoices") {
-        if (format === "csv") {
-          toast({
-            title: "Server Export Failed",
-            description: "Falling back to client-side CSV export...",
-          });
-          exportInvoicesToCSV();
-          toast({
-            title: "Export Successful",
-            description: "Exported as CSV successfully! (Client-side)",
-          });
-          return;
-        } else if (format === "excel") {
-          toast({
-            title: "Server Export Failed",
-            description: "Falling back to client-side Excel export...",
-          });
-          exportInvoicesToExcel();
-          toast({
-            title: "Export Successful",
-            description: "Exported as Excel successfully! (Client-side)",
-          });
-          return;
-        }
-        // For PDF, we can't do client-side, so show the original error
       }
 
       toast({
@@ -2028,7 +3487,7 @@ export default function Receipts() {
 
               <div className="flex flex-wrap gap-2">
                 {/* Import Dropdown */}
-                <DropdownMenu>
+                {/* <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button className="flex items-center gap-2 border-1 border-gray-200 bg-white text-black hover:bg-gray-100">
                       <Download className="h-4 w-4" />
@@ -2052,7 +3511,7 @@ export default function Receipts() {
                       Excel
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu> */}
 
                 {/* Export Dropdown */}
                 <DropdownMenu>
