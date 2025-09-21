@@ -333,16 +333,16 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     inv: Partial<Invoice> & { customerName?: string; clientName?: string; companyName?: string }
   ) => inv?.billTo?.name || inv?.customerName || inv?.clientName || inv?.companyName || "N/A";
 
-  const formatDatePretty = (value?: string) => {
-    if (!value) return "";
-    try {
-      const d = new Date(value);
-      if (isNaN(d.getTime())) return String(value);
-      return format(d, "MMMM d, yyyy");
-    } catch {
-      return String(value);
-    }
-  };
+  // const formatDatePretty = (value?: string) => {
+  //   if (!value) return "";
+  //   try {
+  //     const d = new Date(value);
+  //     if (isNaN(d.getTime())) return String(value);
+  //     return format(d, "MMMM d, yyyy");
+  //   } catch {
+  //     return String(value);
+  //   }
+  // };
 
   const formatDueDate = (value?: string) => {
     if (!value) return "N/A";
@@ -356,49 +356,110 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
   };
 
   const downloadCSV = (data: Invoice[], filename: string) => {
+    // Professional headers with consistent spacing
     const headers = [
-      "Invoice Number",
-      "Customer Name",
-      "Items Count",
-      "Total Amount",
-      "Date",
-      "Due Date",
-      "Status",
+      "INVOICE NUMBER",
+      "CUSTOMER NAME",
+      "TOTAL AMOUNT",
+      "DUE DATE",
+      "STATUS",
     ];
 
     const rows = (Array.isArray(data) ? data : []).map((inv: Invoice) => {
       const invoiceNumber = getInvoiceNumber(inv);
       const customerName = getCustomerName(inv);
-      const itemsCount = Array.isArray(inv.items) ? inv.items.length : 0;
-      const totalAmount = inv?.total ?? 0;
-      const datePretty = formatDatePretty(inv.date);
-      const duePretty = formatDueDate(inv.dueDate);
-      const status = inv?.status || "Pending";
+      const totalAmount = inv?.total ??
+        (inv as any).totalAmount ??
+        (inv as any).amount ??
+        (inv as any).grandTotal ??
+        (inv as any).grand_total ?? 0;
+
+      // Format due date as DD/MM/YY
+      const formatDueDateForCSV = (value?: string) => {
+        if (!value) return "N/A";
+        try {
+          const d = new Date(value);
+          if (isNaN(d.getTime())) return String(value);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(value);
+        }
+      };
+
+      const dueDateFormatted = formatDueDateForCSV(
+        (inv as any).dueDate ||
+        (inv as any).due_date ||
+        (inv as any).paymentDueDate ||
+        (inv as any).payment_due_date
+      );
+
+      // Use the same status mapping logic as the rendered table
+      const rawStatus = inv?.status || "pending";
+      const mappedStatus = mapStatusToFilter(rawStatus);
+      const displayStatus = mappedStatus === "paid" ? "Paid" :
+        mappedStatus === "pending" ? "Pending" :
+          mappedStatus === "overdue" ? "Overdue" : "Pending";
 
       return [
         invoiceNumber,
         customerName,
-        String(itemsCount),
-        String(totalAmount),
-        datePretty,
-        duePretty,
-        status,
+        `₹${typeof totalAmount === 'number' ? totalAmount.toLocaleString() : String(totalAmount)}`,
+        dueDateFormatted,
+        displayStatus,
       ];
     });
 
+    // Create professional CSV with proper spacing and structure
     const csvRows = [headers, ...rows];
+
+    // Calculate column widths for better alignment
+    // const columnWidths = headers.map((_, colIndex) => {
+    //   const allValues = csvRows.map(row => String(row[colIndex] || ""));
+    //   return Math.max(...allValues.map(val => val.length));
+    // });
+
     const csvContent = csvRows
-      .map((row) =>
-        row
-          .map((cell) => {
-            const str = cell == null ? "" : String(cell);
-            return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
-          })
-          .join(",")
-      )
+      .map((row, rowIndex) => {
+        const formattedRow = row.map((cell) => {
+          const str = cell == null ? "" : String(cell);
+          const cleanStr = str.replace(/"/g, '""');
+
+          // Add padding for better alignment (only for data rows, not headers)
+          if (rowIndex === 0) {
+            // Headers - keep them clean
+            return `"${cleanStr}"`;
+          } else {
+            // Data rows - add consistent spacing
+            return `"${cleanStr}"`;
+          }
+        });
+
+        // Use consistent separator with proper spacing
+        return formattedRow.join(" , ");
+      })
       .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    // Add professional header and metadata
+    const currentDate = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    const professionalHeader = [
+      "INVOICE REPORT",
+      `Generated on: ${currentDate}`,
+      `Total Records: ${rows.length}`,
+      "", // Empty line for separation
+      csvContent
+    ].join("\n");
+
+    // Add BOM for proper UTF-8 encoding in Excel
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + professionalHeader], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
@@ -548,12 +609,12 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     return {
       taxableTotal: +taxableTotal.toFixed(2),
       totalGst: +totalGst.toFixed(2),
-            cgst,
-            sgst,
+      cgst,
+      sgst,
       subtotal: +subtotal.toFixed(2),
       shipping: +shipping.toFixed(2),
       roundOff,
-            total,
+      total,
     };
   };
 
