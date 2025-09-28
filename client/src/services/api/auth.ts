@@ -29,9 +29,14 @@ export const login = async (data: { email: string; password: string }) => {
 export const getProfile = async () => {
     try {
         const res = await api.get(routes.auth.getProfile);
+        // Ensure we have valid data before returning
+        if (!res.data || typeof res.data !== 'object') {
+            throw new Error('Invalid profile data received');
+        }
         return res.data;
     } catch (err: any) {
-        const message = err.response?.data?.error || 'Failed to fetch profile';
+        console.error('Profile fetch error:', err);
+        const message = err.response?.data?.error || err.message || 'Failed to fetch profile';
         throw { message };
     }
 };

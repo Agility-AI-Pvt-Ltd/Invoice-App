@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "@/components/customer-form/Step1Form";
 import Step2Form from "@/components/customer-form/Step2Form";
 import Step3Form from "@/components/customer-form/Step3Form";
 import Step4Form from "@/components/customer-form/Step4Form";
 import { InfoIcon, MapPin, Receipt } from "lucide-react";
-import axios from "axios";
-import Cookies from "js-cookie";
 
 type Props = {
   onCancel: () => void;
+  initialData?: any;
 };
 
 const steps = [
@@ -19,42 +18,51 @@ const steps = [
   { label: "Other Additional Info", icon: InfoIcon },
 ];
 
-export default function MultiStepForm({ onCancel }: Props) {
+export default function MultiStepForm({ onCancel, initialData }: Props) {
   const [step, setStep] = useState(1);
 
   // 🔹 Central state for all form data
   const [formData, setFormData] = useState<any>({
     // Step 1
-    customerType: "",
-    fullName: "",
-    email: "",
-    phone: "",
-    companyName: "",
-    website: "",
+    customerType: initialData?.customerType || "",
+    name: initialData?.fullName || initialData?.name || "",  // Changed from fullName to name
+    email: initialData?.email || "",
+    phone: initialData?.phone || "",
+    companyName: initialData?.companyName || "",
+    website: initialData?.website || "",
 
     // Step 2
-    billingAddress: "",
-    billingCity: "",
-    billingState: "",
-    billingZip: "",
-    shippingAddress: "",
-    shippingCity: "",
-    shippingState: "",
-    shippingZip: "",
+    billingAddress: initialData?.billingAddress || "",
+    billingAddressLine1: initialData?.billingAddressLine1 || "",
+    billingAddressLine2: initialData?.billingAddressLine2 || "",
+    billingCity: initialData?.billingCity || "",
+    billingState: initialData?.billingState || "",
+    billingZip: initialData?.billingZip || "",
+    billingCountry: initialData?.billingCountry || "",
+    shippingAddress: initialData?.shippingAddress || "",
+    shippingAddressLine1: initialData?.shippingAddressLine1 || "",
+    shippingAddressLine2: initialData?.shippingAddressLine2 || "",
+    shippingCity: initialData?.shippingCity || "",
+    shippingState: initialData?.shippingState || "",
+    shippingZip: initialData?.shippingZip || "",
+    shippingCountry: initialData?.shippingCountry || "",
 
     // Step 3
-    pan: "",
-    documents: [],
-    gstRegistered: "",
-    gstNumber: "",
-    supplyPlace: "",
-    currency: "INR",
-    paymentTerms: "",
+    pan: initialData?.pan || "",
+    documents: initialData?.documents || [],
+    gstRegistered: initialData?.gstRegistered || "",
+    gstNumber: initialData?.gstNumber || "",
+    supplyPlace: initialData?.supplyPlace || "",
+    currency: initialData?.currency || "INR",
+    paymentTerms: initialData?.paymentTerms || "",
 
     // Step 4
     logo: null,
-    notes: "",
-    tags: "",
+    notes: initialData?.notes || "",
+    tags: initialData?.tags || "",
+
+    // Keep original ID for updates
+    id: initialData?.id,
   });
 
   // Helper: try to extract useful messages from backend validation response
@@ -85,25 +93,113 @@ export default function MultiStepForm({ onCancel }: Props) {
     }
   };
 
+  // Update form data when initialData changes (for editing)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        // Step 1
+        customerType: initialData?.customerType || "",
+        name: initialData?.fullName || initialData?.name || "",  // Changed from fullName to name
+        email: initialData?.email || "",
+        phone: initialData?.phone || "",
+        companyName: initialData?.companyName || "",
+        website: initialData?.website || "",
+
+        // Step 2
+        billingAddress: initialData?.billingAddress || "",
+        billingAddressLine1: initialData?.billingAddressLine1 || "",
+        billingAddressLine2: initialData?.billingAddressLine2 || "",
+        billingCity: initialData?.billingCity || "",
+        billingState: initialData?.billingState || "",
+        billingZip: initialData?.billingZip || "",
+        billingCountry: initialData?.billingCountry || "",
+        shippingAddress: initialData?.shippingAddress || "",
+        shippingAddressLine1: initialData?.shippingAddressLine1 || "",
+        shippingAddressLine2: initialData?.shippingAddressLine2 || "",
+        shippingCity: initialData?.shippingCity || "",
+        shippingState: initialData?.shippingState || "",
+        shippingZip: initialData?.shippingZip || "",
+        shippingCountry: initialData?.shippingCountry || "",
+
+        // Step 3
+        pan: initialData?.pan || "",
+        documents: initialData?.documents || [],
+        gstRegistered: initialData?.gstRegistered || "",
+        gstNumber: initialData?.gstNumber || "",
+        supplyPlace: initialData?.supplyPlace || "",
+        currency: initialData?.currency || "INR",
+        paymentTerms: initialData?.paymentTerms || "",
+
+        // Step 4
+        logo: null,
+        notes: initialData?.notes || "",
+        tags: initialData?.tags || "",
+
+        // Keep original ID for updates
+        id: initialData?.id,
+      });
+    }
+  }, [initialData]);
+
   const nextStep = async () => {
     if (step === 4) {
-      const token = Cookies.get("authToken");
       // Build a JSON payload without file binaries first (logo/documents removed or normalized)
       const buildJsonPayloadNoFiles = (raw: any) => {
-        const payload: any = { ...raw };
+        // Map frontend form fields to backend API fields
+        const payload: any = {
+          // Basic Information - map to backend expected fields
+          name: raw.name || "",  // Changed from raw.fullName to raw.name
+          email: raw.email || "",
+          phone: raw.phone || "",
+          address: raw.billingAddress || raw.billingAddressLine1 || "",
+          company: raw.companyName || "",
+          gstNumber: raw.gstNumber || "",
+          panNumber: raw.pan || "",
+          
+          // Additional fields that might be expected
+          customerType: raw.customerType || "",
+          website: raw.website || "",
+          
+          // Address details
+          billingAddress: raw.billingAddress || "",
+          billingAddressLine1: raw.billingAddressLine1 || "",
+          billingAddressLine2: raw.billingAddressLine2 || "",
+          billingCity: raw.billingCity || "",
+          billingState: raw.billingState || "",
+          billingZip: raw.billingZip || "",
+          billingCountry: raw.billingCountry || "",
+          
+          shippingAddress: raw.shippingAddress || "",
+          shippingAddressLine1: raw.shippingAddressLine1 || "",
+          shippingAddressLine2: raw.shippingAddressLine2 || "",
+          shippingCity: raw.shippingCity || "",
+          shippingState: raw.shippingState || "",
+          shippingZip: raw.shippingZip || "",
+          shippingCountry: raw.shippingCountry || "",
+          
+          // Tax details
+          gstRegistered: raw.gstRegistered || "",
+          supplyPlace: raw.supplyPlace || "",
+          currency: raw.currency || "INR",
+          paymentTerms: raw.paymentTerms || "",
+          
+          // Additional info
+          notes: raw.notes || "",
+          tags: raw.tags || "",
+        };
 
         // Remove or normalize file fields so we send pure JSON
-        if (payload.logo instanceof File) {
+        if (raw.logo instanceof File) {
           // remove file binary for JSON attempt — backend may handle files separately
-          delete payload.logo;
+          // payload.logo will be undefined
         } else {
           // keep value if it's string/null
-          payload.logo = payload.logo ?? null;
+          payload.logo = raw.logo ?? null;
         }
 
-        if (Array.isArray(payload.documents) && payload.documents.length > 0) {
+        if (Array.isArray(raw.documents) && raw.documents.length > 0) {
           // If documents contain File objects, remove them for JSON attempt
-          const docs = payload.documents.filter((d: any) => !(d instanceof File));
+          const docs = raw.documents.filter((d: any) => !(d instanceof File));
           payload.documents = docs;
         } else {
           payload.documents = [];
@@ -112,62 +208,33 @@ export default function MultiStepForm({ onCancel }: Props) {
         return payload;
       };
 
-      // Build multipart formdata (used as fallback) — append everything, files included
-      const buildFormData = (raw: any) => {
-        const fd = new FormData();
-        Object.keys(raw).forEach((key) => {
-          const val = raw[key];
-          if (key === "documents" && Array.isArray(val)) {
-            val.forEach((item: any) => {
-              // append file or metadata
-              if (item instanceof File) fd.append("documents", item);
-              else if (typeof item === "object") fd.append("documents", JSON.stringify(item));
-              else if (item !== undefined && item !== null) fd.append("documents", String(item));
-            });
-            return;
-          }
 
-          if (val instanceof File) {
-            fd.append(key, val);
-            return;
-          }
-
-          // For objects (like nested address objects) stringify them so backend can parse if expecting JSON
-          if (typeof val === "object" && val !== null) {
-            fd.append(key, JSON.stringify(val));
-            return;
-          }
-
-          if (val !== undefined && val !== null) {
-            fd.append(key, String(val));
-          }
-        });
-        return fd;
-      };
-
-      // FIRST: try sending JSON (without files) — many backends expect JSON for customer create
+      // FIRST: try sending JSON (without files) — many backends expect JSON for customer create/update
       try {
         const payloadJson = buildJsonPayloadNoFiles(formData);
-        console.log("Attempting JSON payload (no file binaries):", payloadJson);
+        
+        // Debug logging to see what we're sending
+        console.log("🔍 Raw form data:", formData);
+        console.log("🚀 Payload being sent to backend:", payloadJson);
+        console.log("📧 Name field:", payloadJson.name);
+        console.log("📧 Email field:", payloadJson.email);
+        
+        const isEditing = initialData && (initialData.id || initialData._id);
+        const customerId = isEditing ? (initialData.id || initialData._id) : null;
+        
+        const { createCustomer, updateCustomer } = await import("@/services/api/customer");
+        
+        const res = isEditing 
+          ? await updateCustomer(customerId, payloadJson)
+          : await createCustomer(payloadJson);
 
-        const res = await axios.post(
-          "https://invoice-backend-604217703209.asia-south1.run.app/api/customers",
-          payloadJson,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            withCredentials: true,
-          }
-        );
+        console.log(`✅ Customer ${isEditing ? 'updated' : 'added'} successfully`);
 
-        console.log("✅ Customer added:", res.data);
+        // dispatch global event so lists can refresh (no UI change)
+        const eventName = isEditing ? "customer:updated" : "customer:added";
+        window.dispatchEvent(new CustomEvent(eventName, { detail: res }));
 
-// dispatch global event so lists can refresh (no UI change)
-        window.dispatchEvent(new CustomEvent("customer:added", { detail: res.data }));
-
-        alert("Customer added successfully!");
+        alert(`Customer ${isEditing ? 'updated' : 'added'} successfully!`);
         onCancel(); // go back to customer list
 
         return;
@@ -204,39 +271,12 @@ export default function MultiStepForm({ onCancel }: Props) {
           return;
         }
 
-        // FALLBACK: Server likely expects multipart/form-data with files — send FormData
-        try {
-          const fd = buildFormData(formData);
-          console.log("Falling back to multipart/form-data. FormData entries:");
-          for (const pair of fd.entries()) {
-            console.log(pair[0], pair[1]);
-          }
-
-          // IMPORTANT: do NOT set Content-Type header for multipart — let browser set the boundary
-          const res2 = await axios.post(
-            "https://invoice-backend-604217703209.asia-south1.run.app/api/customers",
-            fd,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                // no Content-Type here
-              },
-              withCredentials: true,
-            }
-          );
-
-          console.log("✅ Customer added (multipart fallback):", res2.data);
-          alert("Customer added successfully (with files)!");
-          onCancel();
-          return;
-        } catch (err2: any) {
-          console.error("Multipart fallback failed:", err2?.response || err2);
-          const msgs2 = extractValidationMessages(err2?.response?.data);
-          alert(
-            `Failed to add customer after fallback: ${msgs2.slice(0, 5).join(" | ")}\n(See console for full response)`
-          );
-          return;
-        }
+        // For now, just show the validation error. 
+        // File upload support can be added later if needed.
+        alert(
+          `Validation failed: ${validationMsgs.slice(0, 5).join(" | ")}\n(See console for full response)`
+        );
+        return;
       }
     } else {
       setStep((prev) => Math.min(prev + 1, 4));

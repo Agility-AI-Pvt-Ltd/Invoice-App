@@ -21,7 +21,7 @@ export const getDashboardStats = async (
     period: string = 'this-month'
 ): Promise<DashboardStat[]> => {
     try {
-        const response = await api.get(`${DASHBOARD_API.STATS}?period=${period}`);
+        const response = await api.get(`/api/dashboard/stats?period=${period}`);
         return response.data.data; // Extract data from {success: true, data: [...]}
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -45,7 +45,7 @@ export interface SalesReportData {
 export const getSalesReport = async (
     period: string = 'this-year'
 ): Promise<SalesReportData> => {
-    const res = await api.get(`${DASHBOARD_API.SALES_REPORT}?period=${period}`);
+    const res = await api.get(`/api/dashboard/sales-report?period=${period}`);
     return res.data.data; // Extract data from {success: true, data: {...}}
 };
 
@@ -69,7 +69,7 @@ export interface RecentActivity {
 export const getRecentActivity = async (
     limit: number = 10
 ): Promise<RecentActivity[]> => {
-    const res = await api.get(`${DASHBOARD_API.RECENT_ACTIVITY}?limit=${limit}`);
+    const res = await api.get(`/api/dashboard/recent-activity?limit=${limit}`);
     return res.data;
 };
 
@@ -97,7 +97,7 @@ export const getTopProducts = async (
     period: "7-days" | "30-days" | "6-months" = "30-days"
 ): Promise<TopProductsData> => {
     const res = await api.get(
-        `${DASHBOARD_API.TOP_PRODUCTS}?sortBy=${sortBy}&period=${period}`
+        `/api/dashboard/top-products?sortBy=${sortBy}&period=${period}`
     );
     return res.data;
 };
@@ -114,7 +114,7 @@ export interface TopCustomersResponse {
 
 // Fetch top customers
 export const getTopCustomers = async (): Promise<TopCustomersResponse> => {
-    const response = await api.get(DASHBOARD_API.TOP_CUSTOMERS);
+    const response = await api.get('/api/dashboard/top-customers');
     return response.data.data; // Extract data from {success: true, data: {...}}
 };
 

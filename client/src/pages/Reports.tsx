@@ -21,8 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SingleDatePicker } from "@/components/ui/SingleDatePicker";
 import Cookies from "js-cookie";
 import CreditDebitTable from "@/components/reports/CreditDebitTable";
-
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+import { BASE_URL } from "@/lib/api-config";
 
 type Tab = "sales" | "credit-notes" | "debit-notes";
 
@@ -56,7 +55,7 @@ export default function Report() {
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     // Only credit notes import is provided
-    const res = await fetch(`${API_BASE}/api/credit-notes/import`, {
+    const res = await fetch(`${BASE_URL}/api/credit-notes/import`, {
       method: "POST",
       headers: headers,
       body: formData,
@@ -96,7 +95,7 @@ export default function Report() {
 
     // Only credit notes export endpoint is specified
     const res = await fetch(
-      `${API_BASE}/api/credit-notes/export?format=${format}`,
+      `${BASE_URL}/api/credit-notes/export?format=${format}`,
       { method: "GET", headers },
     );
 
@@ -150,15 +149,15 @@ export default function Report() {
     try {
       setLoading(true);
       const token = Cookies.get("authToken") || undefined;
-      const params = new URLSearchParams({ 
-        page: String(currentPage), 
+      const params = new URLSearchParams({
+        page: String(currentPage),
         perPage: String(pagination.perPage),
         ...(selectedStatus !== "All" && { status: selectedStatus }),
         ...(selectedReason !== "All" && { reason: selectedReason }),
         ...(searchTerm && { search: searchTerm }),
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
-      const res = await fetch(`${API_BASE}/api/credit-notes?${params.toString()}`, {
+      const res = await fetch(`${BASE_URL}/api/credit-notes?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error(`Failed to fetch credit notes (${res.status})`);
@@ -194,15 +193,15 @@ export default function Report() {
     try {
       setLoading(true);
       const token = Cookies.get("authToken") || undefined;
-      const params = new URLSearchParams({ 
-        page: String(currentPage), 
+      const params = new URLSearchParams({
+        page: String(currentPage),
         perPage: String(pagination.perPage),
         ...(selectedStatus !== "All" && { status: selectedStatus }),
         ...(selectedReason !== "All" && { reason: selectedReason }),
         ...(searchTerm && { search: searchTerm }),
         ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
       });
-      const res = await fetch(`${API_BASE}/api/debit-notes?${params.toString()}`, {
+      const res = await fetch(`${BASE_URL}/api/debit-notes?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error(`Failed to fetch debit notes (${res.status})`);
@@ -407,33 +406,30 @@ export default function Report() {
           <div className="border-b border-gray-200">
             <div className="flex space-x-4 px-4 sm:space-x-8 sm:px-6">
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "sales"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "sales"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("sales")}
               >
                 <span className="hidden sm:inline">Sales</span>
                 <span className="sm:hidden">Sales</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "credit-notes"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "credit-notes"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("credit-notes")}
               >
                 <span className="hidden sm:inline">Credit Note</span>
                 <span className="sm:hidden">CN</span>
               </button>
               <button
-                className={`border-b-2 px-1 py-4 font-medium ${
-                  activeTab === "debit-notes"
-                    ? "border-[#b5a3ff]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`border-b-2 px-1 py-4 font-medium ${activeTab === "debit-notes"
+                  ? "border-[#b5a3ff]"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
                 onClick={() => setActiveTab("debit-notes")}
               >
                 <span className="hidden sm:inline">Debit Note</span>
@@ -542,8 +538,8 @@ export default function Report() {
           {activeTab === "sales" ? (
             <Invoices />
           ) : (
-            <CreditDebitTable 
-              activeTab={activeTab} 
+            <CreditDebitTable
+              activeTab={activeTab}
               notesData={filteredNotes}
               selectedStatus={selectedStatus}
               selectedReason={selectedReason}
@@ -561,10 +557,10 @@ export default function Report() {
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage - 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" /> Previous
@@ -582,10 +578,10 @@ export default function Report() {
                       </Button>
                     ))}
                   </div>
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage + 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage + 1)}
                     disabled={currentPage === pagination.totalPages}
                   >
                     Next <ChevronRight className="h-4 w-4 ml-1" />

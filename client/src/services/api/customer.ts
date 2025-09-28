@@ -41,12 +41,62 @@ export const getCustomers = async (
     const params: any = { page, limit };
     if (search) params.search = search;
 
+    console.log("🔍 getCustomers API call with params:", params);
+
     const response = await api.get('/api/customers', {
       params,
     });
-    return response.data.data; // Extract data from {success: true, data: {...}}
+    
+    console.log("🔍 getCustomers raw response:", response.data);
+    
+    // Handle different response structures from backend
+    const responseData = response.data;
+    
+    if (responseData.success && responseData.data) {
+      console.log("✅ Found customers in response.data.data structure");
+      return responseData.data; // {data: [...], pagination: {...}}
+    }
+    
+    // Fallback: if direct data array
+    if (Array.isArray(responseData.data)) {
+      console.log("✅ Found customers in direct data array");
+      return {
+        data: responseData.data,
+        pagination: {
+          page: page,
+          totalPages: Math.ceil(responseData.data.length / limit),
+          totalItems: responseData.data.length,
+          itemsPerPage: limit
+        }
+      };
+    }
+    
+    // Fallback: if direct array
+    if (Array.isArray(responseData)) {
+      console.log("✅ Found customers in direct array");
+      return {
+        data: responseData,
+        pagination: {
+          page: page,
+          totalPages: Math.ceil(responseData.length / limit),
+          totalItems: responseData.length,
+          itemsPerPage: limit
+        }
+      };
+    }
+    
+    console.log("❌ No customers found in response");
+    return {
+      data: [],
+      pagination: {
+        page: page,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: limit
+      }
+    };
   } catch (error) {
-    console.error('Error fetching customers:', error);
+    console.error('❌ Error fetching customers:', error);
     throw error;
   }
 };
@@ -108,9 +158,40 @@ export const deleteCustomer = async (id: number): Promise<void> => {
 export const searchCustomers = async (name: string): Promise<Customer[]> => {
   try {
     const response = await api.get(`/api/customers/search/${encodeURIComponent(name)}`);
-    return response.data.data;
+    console.log("🔍 customer.ts searchCustomers API response:", response.data);
+    
+    const data = response.data;
+    if (!data) return [];
+    
+    // Try different response structures to match backend
+    // 1. Check for nested data structure (response.data.data)
+    if (data.data && Array.isArray(data.data)) {
+      console.log("✅ Found customers in data.data array:", data.data.length);
+      return data.data;
+    }
+    
+    // 2. Check if it's an array of customers (data.customers)
+    if (data.customers && Array.isArray(data.customers)) {
+      console.log("✅ Found customers in data.customers array:", data.customers.length);
+      return data.customers;
+    }
+    
+    // 3. Check if data itself is an array
+    if (Array.isArray(data)) {
+      console.log("✅ Found customers in direct array:", data.length);
+      return data;
+    }
+    
+    // 4. Check if it's a single customer object
+    if (data._id || data.id) {
+      console.log("✅ Found single customer, wrapping in array");
+      return [data];
+    }
+    
+    console.log("❌ No customers found in response");
+    return [];
   } catch (error) {
-    console.error('Error searching customers:', error);
+    console.error('❌ Error searching customers:', error);
     throw error;
   }
 };

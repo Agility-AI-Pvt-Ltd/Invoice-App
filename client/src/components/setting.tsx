@@ -7,20 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { useToast } from "@/hooks/use-toast";
-import api from "@/lib/api";
-
-export async function fetchBusinessLogo(): Promise<string> {
-  try {
-    const response = await api.get("/api/profile/logo", {
-      responseType: "blob",
-    });
-    return URL.createObjectURL(response.data); // returns usable image URL
-  } catch (error) {
-    // If logo endpoint doesn't exist, return empty string
-    console.warn("Logo endpoint not available:", error);
-    throw error;
-  }
-}
+// Removed fetchBusinessLogo - moved to services/api/settings.ts to fix HMR issues
 
 export default function Settings() {
   const { toast } = useToast();

@@ -14,11 +14,16 @@
 export const getApiBaseUrl = (): string => {
   const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
-  // Log the base URL for debugging (only once)
-  if (!window.__API_BASE_URL_LOGGED) {
-    console.log(`🌐 API Base URL: ${baseUrl} (Mode: ${import.meta.env.MODE})`);
-    window.__API_BASE_URL_LOGGED = true;
-  }
+  // Always log for debugging - force clear cache
+  console.log(`🌐 API Base URL: ${baseUrl} (Mode: ${import.meta.env.MODE}, ENV: ${import.meta.env.VITE_BACKEND_URL})`);
+  console.log(`🔧 All environment variables:`, {
+    VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+    VITE_NODE_ENV: import.meta.env.VITE_NODE_ENV,
+    MODE: import.meta.env.MODE,
+    DEV: import.meta.env.DEV,
+    PROD: import.meta.env.PROD
+  });
 
   return baseUrl;
 };

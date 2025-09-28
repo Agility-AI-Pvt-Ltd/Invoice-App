@@ -16,6 +16,8 @@ import expenseInvoiceRoutes from "./routes/expense-invoices.js";
 import userRoutes from "./routes/users.js";
 import scanInvoiceRoutes from "./routes/scanInvoice.js";
 import inventoryRoutes from "./routes/inventory.js";
+import customerRoutes from "./routes/customers.js";
+import dashboardRoutes from "./routes/dashboard.js";
 
 // __dirname ka ES module version
 const __filename = fileURLToPath(import.meta.url);
@@ -25,9 +27,49 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Enable CORS
+const allowedOrigins = [
+  "http://localhost:5173", // Development
+  "http://localhost:3000", // Alternative development
+  "http://localhost:4000", // Alternative development
+  "https://api-gateway-914987176295.asia-south1.run.app", // Production API (same origin)
+];
+
+// Add Vercel domains dynamically
+const vercelPatterns = [
+  /^https:\/\/.*\.vercel\.app$/,
+  /^https:\/\/.*\.netlify\.app$/,
+  /^https:\/\/.*\.github\.io$/,
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: function (origin, callback) {
+      console.log(`🌐 CORS check for origin: ${origin}`);
+      
+      // Allow requests with no origin (like mobile apps, Postman, or same-origin)
+      if (!origin) {
+        console.log("✅ CORS: No origin (same-origin or tools)");
+        return callback(null, true);
+      }
+      
+      // Check exact matches
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        console.log("✅ CORS: Exact match allowed");
+        callback(null, true);
+        return;
+      }
+      
+      // Check pattern matches (Vercel, Netlify, etc.)
+      const isPatternMatch = vercelPatterns.some(pattern => pattern.test(origin));
+      if (isPatternMatch) {
+        console.log("✅ CORS: Pattern match allowed");
+        callback(null, true);
+        return;
+      }
+      
+      console.log(`❌ CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    },
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
   })
@@ -77,6 +119,8 @@ app.use("/api/expense-invoices", expenseInvoiceRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api", scanInvoiceRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/customers", customerRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Serve static files
 app.use(express.static("public"));
