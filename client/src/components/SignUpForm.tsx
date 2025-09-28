@@ -207,9 +207,9 @@ const SignupForm: React.FC = () => {
                 type="text"
                 value={form.website}
                 onChange={handleChange}
-                isImportant
+                // isImportant
             />
-            {errors.website && <p className="text-red-500 text-xs mt-1">{errors.website}</p>}
+            {/* {errors.website && <p className="text-red-500 text-xs mt-1">{errors.website}</p>} */}
 
             {/* Checkbox */}
             <div className="flex items-start gap-2">
