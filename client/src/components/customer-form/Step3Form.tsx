@@ -147,21 +147,44 @@ export default function Step3Form({ formData, setFormData }: Step3FormProps) {
       {/* Payment Terms */}
       <div className="space-y-2 w-full">
         <Label htmlFor="paymentTerms">Payment Terms</Label>
-        <Select
-          value={formData.paymentTerms || ""}
-          onValueChange={(value) =>
-            setFormData((prev: any) => ({ ...prev, paymentTerms: value }))
-          }
-        >
-          <SelectTrigger id="paymentTerms" className="w-full">
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Net 15">Net 15</SelectItem>
-            <SelectItem value="Net 30">Net 30</SelectItem>
-            <SelectItem value="Net 45">Net 45</SelectItem>
-          </SelectContent>
-        </Select>
+        {formData.paymentTerms === "custom" ? (
+          <Input
+            id="paymentTerms"
+            placeholder="Enter custom payment terms"
+            value={formData.customPaymentTerms || ""}
+            onChange={(e) =>
+              setFormData((prev: any) => ({ ...prev, customPaymentTerms: e.target.value }))
+            }
+            onBlur={(e) => {
+              if (!e.target.value.trim()) {
+                setFormData((prev: any) => ({ ...prev, paymentTerms: "", customPaymentTerms: "" }));
+              }
+            }}
+            className="w-full"
+            autoFocus
+          />
+        ) : (
+          <Select
+            value={formData.paymentTerms || ""}
+            onValueChange={(value) => {
+              if (value === "custom") {
+                setFormData((prev: any) => ({ ...prev, paymentTerms: "custom", customPaymentTerms: "" }));
+              } else {
+                setFormData((prev: any) => ({ ...prev, paymentTerms: value }));
+              }
+            }}
+          >
+            <SelectTrigger id="paymentTerms" className="w-full">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Net 15">Net 15</SelectItem>
+              <SelectItem value="Net 30">Net 30</SelectItem>
+              <SelectItem value="Net 45">Net 45</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
     </div>
   );
