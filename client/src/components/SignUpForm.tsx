@@ -96,7 +96,7 @@ const SignupForm: React.FC = () => {
             }
         }
         if (!form.confirmPassword) newErrors.confirmPassword = "Confirm your password";
-        // if (!form.website) newErrors.website = "Website is required";
+        if (!form.website) newErrors.website = "Website is required";
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
@@ -119,11 +119,20 @@ const SignupForm: React.FC = () => {
                 state: { phonenumber: form.phonenumber },
             });
         } catch (error: unknown) {
+            console.error("❌ Signup error:", error);
             let message = "Something went wrong. Please try again.";
-            // console.log("Hi",error.response.data.detail)
+            
             if (axios.isAxiosError(error)) {
-                const data = error.response?.data as { detail?: string };
-                if (data?.detail) message = data.detail;
+                console.error("📊 Response status:", error.response?.status);
+                console.error("📊 Response data:", error.response?.data);
+                console.error("📊 Request config:", error.config?.url, error.config?.data);
+                
+                const data = error.response?.data as { detail?: string; message?: string };
+                if (data?.detail) {
+                    message = data.detail;
+                } else if (data?.message) {
+                    message = data.message;
+                }
             }
             setErrors({ general: message });
         } finally {

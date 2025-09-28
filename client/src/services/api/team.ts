@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { TEAM_API } from '../routes/team';
 
 // Types
@@ -48,7 +48,6 @@ export interface TeamMetrics {
  * Get all team members
  */
 export const getTeamMembers = async (
-  token: string,
   page: number = 1,
   limit: number = 10,
   filters?: TeamFilters
@@ -56,14 +55,11 @@ export const getTeamMembers = async (
   try {
     const params: any = { page, limit, ...filters };
 
-    const response = await axios.get(TEAM_API.GET_ALL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(TEAM_API.GET_ALL, {
       params,
     });
 
-    const { data, pagination } = response.data || {};
+    const { data, pagination } = response.data.data || {};
 
     // Handle empty or invalid data
     if (!Array.isArray(data) || data.length === 0) {
@@ -90,14 +86,10 @@ export const getTeamMembers = async (
 /**
  * Get team member by ID
  */
-export const getTeamMember = async (token: string, memberId: string): Promise<TeamMember> => {
+export const getTeamMember = async (memberId: string): Promise<TeamMember> => {
   try {
-    const response = await axios.get(`${TEAM_API.GET_BY_ID}/${memberId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.get(`${TEAM_API.GET_BY_ID}/${memberId}`);
+    return response.data.data;
   } catch (error) {
     console.error('Error fetching team member:', error);
     throw error;
@@ -107,14 +99,10 @@ export const getTeamMember = async (token: string, memberId: string): Promise<Te
 /**
  * Create new team member
  */
-export const createTeamMember = async (token: string, member: TeamMemberCreate): Promise<TeamMember> => {
+export const createTeamMember = async (member: TeamMemberCreate): Promise<TeamMember> => {
   try {
-    const response = await axios.post(TEAM_API.CREATE, member, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.post(TEAM_API.CREATE, member);
+    return response.data.data;
   } catch (error) {
     console.error('Error creating team member:', error);
     throw error;
@@ -125,17 +113,12 @@ export const createTeamMember = async (token: string, member: TeamMemberCreate):
  * Update team member
  */
 export const updateTeamMember = async (
-  token: string,
   memberId: string,
   updates: TeamMemberUpdate
 ): Promise<TeamMember> => {
   try {
-    const response = await axios.put(`${TEAM_API.UPDATE}/${memberId}`, updates, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.put(`${TEAM_API.UPDATE}/${memberId}`, updates);
+    return response.data.data;
   } catch (error) {
     console.error('Error updating team member:', error);
     throw error;
@@ -145,14 +128,10 @@ export const updateTeamMember = async (
 /**
  * Delete team member
  */
-export const deleteTeamMember = async (token: string, memberId: string): Promise<{ success: boolean }> => {
+export const deleteTeamMember = async (memberId: string): Promise<{ success: boolean }> => {
   try {
-    const response = await axios.delete(`${TEAM_API.DELETE}/${memberId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.delete(`${TEAM_API.DELETE}/${memberId}`);
+    return response.data.data;
   } catch (error) {
     console.error('Error deleting team member:', error);
     throw error;
@@ -162,14 +141,10 @@ export const deleteTeamMember = async (token: string, memberId: string): Promise
 /**
  * Get team metrics
  */
-export const getTeamMetrics = async (token: string): Promise<TeamMetrics> => {
+export const getTeamMetrics = async (): Promise<TeamMetrics> => {
   try {
-    const response = await axios.get(TEAM_API.METRICS, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.get(TEAM_API.METRICS);
+    return response.data.data;
   } catch (error) {
     console.error('Error fetching team metrics:', error);
     throw error;
@@ -179,14 +154,10 @@ export const getTeamMetrics = async (token: string): Promise<TeamMetrics> => {
 /**
  * Invite team member by email
  */
-export const inviteTeamMember = async (token: string, email: string, role: string): Promise<{ success: boolean; message: string }> => {
+export const inviteTeamMember = async (email: string, role: string): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await axios.post(TEAM_API.INVITE, { email, role }, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.post(TEAM_API.INVITE, { email, role });
+    return response.data.data;
   } catch (error) {
     console.error('Error inviting team member:', error);
     throw error;
@@ -196,14 +167,10 @@ export const inviteTeamMember = async (token: string, email: string, role: strin
 /**
  * Get available roles
  */
-export const getAvailableRoles = async (token: string): Promise<string[]> => {
+export const getAvailableRoles = async (): Promise<string[]> => {
   try {
-    const response = await axios.get(TEAM_API.ROLES, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.get(TEAM_API.ROLES);
+    return response.data.data;
   } catch (error) {
     console.error('Error fetching available roles:', error);
     throw error;

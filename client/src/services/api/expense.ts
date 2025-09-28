@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { EXPENSE_API } from '../routes/expense';
 
 // Types
@@ -77,13 +77,9 @@ export interface ExpenseFilters {
 /**
  * Get all expense invoices for a user
  */
-export const getExpenseInvoices = async (token: string): Promise<ExpenseInvoice[]> => {
+export const getExpenseInvoices = async (): Promise<ExpenseInvoice[]> => {
   try {
-    const response = await axios.get(EXPENSE_API.GET_ALL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(EXPENSE_API.GET_ALL);
     return response.data;
   } catch (error) {
     console.error('Error fetching expense invoices:', error);
@@ -94,13 +90,9 @@ export const getExpenseInvoices = async (token: string): Promise<ExpenseInvoice[
 /**
  * Get expense metrics (total, current month, average)
  */
-export const getExpenseMetrics = async (token: string): Promise<ExpenseMetrics> => {
+export const getExpenseMetrics = async (): Promise<ExpenseMetrics> => {
   try {
-    const response = await axios.get(EXPENSE_API.METRICS, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(EXPENSE_API.METRICS);
     return response.data;
   } catch (error) {
     console.error('Error fetching expense metrics:', error);
@@ -111,13 +103,9 @@ export const getExpenseMetrics = async (token: string): Promise<ExpenseMetrics> 
 /**
  * Get last expense invoice
  */
-export const getLastExpenseInvoice = async (token: string): Promise<ExpenseInvoice | null> => {
+export const getLastExpenseInvoice = async (): Promise<ExpenseInvoice | null> => {
   try {
-    const response = await axios.get(EXPENSE_API.LAST, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(EXPENSE_API.LAST);
     return response.data;
   } catch (error) {
     console.error('Error fetching last expense invoice:', error);
@@ -128,13 +116,9 @@ export const getLastExpenseInvoice = async (token: string): Promise<ExpenseInvoi
 /**
  * Duplicate an expense invoice
  */
-export const duplicateExpenseInvoice = async (token: string, invoiceId: string): Promise<ExpenseInvoice> => {
+export const duplicateExpenseInvoice = async (invoiceId: string): Promise<ExpenseInvoice> => {
   try {
-    const response = await axios.post(`${EXPENSE_API.DUPLICATE}/${invoiceId}`, {}, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.post(`${EXPENSE_API.DUPLICATE}/${invoiceId}`, {});
     return response.data;
   } catch (error) {
     console.error('Error duplicating expense invoice:', error);
@@ -145,13 +129,9 @@ export const duplicateExpenseInvoice = async (token: string, invoiceId: string):
 /**
  * Delete an expense invoice
  */
-export const deleteExpenseInvoice = async (token: string, invoiceId: string): Promise<{ success: boolean }> => {
+export const deleteExpenseInvoice = async (invoiceId: string): Promise<{ success: boolean }> => {
   try {
-    const response = await axios.delete(`${EXPENSE_API.DELETE}/${invoiceId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.delete(`${EXPENSE_API.DELETE}/${invoiceId}`);
     return response.data;
   } catch (error) {
     console.error('Error deleting expense invoice:', error);
@@ -162,14 +142,13 @@ export const deleteExpenseInvoice = async (token: string, invoiceId: string): Pr
 /**
  * Import expenses from file
  */
-export const importExpenses = async (token: string, file: File): Promise<{ imported: number; skipped: number }> => {
+export const importExpenses = async (file: File): Promise<{ imported: number; skipped: number }> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await axios.post(EXPENSE_API.IMPORT, formData, {
+    const response = await api.post(EXPENSE_API.IMPORT, formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
     });
@@ -183,12 +162,9 @@ export const importExpenses = async (token: string, file: File): Promise<{ impor
 /**
  * Export expenses to CSV
  */
-export const exportExpenses = async (token: string): Promise<Blob> => {
+export const exportExpenses = async (): Promise<Blob> => {
   try {
-    const response = await axios.get(EXPENSE_API.EXPORT, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(EXPENSE_API.EXPORT, {
       responseType: 'blob',
     });
     return response.data;

@@ -15,7 +15,7 @@ export function CashFlowCard() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await getCashFlow(token);
+        const data = await getCashFlow();
         setCashFlow(data);
       } catch (error) {
         console.error("Failed to load cash flow:", error);
@@ -36,7 +36,7 @@ export function CashFlowCard() {
       <div className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground">
-            Cash as on {format(new Date(cashFlow.asOfDate), "dd/MM/yyyy")}
+            Cash as on {cashFlow.asOfDate ? format(new Date(cashFlow.asOfDate), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")}
           </p>
           <p className="text-2xl font-bold text-foreground">
             ₹ {cashFlow.cashPosition.toLocaleString()}

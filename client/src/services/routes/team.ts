@@ -1,5 +1,5 @@
-// Base URL for API
-export const BASE_URL = 'https://invoice-backend-604217703209.asia-south1.run.app';
+// Import shared API configuration
+import { BASE_URL } from '../../lib/api-config';
 
 // Base endpoints for Team API
 // Note: These endpoints don't exist in the current backend

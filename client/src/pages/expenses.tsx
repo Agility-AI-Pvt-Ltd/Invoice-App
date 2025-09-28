@@ -8,9 +8,7 @@ import { ExpenseTable } from "@/components/ExpenseTable";
 import { useToast } from "@/hooks/use-toast";
 import { format, parse } from "date-fns";
 import ExpenseForm from "@/components/expense-form/ExpenseForm";
-import Cookies from "js-cookie";
-
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+import api from "@/lib/api";
 
 interface Expense {
   id: string;
@@ -102,84 +100,8 @@ const parseExpenseDate = (dateString: string): Date | null => {
 };
 
 /* Auth helpers: try localStorage, cookies, document.cookie (non-HttpOnly) */
-const getAuthToken = (): string | null => {
-  try {
-    const lsCandidates = ["token", "authToken", "access_token"];
-    for (const k of lsCandidates) {
-      try {
-        const v = localStorage.getItem(k);
-        if (v && v.trim()) return v.trim();
-      } catch (e) {
-        /* ignore localStorage read errors */
-      }
-    }
+// Removed unused getAuthToken function
 
-    const cookieCandidates = [
-      "authToken",
-      "token",
-      "access_token",
-      "bearer",
-      "Authorization",
-      "auth_token",
-    ];
-    for (const k of cookieCandidates) {
-      const v = Cookies.get(k);
-      if (v && v.trim()) return v.trim();
-    }
-
-    if (typeof document !== "undefined" && document.cookie) {
-      const cookieMap: Record<string, string> = {};
-      document.cookie.split(";").forEach((part) => {
-        const [rawK, ...rest] = part.split("=");
-        if (!rawK) return;
-        const key = rawK.trim();
-        const val = rest.join("=").trim();
-        try {
-          cookieMap[key] = decodeURIComponent(val);
-        } catch {
-          cookieMap[key] = val;
-        }
-      });
-      for (const k of cookieCandidates) {
-        if (cookieMap[k]) return cookieMap[k];
-      }
-    }
-  } catch (e) {
-    console.warn("getAuthToken error:", e);
-  }
-  return null;
-};
-
-const buildFetchOptions = (method: string = "GET", body?: any) => {
-  const token = getAuthToken();
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  if (token) {
-    const normalized = token.toLowerCase().startsWith("bearer ")
-      ? token
-      : `Bearer ${token}`;
-    headers["Authorization"] = normalized;
-  }
-  return {
-    method,
-    headers,
-    credentials: "include" as RequestCredentials,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  };
-};
-
-const safeParseJson = async (res: Response) => {
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    try {
-      return await res.json();
-    } catch (e) {
-      console.warn("Failed to parse JSON response:", e);
-      return null;
-    }
-  }
-  return null;
-};
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -266,20 +188,8 @@ export default function Expenses() {
       setLoading(true);
       setError(null);
 
-      const url = `${API_BASE}/api/expenses`;
-      const opts = buildFetchOptions("GET");
-
-      const res = await fetch(url, opts);
-      if (!res.ok) {
-        const body = await safeParseJson(res);
-        const message =
-          body?.detail ||
-          body?.message ||
-          `Failed to fetch expenses (status ${res.status})`;
-        throw new Error(message);
-      }
-
-      const body = (await safeParseJson(res)) ?? null;
+      const res = await api.get('/api/expenses');
+      const body = res.data ?? null;
       const serverExpenses =
         body?.data?.expenses ?? body?.expenses ?? body ?? [];
 
@@ -300,20 +210,8 @@ export default function Expenses() {
 
   const fetchMetrics = async () => {
     try {
-      const url = `${API_BASE}/api/expenses/metrics`;
-      const opts = buildFetchOptions("GET");
-
-      const res = await fetch(url, opts);
-      if (!res.ok) {
-        const body = await safeParseJson(res);
-        throw new Error(
-          body?.detail ||
-            body?.message ||
-            `Failed to fetch metrics (status ${res.status})`,
-        );
-      }
-      const body = (await safeParseJson(res)) ?? null;
-      setMetrics(body);
+      const res = await api.get('/api/expenses/metrics');
+      setMetrics(res.data);
     } catch (err: any) {
       console.error("Error fetching metrics:", err);
       toast({
@@ -446,18 +344,7 @@ export default function Expenses() {
   // Delete expense => call backend and remove locally
   const handleDeleteExpense = async (expenseId: string) => {
     try {
-      const url = `${API_BASE}/api/expenses/${expenseId}`;
-      const opts = buildFetchOptions("DELETE");
-
-      const res = await fetch(url, opts);
-      if (!res.ok) {
-        const body = await safeParseJson(res);
-        throw new Error(
-          body?.detail ||
-            body?.message ||
-            `Failed to delete expense (status ${res.status})`,
-        );
-      }
+      await api.delete(`/api/expenses/${expenseId}`);
 
       toast({
         title: "Expense Deleted",

@@ -18,7 +18,6 @@ import {
 } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState, useEffect } from "react";
-import Cookies from "js-cookie";
 import { getRecentActivity, type RecentActivity } from "@/services/api/dashboard";
 import { Input } from "./ui/Input";
 
@@ -77,9 +76,7 @@ const RecentActivityTable = () => {
     useEffect(() => {
         const fetchActivities = async () => {
             try {
-                const token = Cookies.get("authToken");
-                if (!token) return;
-                const activities = await getRecentActivity(token, 10);
+                const activities = await getRecentActivity(10);
                 setData(activities);
             } catch (err) {
                 console.error("Error fetching recent activity:", err);

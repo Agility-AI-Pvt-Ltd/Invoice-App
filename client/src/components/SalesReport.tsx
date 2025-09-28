@@ -20,7 +20,6 @@ import {
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import { Calendar } from "lucide-react";
-import Cookies from "js-cookie";
 import { getSalesReport, type SalesReportData } from "@/services/api/dashboard";
 
 ChartJS.register(
@@ -75,9 +74,7 @@ const SalesReportCard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const token = Cookies.get("authToken");
-                if (!token) return;
-                const data = await getSalesReport(token, period);
+                const data = await getSalesReport(period);
                 // Ensure Chart.js expected format is preserved
                 setChartData({
                     labels: data.labels,

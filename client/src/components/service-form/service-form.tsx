@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { BASE_URL } from "@/lib/api-config";
 
 interface FormSectionProps {
     title: string;
@@ -65,38 +65,19 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
     // Images/attachments
     // serviceImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
     const [serviceImage, setServiceImage] = useState<string>(initial?.serviceImage || initial?.productImage || "");
-    const [serviceImageName, setServiceImageName] = useState<string>(initial?.serviceImageName || initial?.productImageName || (initial?.imageName ?? ""));
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    // Removed unused variables
 
     const [remark, setRemark] = useState<string>(initial?.remark || "");
+    const [duration, setDuration] = useState<string>(initial?.duration ? String(initial.duration) : "1");
 
     // UI state
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
 
-    // calculate profit/loss
-    const calculateProfitLoss = () => {
-        const pp = Number(purchasePrice) || 0;
-        const sp = Number(sellingPrice) || 0;
-        const disc = Number(discount) || 0;
+    const API_URL = `${BASE_URL}/api`;
 
-        // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
-        let effectiveSP = sp;
-        if (disc > 0) {
-            // assuming % discount for now
-            effectiveSP = sp - (sp * disc) / 100;
-        }
-
-        const diff = effectiveSP - pp;
-
-        return {
-            effectiveSP,
-            diff,
-            type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
-        };
-    };
+    // calculate profit/loss - removed unused function
 
     useEffect(() => {
         // If initial changes after mount, populate fields
@@ -114,8 +95,9 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
             setVendorName(initial.vendorName || "");
             setVendorServiceCode(initial.vendorServiceCode || initial.vendorProductCode || "");
             setServiceImage(initial.serviceImage || initial.productImage || initial.image || "");
-            setServiceImageName(initial.serviceImageName || initial.productImageName || initial.imageName || "");
+            // Removed unused setServiceImageName call
             setRemark(initial.remark || initial.note || "");
+            setDuration(initial.duration ? String(initial.duration) : "1");
             setError(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,29 +119,63 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
         setLoading(true);
 
         try {
+            // Validate required fields
+            if (!serviceName.trim()) {
+                setError("Service name is required");
+                setLoading(false);
+                return;
+            }
+            if (!serviceCode.trim()) {
+                setError("Service code/SKU is required");
+                setLoading(false);
+                return;
+            }
+            if (!category.trim()) {
+                setError("Category is required");
+                setLoading(false);
+                return;
+            }
+            if (resolveUnitPrice() <= 0) {
+                setError("Selling price or purchase price is required and must be greater than 0");
+                setLoading(false);
+                return;
+            }
+
             const token = Cookies.get("authToken") || "";
-            // Build payload with expected backend fields - using productName for service since API remains same
+            // Build payload with expected Service model fields
             const payload: any = {
-                productName: serviceName || "Untitled Service",
-                category: category || undefined,
-                unitPrice: resolveUnitPrice(),
-                inStock: 0, // Services don't have stock
+                // Core Service model fields
+                name: serviceName || "Untitled Service",
+                description: description || "",
+                serviceCode: serviceCode || `SVC-${Date.now()}`,
+                unitPrice: resolveUnitPrice() || 0,
+                category: category || "Service",
+                duration: duration || "1",
+
+                // Additional optional fields that might be supported
+                subCategory: subCategory || undefined,
+                brandName: brandName || undefined,
                 discount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0,
-                image: serviceImage || undefined, // base64 or URL
+                taxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 0,
+                image: serviceImage || undefined,
                 vendor: vendorName || undefined,
                 vendorProductCode: vendorServiceCode || undefined,
                 note: remark || undefined,
             };
 
+            // Get item ID for edit mode
+            const itemId = initial?.id || initial?._id || null;
+
             console.log("Saving service with payload:", payload);
+            console.log("Using API endpoint:", itemId ? `${API_URL}/services/items/${itemId}` : `${API_URL}/services/items`);
+            console.log("Payload JSON string:", JSON.stringify(payload, null, 2));
 
             // Optionally include a status field for draft (backend can ignore if not supported)
             if (asDraft) payload.status = "draft";
 
             // If this is edit mode (initial provided), call PUT
-            const itemId = initial?.id || initial?._id || null;
             if (itemId) {
-                await axios.put(`${API_URL}/inventory/items/${itemId}`, payload, {
+                await axios.put(`${API_URL}/services/items/${itemId}`, payload, {
                     headers: {
                         Authorization: token ? `Bearer ${token}` : "",
                         "Content-Type": "application/json",
@@ -172,8 +188,8 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
                 return;
             }
 
-            // Create new item via POST
-            const res = await axios.post(`${API_URL}/inventory/items`, payload, {
+            // Create new service via POST
+            const res = await axios.post(`${API_URL}/services/items`, payload, {
                 headers: {
                     Authorization: token ? `Bearer ${token}` : "",
                     "Content-Type": "application/json",
@@ -189,37 +205,26 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
             }
         } catch (err: any) {
             console.error("Save service error:", err);
+            console.error("Error response data:", err?.response?.data);
+            console.error("Error response status:", err?.response?.status);
+            console.error("Error response headers:", err?.response?.headers);
+            console.error("Full error object:", err);
+
             const msg =
                 err?.response?.data?.detail ||
                 err?.response?.data?.message ||
+                err?.response?.data?.error ||
                 err?.message ||
                 "Failed to save service";
-            setError(msg);
+            setError(`Server Error (${err?.response?.status || 'Unknown'}): ${msg}`);
         } finally {
             setLoading(false);
         }
     };
 
-    // File handling: read chosen image as base64 and set name
-    const handleFileSelect = (file?: File | null) => {
-        if (!file) return;
-        setServiceImageName(file.name);
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result as string;
-            setServiceImage(result); // base64 data URL
-        };
-        reader.readAsDataURL(file);
-    };
+    // File handling removed - unused
 
-    const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const f = e.target.files?.[0] ?? null;
-        handleFileSelect(f);
-    };
-
-    const triggerFilePicker = () => {
-        if (fileInputRef.current) fileInputRef.current.click();
-    };
+    // File handling functions removed - unused
 
     const handleCancel = () => {
         onClose?.();
@@ -232,130 +237,72 @@ export default function AddServiceForm({ initial = null, onSuccess, onClose }: P
                 {/* Service Details Section */}
                 <FormSection title="Service Details">
                     <div className="grid gap-2">
-                        <Label htmlFor="service-name">Service Name</Label>
-                        <Input id="service-name" value={serviceName} onChange={(e: any) => setServiceName(e.target.value)} />
+                        <Label htmlFor="service-name">Service Name *</Label>
+                        <Input id="service-name" value={serviceName} onChange={(e: any) => setServiceName(e.target.value)} placeholder="Enter service name" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="service-code">Service Code</Label>
-                        <Input id="service-code" value={serviceCode} onChange={(e: any) => setServiceCode(e.target.value)} />
+                        <Label htmlFor="service-code">Service Code/SKU *</Label>
+                        <Input id="service-code" value={serviceCode} onChange={(e: any) => setServiceCode(e.target.value)} placeholder="Enter service code" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Input id="category" value={category} onChange={(e: any) => setCategory(e.target.value)} />
+                        <Label htmlFor="category">Category *</Label>
+                        <Input id="category" value={category} onChange={(e: any) => setCategory(e.target.value)} placeholder="Enter category" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="sub-category">Sub Category</Label>
-                        <Input id="sub-category" value={subCategory} onChange={(e: any) => setSubCategory(e.target.value)} />
+                        <Input id="sub-category" value={subCategory} onChange={(e: any) => setSubCategory(e.target.value)} placeholder="Enter sub category" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="brand-name">Brand Name</Label>
-                        <Input id="brand-name" value={brandName} onChange={(e: any) => setBrandName(e.target.value)} />
+                        <Input id="brand-name" value={brandName} onChange={(e: any) => setBrandName(e.target.value)} placeholder="Enter brand name" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
-                        <Input id="description" value={description} onChange={(e: any) => setDescription(e.target.value)} />
+                        <Input id="description" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="Enter description" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                        <Input id="tax-rate" type="number" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} placeholder="Enter tax rate" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="duration">Duration (hours)</Label>
+                        <Input id="duration" type="number" value={duration} onChange={(e: any) => setDuration(e.target.value)} placeholder="Enter duration in hours" />
                     </div>
                 </FormSection>
 
-                {/* Pricing & Tax Section */}
-                <FormSection title="Pricing & Tax">
+                {/* Pricing Section */}
+                <FormSection title="Pricing Details">
                     <div className="grid gap-2">
                         <Label htmlFor="purchase-price">Purchase Price</Label>
-                        <Input
-                            id="purchase-price"
-                            value={purchasePrice as any}
-                            onChange={(e: any) => setPurchasePrice(e.target.value)}
-                        />
+                        <Input id="purchase-price" type="number" value={purchasePrice} onChange={(e: any) => setPurchasePrice(e.target.value)} placeholder="Enter purchase price" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="selling-price">Selling Price</Label>
-                        <Input
-                            id="selling-price"
-                            value={sellingPrice as any}
-                            onChange={(e: any) => setSellingPrice(e.target.value)}
-                        />
+                        <Label htmlFor="selling-price">Selling Price *</Label>
+                        <Input id="selling-price" type="number" value={sellingPrice} onChange={(e: any) => setSellingPrice(e.target.value)} placeholder="Enter selling price" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="discount">Discount % (if applicable)</Label>
-                        <Input id="discount" value={discount as any} onChange={(e: any) => setDiscount(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="tax-rate">Tax Rate</Label>
-                        <Input id="tax-rate" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} />
-                    </div>
-                    {/* Profit / Loss Result */}
-                    <div className="col-span-2 mt-2 p-3 ">
-                        {(() => {
-                            const { diff, type, effectiveSP } = calculateProfitLoss();
-                            if (type === "profit") {
-                                return (
-                                    <p className="text-green-600 font-semibold">
-                                        Profit: ₹{diff.toFixed(2)} (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
-                                    </p>
-                                );
-                            } else if (type === "loss") {
-                                return (
-                                    <p className="text-red-600 font-semibold">
-                                        Loss: ₹{Math.abs(diff).toFixed(2)} (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
-                                    </p>
-                                );
-                            } else {
-                                return (
-                                    <p className="text-gray-600 font-medium">
-                                        No Profit / No Loss (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
-                                    </p>
-                                );
-                            }
-                        })()}
+                        <Label htmlFor="discount">Discount (%)</Label>
+                        <Input id="discount" type="number" value={discount} onChange={(e: any) => setDiscount(e.target.value)} placeholder="Enter discount percentage" />
                     </div>
                 </FormSection>
 
-                {/* Supplier/ Vendor Information Section */}
-                <FormSection title="Supplier/ Vendor Information">
+                {/* Vendor Details Section */}
+                <FormSection title="Vendor Details">
                     <div className="grid gap-2">
                         <Label htmlFor="vendor-name">Vendor Name</Label>
-                        <Input id="vendor-name" value={vendorName} onChange={(e: any) => setVendorName(e.target.value)} />
+                        <Input id="vendor-name" value={vendorName} onChange={(e: any) => setVendorName(e.target.value)} placeholder="Enter vendor name" />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="vendor-service-code">Vendor Service Code</Label>
-                        <Input id="vendor-service-code" value={vendorServiceCode} onChange={(e: any) => setVendorServiceCode(e.target.value)} />
+                        <Input id="vendor-service-code" value={vendorServiceCode} onChange={(e: any) => setVendorServiceCode(e.target.value)} placeholder="Enter vendor service code" />
                     </div>
                 </FormSection>
 
-                {/* Images and Attachments Section */}
-                <FormSection title="Images and Attachments">
-                    <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="service-image">Service Image</Label>
-
-                        {/* Hidden file input */}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            style={{ display: "none" }}
-                            onChange={onFileInputChange}
-                        />
-
-                        {/* Display a readonly Input showing filename (click opens file dialog) */}
-                        <Input
-                            id="service-image"
-                            value={serviceImageName || (serviceImage ? "Image selected" : "")}
-                            placeholder="Choose image"
-                            readOnly
-                            onClick={triggerFilePicker}
-                        />
-
-                        {/* optional: small preview below (keeps layout, minimal visual change) */}
-                        {serviceImage ? (
-                            <div className="mt-2">
-                                <img src={serviceImage} alt="service preview" className="max-h-28 object-contain rounded-md" />
-                            </div>
-                        ) : null}
-                    </div>
-
-                    <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="remark">Remark</Label>
-                        <Textarea id="remark" placeholder="Remark" className="min-h-[100px]" value={remark} onChange={(e: any) => setRemark(e.target.value)} />
+                {/* Additional Details Section */}
+                <FormSection title="Additional Details">
+                    <div className="grid gap-2">
+                        <Label htmlFor="remark">Remarks/Notes</Label>
+                        <Input id="remark" value={remark} onChange={(e: any) => setRemark(e.target.value)} placeholder="Enter any additional notes" />
                     </div>
                 </FormSection>
 

@@ -1,19 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "../ui/Input";
 import axios from "axios";
 import Cookies from "js-cookie";
 
+import { BASE_URL, getApiBaseUrl } from "@/lib/api-config";
+
+
 // added Select imports (uses your existing UI Select component)
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface FormSectionProps {
   title: string;
@@ -67,51 +62,23 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [sellingPrice, setSellingPrice] = useState<string | number>(initial?.sellingPrice ?? "");
   const [discount, setDiscount] = useState<string | number>(initial?.discount ?? "");
   const [taxRate, setTaxRate] = useState<string | number>(initial?.taxRate ?? "");
+  const [quantity, setQuantity] = useState<string | number>(initial?.quantity ?? initial?.inStock ?? "");
 
-  // Stock/payment-related (UI labels were payment oriented; we keep them but also track general values)
-  const [paymentStatus, setPaymentStatus] = useState<string>(initial?.paymentStatus || "Unpaid");
-  const [amountReceived, setAmountReceived] = useState<string | number>(initial?.amountReceived ?? "");
-  const [paymentMethod, setPaymentMethod] = useState<string>(initial?.paymentMethod || "Online");
-  const [dueAmount, setDueAmount] = useState<string | number>(initial?.dueAmount ?? "");
 
-  // Supplier/vendor
-  const [vendorName, setVendorName] = useState<string>(initial?.vendorName || "");
-  const [vendorProductCode, setVendorProductCode] = useState<string>(initial?.vendorProductCode || "");
-
-  // Images/attachments
-  // productImage will hold base64 dataURL (if file chosen) or a URL/string if provided by initial
-  const [productImage, setProductImage] = useState<string>(initial?.productImage || "");
-  const [productImageName, setProductImageName] = useState<string>(initial?.productImageName || (initial?.imageName ?? ""));
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [remark, setRemark] = useState<string>(initial?.remark || "");
+  // Removed unused state variables to clean up the code
 
   // UI state
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = "https://invoice-backend-604217703209.asia-south1.run.app/api";
-  // calculate profit/loss
-  const calculateProfitLoss = () => {
-    const pp = Number(purchasePrice) || 0;
-    const sp = Number(sellingPrice) || 0;
-    const disc = Number(discount) || 0;
+  // API URL configuration
+  const API_URL = `${getApiBaseUrl()}/api`;
 
-    // Decide if discount is % or flat (optional: you can add a toggle/selector for type)
-    let effectiveSP = sp;
-    if (disc > 0) {
-      // assuming % discount for now
-      effectiveSP = sp - (sp * disc) / 100;
-    }
+  // Debug logging
+  console.log("🔍 API_URL being used:", API_URL);
+  console.log("🔍 BASE_URL from config:", BASE_URL);
+  // calculate profit/loss - removed unused function
 
-    const diff = effectiveSP - pp;
-
-    return {
-      effectiveSP,
-      diff,
-      type: diff > 0 ? "profit" : diff < 0 ? "loss" : "neutral",
-    };
-  };
 
 
   useEffect(() => {
@@ -127,18 +94,10 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       setSellingPrice(initial.sellingPrice ?? initial.selling_price ?? "");
       setDiscount(initial.discount ?? 0);
       setTaxRate(initial.taxRate ?? "");
-      setPaymentStatus(initial.paymentStatus || "Unpaid");
-      setAmountReceived(initial.amountReceived ?? "");
-      setPaymentMethod(initial.paymentMethod || "Online");
-      setDueAmount(initial.dueAmount ?? "");
-      setVendorName(initial.vendorName || "");
-      setVendorProductCode(initial.vendorProductCode || "");
-      setProductImage(initial.productImage || initial.image || "");
-      setProductImageName(initial.productImageName || initial.imageName || "");
-      setRemark(initial.remark || initial.note || "");
+      setQuantity(initial.quantity ?? initial.inStock ?? "");
+      // Removed unused setters for unused state variables
       setError(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
   // Helper: pick unitPrice: prefer sellingPrice, else purchasePrice, else 0
@@ -152,11 +111,11 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     return 0;
   };
 
-  // NOTE: There is no explicit 'inStock' field in this UI. Backend expects 'inStock' (int).
-  // We send safe default 0. If your product form actually has a field representing stock/quantity,
-  // replace this to return that value (for example: Number(quantityField)).
+  // Helper: get quantity/stock value
   const resolveInStock = (): number => {
-    // try to infer from amountReceived or dueAmount? Not reliable. Default to 0.
+    const qty = typeof quantity === "string" ? quantity.trim() : quantity;
+    const parsedQty = qty !== "" && qty !== null && qty !== undefined ? Number(qty) : NaN;
+    if (!isNaN(parsedQty) && parsedQty >= 0) return parsedQty;
     return 0;
   };
 
@@ -165,26 +124,64 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
     setLoading(true);
 
     try {
-      const token = Cookies.get("authToken") || "";
-      // Build payload with expected backend fields
+      // Get token from cookies or localStorage
+      const token = Cookies.get("authToken") || localStorage.getItem("authToken") || "";
+
+      if (!token) {
+        setError("Authentication token not found. Please login again.");
+        setLoading(false);
+        return;
+      }
+
+      // Validate required fields
+      if (!productName.trim()) {
+        setError("Product name is required");
+        setLoading(false);
+        return;
+      }
+      if (!category.trim()) {
+        setError("Category is required");
+        setLoading(false);
+        return;
+      }
+      if (resolveUnitPrice() <= 0) {
+        setError("Unit price is required and must be greater than 0");
+        setLoading(false);
+        return;
+      }
+      if (resolveInStock() < 0) {
+        setError("Quantity must be 0 or greater");
+        setLoading(false);
+        return;
+      }
+
+      // Build payload with only the fields visible in the form
       const payload: any = {
-        productName: productName || "Untitled Product",
-        category: category || undefined,
-        unitPrice: resolveUnitPrice(),
-        inStock: resolveInStock(),
+        // Product Details Section
+        name: productName || "Untitled Product",
+        sku: productSKU || `PRD-${Date.now()}`,
+        category: category || "Product",
+        subCategory: subCategory || undefined,
+        brandName: brandName || undefined,
+        description: description || undefined,
+        taxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 0,
+
+        // Pricing Details Section
+        purchasePrice: purchasePrice !== "" && purchasePrice !== null && purchasePrice !== undefined ? Number(purchasePrice) : 0,
+        sellingPrice: sellingPrice !== "" && sellingPrice !== null && sellingPrice !== undefined ? Number(sellingPrice) : 0,
         discount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0,
-        image: productImage || undefined, // base64 or URL
-        // include payment metadata if needed
-        paymentStatus: paymentStatus || undefined,
-        paymentMethod: paymentMethod || undefined,
-        amountReceived: amountReceived !== "" ? Number(amountReceived) : undefined,
-        dueAmount: dueAmount !== "" ? Number(dueAmount) : undefined,
-        vendor: vendorName || undefined,
-        vendorProductCode: vendorProductCode || undefined,
-        note: remark || undefined,
+
+        // Stock Details Section
+        quantity: resolveInStock() || 0,
+
+        // Computed field for unitPrice (prefer selling price, fallback to purchase price)
+        unitPrice: resolveUnitPrice() || 0,
       };
 
       console.log("Saving product with payload:", payload);
+      console.log("🔍 Full payload JSON:", JSON.stringify(payload, null, 2));
+      console.log("🔍 Request URL:", `${API_URL}/inventory/items`);
+      console.log("🔍 Auth token:", token ? `${token.substring(0, 20)}...` : "No token");
 
       // Optionally include a status field for draft (backend can ignore if not supported)
       if (asDraft) payload.status = "draft";
@@ -205,7 +202,7 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         return;
       }
 
-      // Create new item via POST
+      // Create new item via POST - using the correct inventory service endpoint
       const res = await axios.post(`${API_URL}/inventory/items`, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -222,37 +219,26 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
       }
     } catch (err: any) {
       console.error("Save product error:", err);
+      console.error("Error response data:", err?.response?.data);
+      console.error("Error response status:", err?.response?.status);
+      console.error("Error response headers:", err?.response?.headers);
+      console.error("Full error object:", err);
+
       const msg =
         err?.response?.data?.detail ||
         err?.response?.data?.message ||
+        err?.response?.data?.error ||
         err?.message ||
         "Failed to save product";
-      setError(msg);
+      setError(`Server Error (${err?.response?.status || 'Unknown'}): ${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // File handling: read chosen image as base64 and set name
-  const handleFileSelect = (file?: File | null) => {
-    if (!file) return;
-    setProductImageName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setProductImage(result); // base64 data URL
-    };
-    reader.readAsDataURL(file);
-  };
+  // File handling removed - unused
 
-  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    handleFileSelect(f);
-  };
-
-  const triggerFilePicker = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
+  // File handling functions removed - unused
 
   const handleCancel = () => {
     onClose?.();
@@ -265,174 +251,80 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         {/* Product Details Section */}
         <FormSection title="Product Details">
           <div className="grid gap-2">
-            <Label htmlFor="product-name">Product Name</Label>
-            <Input id="product-name" value={productName} onChange={(e: any) => setProductName(e.target.value)} />
+            <Label htmlFor="product-name">Product Name *</Label>
+            <Input id="product-name" value={productName} onChange={(e: any) => setProductName(e.target.value)} placeholder="Enter product name" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="product-sku">Product Code/ SKU</Label>
-            <Input id="product-sku" value={productSKU} onChange={(e: any) => setProductSKU(e.target.value)} />
+            <Label htmlFor="product-sku">Product Code/SKU *</Label>
+            <Input id="product-sku" value={productSKU} onChange={(e: any) => setProductSKU(e.target.value)} placeholder="Enter product SKU" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="category">Category</Label>
-            <Input id="category" value={category} onChange={(e: any) => setCategory(e.target.value)} />
+            <Label htmlFor="category">Category *</Label>
+            <Input id="category" value={category} onChange={(e: any) => setCategory(e.target.value)} placeholder="Enter category" />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sub-category">Sub Category</Label>
-            <Input id="sub-category" value={subCategory} onChange={(e: any) => setSubCategory(e.target.value)} />
+            <Input id="sub-category" value={subCategory} onChange={(e: any) => setSubCategory(e.target.value)} placeholder="Enter sub category" />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="brand-name">Brand Name</Label>
-            <Input id="brand-name" value={brandName} onChange={(e: any) => setBrandName(e.target.value)} />
+            <Input id="brand-name" value={brandName} onChange={(e: any) => setBrandName(e.target.value)} placeholder="Enter brand name" />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
-            <Input id="description" value={description} onChange={(e: any) => setDescription(e.target.value)} />
+            <Input id="description" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="Enter description" />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+            <Input id="tax-rate" type="number" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} placeholder="Enter tax rate" />
           </div>
         </FormSection>
 
-        {/* Pricing & Tax Section */}
-        <FormSection title="Pricing & Tax">
+        {/* Pricing Section */}
+        <FormSection title="Pricing Details">
           <div className="grid gap-2">
             <Label htmlFor="purchase-price">Purchase Price</Label>
             <Input
               id="purchase-price"
-              value={purchasePrice as any}
+              type="number"
+              value={purchasePrice}
               onChange={(e: any) => setPurchasePrice(e.target.value)}
+              placeholder="Enter purchase price"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="selling-price">Selling Price</Label>
+            <Label htmlFor="selling-price">Selling Price *</Label>
             <Input
               id="selling-price"
-              value={sellingPrice as any}
+              type="number"
+              value={sellingPrice}
               onChange={(e: any) => setSellingPrice(e.target.value)}
+              placeholder="Enter selling price"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="discount">Discount % (if applicable)</Label>
-            <Input id="discount" value={discount as any} onChange={(e: any) => setDiscount(e.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="tax-rate">Tax Rate</Label>
-            <Input id="tax-rate" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} />
-          </div>
-          {/* Profit / Loss Result */}
-          <div className="col-span-2 mt-2 p-3 ">
-            {(() => {
-              const { diff, type, effectiveSP } = calculateProfitLoss();
-              if (type === "profit") {
-                return (
-                  <p className="text-green-600 font-semibold">
-                    Profit: ₹{diff.toFixed(2)} (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
-                  </p>
-                );
-              } else if (type === "loss") {
-                return (
-                  <p className="text-red-600 font-semibold">
-                    Loss: ₹{Math.abs(diff).toFixed(2)} (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
-                  </p>
-                );
-              } else {
-                return (
-                  <p className="text-gray-600 font-medium">
-                    No Profit / No Loss (Effective Selling Price: ₹{effectiveSP.toFixed(2)})
-                  </p>
-                );
-              }
-            })()}
-          </div>
-        </FormSection>
-
-        {/* Stock and Quantity Details Section */}
-        <FormSection title="Stock and Quantity Details">
-          <div className="grid gap-2">
-            <Label htmlFor="payment-status">Payment Status</Label>
-
-            {/* Payment Status Select (Paid / Unpaid) */}
-            <Select onValueChange={(v) => setPaymentStatus(v)} defaultValue={paymentStatus || "Unpaid"}>
-              <SelectTrigger aria-label="Payment Status">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Paid">Paid</SelectItem>
-                <SelectItem value="Unpaid">Unpaid</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="amount-received">Amount Received</Label>
-            <Input id="amount-received" value={amountReceived as any} onChange={(e: any) => setAmountReceived(e.target.value)} />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="payment-method">Payment Method</Label>
-
-            {/* Payment Method Select (Online / POS / Cash) */}
-            <Select onValueChange={(v) => setPaymentMethod(v)} defaultValue={paymentMethod || "Online"}>
-              <SelectTrigger aria-label="Payment Method">
-                <SelectValue placeholder="Select method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Online">Online</SelectItem>
-                <SelectItem value="POS">POS</SelectItem>
-                <SelectItem value="Cash">Cash</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="due-amount">Due Amount</Label>
-            <Input id="due-amount" value={dueAmount as any} onChange={(e: any) => setDueAmount(e.target.value)} />
-          </div>
-        </FormSection>
-
-        {/* Supplier/ Vendor Information Section */}
-        <FormSection title="Supplier/ Vendor Information">
-          <div className="grid gap-2">
-            <Label htmlFor="vendor-name">Vendor Name</Label>
-            <Input id="vendor-name" value={vendorName} onChange={(e: any) => setVendorName(e.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="vendor-product-code">Vendor Product Code</Label>
-            <Input id="vendor-product-code" value={vendorProductCode} onChange={(e: any) => setVendorProductCode(e.target.value)} />
-          </div>
-        </FormSection>
-
-        {/* Images and Attachments Section */}
-        <FormSection title="Images and Attachments">
-          <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="product-image">Product Image</Label>
-
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={onFileInputChange}
-            />
-
-            {/* Display a readonly Input showing filename (click opens file dialog) */}
+            <Label htmlFor="discount">Discount (%)</Label>
             <Input
-              id="product-image"
-              value={productImageName || (productImage ? "Image selected" : "")}
-              placeholder="Choose image"
-              readOnly
-              onClick={triggerFilePicker}
+              id="discount"
+              type="number"
+              value={discount}
+              onChange={(e: any) => setDiscount(e.target.value)}
+              placeholder="Enter discount percentage"
             />
-
-            {/* optional: small preview below (keeps layout, minimal visual change) */}
-            {productImage ? (
-              <div className="mt-2">
-                <img src={productImage} alt="product preview" className="max-h-28 object-contain rounded-md" />
-              </div>
-            ) : null}
           </div>
+        </FormSection>
 
-          <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="remark">Remark</Label>
-            <Textarea id="remark" placeholder="Remark" className="min-h-[100px]" value={remark} onChange={(e: any) => setRemark(e.target.value)} />
+        {/* Stock Section */}
+        <FormSection title="Stock Details">
+          <div className="grid gap-2">
+            <Label htmlFor="quantity">Quantity/Stock *</Label>
+            <Input
+              id="quantity"
+              type="number"
+              value={quantity}
+              onChange={(e: any) => setQuantity(e.target.value)}
+              placeholder="Enter quantity in stock"
+            />
           </div>
         </FormSection>
 

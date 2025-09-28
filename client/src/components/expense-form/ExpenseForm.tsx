@@ -8,6 +8,7 @@ import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie"; // ✅ use js-cookie like InvoiceForm
+import { getApiBaseUrl } from "@/lib/api-config";
 
 type Props = {
   onCancel: () => void;
@@ -71,7 +72,7 @@ const steps = [
   { label: "Sub Total", icon: CurlyBraces },
 ];
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+const API_BASE = getApiBaseUrl();
 
 export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated }: Props) {
   const [step, setStep] = useState(1);

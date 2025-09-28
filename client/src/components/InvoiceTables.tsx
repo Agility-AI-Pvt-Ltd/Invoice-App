@@ -26,9 +26,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 
 // import Cookies from "js-cookie";
-import { getSalesData, type SalesRecord } from "@/services/api/sales";
-import autoTable from "jspdf-autotable";
-import jsPDF from "jspdf";
+import { getInvoices, type Invoice } from "@/services/api/invoice";
+import api from "@/lib/api";
 import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
 
 interface InvoiceTableProps {
@@ -49,7 +48,7 @@ interface FilterState {
 }
 
 export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice }: InvoiceTableProps) {
-  const [invoices, setInvoices] = useState<SalesRecord[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,10 +79,17 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     setLoading(true);
     setError(null);
     try {
-      const res = await getSalesData();
-      setInvoices(res || []);
+      // Use the proper invoices API instead of sales API
+      const response = await getInvoices(currentPage, itemsPerPage);
+      console.log("=== FETCH INVOICES RESPONSE ===");
+      console.log("Full response:", response);
+      console.log("Response data:", response.data);
+      console.log("First invoice:", response.data?.[0]);
+      console.log("=============================");
+      setInvoices(response.data || []);
     } catch (err: any) {
       setError(err.message || "Failed to fetch invoices");
+      setInvoices([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -138,10 +144,10 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
   //   }
   // };
 
-  // Initial fetch (mount) and re-fetch when selectedDate or external refreshFlag change
+  // Initial fetch (mount) and re-fetch when selectedDate, currentPage, or external refreshFlag change
   useEffect(() => {
     fetchInvoices();
-  }, [selectedDate, refreshFlag]);
+  }, [selectedDate, refreshFlag, currentPage]);
 
   // If navigated here with state.openSalesForm -> open the invoice form (Step 1) and clear history state.
   useEffect(() => {
@@ -186,7 +192,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       window.removeEventListener("invoice:deleted", handleInvoiceEvent);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, activeStatusFilter, refreshFlag]);
+  }, [selectedDate, activeStatusFilter, refreshFlag, currentPage]);
 
   // Map backend payment statuses to filter categories
   const mapStatusToFilter = (paymentStatus: string): string => {
@@ -229,7 +235,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     // Status filter
     if (activeStatusFilter !== "all") {
       filtered = filtered.filter(invoice =>
-        mapStatusToFilter(invoice.paymentStatus || "") === activeStatusFilter
+        mapStatusToFilter(invoice.status || "") === activeStatusFilter
       );
     }
 
@@ -238,8 +244,8 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       const searchLower = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(invoice =>
         (invoice.invoiceNumber || "").toString().toLowerCase().includes(searchLower) ||
-        (invoice.customerName || "").toLowerCase().includes(searchLower) ||
-        (invoice.product || "").toLowerCase().includes(searchLower)
+        (invoice.billTo?.name || "").toLowerCase().includes(searchLower) ||
+        (invoice.items?.[0]?.description || "").toLowerCase().includes(searchLower)
       );
     }
 
@@ -247,7 +253,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     if (filters.customerName) {
       const customerLower = filters.customerName.toLowerCase();
       filtered = filtered.filter(invoice =>
-        (invoice.customerName || "").toLowerCase().includes(customerLower)
+        (invoice.billTo?.name || "").toLowerCase().includes(customerLower)
       );
     }
 
@@ -275,7 +281,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     // Amount range filter
     if (filters.amountMin || filters.amountMax) {
       filtered = filtered.filter(invoice => {
-        const amount = Number(invoice.totalAmount || 0);
+        const amount = Number(invoice.total || 0);
         const minAmount = filters.amountMin ? parseFloat(filters.amountMin) : null;
         const maxAmount = filters.amountMax ? parseFloat(filters.amountMax) : null;
 
@@ -318,32 +324,142 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     }
   };
 
-  const downloadCSV = (data: SalesRecord[], filename: string) => {
-    const csvRows = [
-      [
-        "Invoice Number",
-        "Customer Name",
-        "Product",
-        "Quantity",
-        "Unit Price",
-        "Total Amount",
-        "Date of Sale",
-        "Payment Status",
-      ],
-      ...data.map((sale) => [
-        sale.invoiceNumber,
-        sale.customerName,
-        sale.product,
-        sale.quantity,
-        sale.unitPrice,
-        sale.totalAmount,
-        sale.dateOfSale,
-        sale.paymentStatus,
-      ]),
+  // Fallback helpers for resilient display
+  const getInvoiceNumber = (
+    inv: Partial<Invoice> & { number?: string; invoiceNo?: string; invoice_id?: string }
+  ) => inv?.invoiceNumber || inv?.number || inv?.invoiceNo || inv?.invoice_id || "";
+
+  const getCustomerName = (
+    inv: Partial<Invoice> & { customerName?: string; clientName?: string; companyName?: string }
+  ) => inv?.billTo?.name || inv?.customerName || inv?.clientName || inv?.companyName || "N/A";
+
+  // const formatDatePretty = (value?: string) => {
+  //   if (!value) return "";
+  //   try {
+  //     const d = new Date(value);
+  //     if (isNaN(d.getTime())) return String(value);
+  //     return format(d, "MMMM d, yyyy");
+  //   } catch {
+  //     return String(value);
+  //   }
+  // };
+
+  const formatDueDate = (value?: string) => {
+    if (!value) return "N/A";
+    try {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return format(d, "MMMM d, yyyy");
+    } catch {
+      return String(value);
+    }
+  };
+
+  const downloadCSV = (data: Invoice[], filename: string) => {
+    // Professional headers with consistent spacing
+    const headers = [
+      "INVOICE NUMBER",
+      "CUSTOMER NAME",
+      "TOTAL AMOUNT",
+      "DUE DATE",
+      "STATUS",
     ];
 
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const rows = (Array.isArray(data) ? data : []).map((inv: Invoice) => {
+      const invoiceNumber = getInvoiceNumber(inv);
+      const customerName = getCustomerName(inv);
+      const totalAmount = inv?.total ??
+        (inv as any).totalAmount ??
+        (inv as any).amount ??
+        (inv as any).grandTotal ??
+        (inv as any).grand_total ?? 0;
+
+      // Format due date as DD/MM/YY
+      const formatDueDateForCSV = (value?: string) => {
+        if (!value) return "N/A";
+        try {
+          const d = new Date(value);
+          if (isNaN(d.getTime())) return String(value);
+          const day = d.getDate().toString().padStart(2, '0');
+          const month = (d.getMonth() + 1).toString().padStart(2, '0');
+          const year = d.getFullYear().toString().slice(-2);
+          return `${day}/${month}/${year}`;
+        } catch {
+          return String(value);
+        }
+      };
+
+      const dueDateFormatted = formatDueDateForCSV(
+        (inv as any).dueDate ||
+        (inv as any).due_date ||
+        (inv as any).paymentDueDate ||
+        (inv as any).payment_due_date
+      );
+
+      // Use the same status mapping logic as the rendered table
+      const rawStatus = inv?.status || "pending";
+      const mappedStatus = mapStatusToFilter(rawStatus);
+      const displayStatus = mappedStatus === "paid" ? "Paid" :
+        mappedStatus === "pending" ? "Pending" :
+          mappedStatus === "overdue" ? "Overdue" : "Pending";
+
+      return [
+        invoiceNumber,
+        customerName,
+        `₹${typeof totalAmount === 'number' ? totalAmount.toLocaleString() : String(totalAmount)}`,
+        dueDateFormatted,
+        displayStatus,
+      ];
+    });
+
+    // Create professional CSV with proper spacing and structure
+    const csvRows = [headers, ...rows];
+
+    // Calculate column widths for better alignment
+    // const columnWidths = headers.map((_, colIndex) => {
+    //   const allValues = csvRows.map(row => String(row[colIndex] || ""));
+    //   return Math.max(...allValues.map(val => val.length));
+    // });
+
+    const csvContent = csvRows
+      .map((row, rowIndex) => {
+        const formattedRow = row.map((cell) => {
+          const str = cell == null ? "" : String(cell);
+          const cleanStr = str.replace(/"/g, '""');
+
+          // Add padding for better alignment (only for data rows, not headers)
+          if (rowIndex === 0) {
+            // Headers - keep them clean
+            return `"${cleanStr}"`;
+          } else {
+            // Data rows - add consistent spacing
+            return `"${cleanStr}"`;
+          }
+        });
+
+        // Use consistent separator with proper spacing
+        return formattedRow.join(" , ");
+      })
+      .join("\n");
+
+    // Add professional header and metadata
+    const currentDate = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    const professionalHeader = [
+      "INVOICE REPORT",
+      `Generated on: ${currentDate}`,
+      `Total Records: ${rows.length}`,
+      "", // Empty line for separation
+      csvContent
+    ].join("\n");
+
+    // Add BOM for proper UTF-8 encoding in Excel
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + professionalHeader], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
@@ -359,7 +475,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     try {
       await invoicesAPI.delete(invoiceId);
       // remove by id or _id to be safe
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId && (inv as any)._id !== invoiceId));
+      setInvoices(prev => Array.isArray(prev) ? prev.filter(inv => (inv as any).id !== invoiceId && (inv as any)._id !== invoiceId) : []);
       // re-fetch to make sure UI matches server
       fetchInvoices();
     } catch (err: any) {
@@ -367,44 +483,317 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     }
   };
 
-  const handleDownload = (invoice: SalesRecord) => {
+  // Helper functions for HTML generation (copied from Receipts.tsx)
+  const safe = (str: any) => {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[<>&"']/g, (m) => {
+      const map: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" };
+      return map[m];
+    });
+  };
+
+  const fmtDate = (dateStr: any) => {
+    if (!dateStr) return "";
     try {
-      const doc = new jsPDF();
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    } catch {
+      return String(dateStr);
+    }
+  };
 
-      // Title
-      doc.setFontSize(16);
-      doc.text("Invoice", 14, 20);
+  const numberToWords = (num: number): string => {
+    // Simple number to words conversion for Indian format
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
 
-      // Invoice details
-      doc.setFontSize(12);
-      doc.text(`Invoice Number: ${invoice.invoiceNumber}`, 14, 35);
-      doc.text(`Customer: ${invoice.customerName}`, 14, 45);
-      doc.text(`Date of Sale: ${invoice.dateOfSale}`, 14, 55);
-      doc.text(`Status: ${invoice.paymentStatus}`, 14, 65);
+    if (num === 0) return "Zero";
+    if (num < 10) return ones[num];
+    if (num < 20) return teens[num - 10];
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? " " + ones[num % 10] : "");
+    if (num < 1000) return ones[Math.floor(num / 100)] + " Hundred" + (num % 100 ? " " + numberToWords(num % 100) : "");
+    if (num < 100000) return numberToWords(Math.floor(num / 1000)) + " Thousand" + (num % 1000 ? " " + numberToWords(num % 1000) : "");
+    if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + " Lakh" + (num % 100000 ? " " + numberToWords(num % 100000) : "");
+    return numberToWords(Math.floor(num / 10000000)) + " Crore" + (num % 10000000 ? " " + numberToWords(num % 10000000) : "");
+  };
 
-      // Product Table
-      autoTable(doc, {
-        startY: 80,
-        head: [["Product", "Quantity", "Unit Price", "Total"]],
-        body: [
-          [
-            invoice.product,
-            invoice.quantity,
-            `₹${invoice.unitPrice}`,
-            `₹${invoice.totalAmount}`,
-          ],
-        ],
+  const calcRow = (it: any) => {
+    // If backend provides pre-calculated values, use them
+    if (it.taxableAmount && it.total) {
+      console.log("🔢 Using backend item values:", it);
+      return {
+        qty: Number(it.quantity || 0),
+        rate: Number(it.unitPrice || it.rate || 0),
+        gst: Number(it.gst || 0),
+        discountAmount: Number(it.discount || 0),
+        taxable: Number(it.taxableAmount || 0),
+        gstAmount: Number(it.cgst || 0) + Number(it.sgst || 0) + Number(it.igst || 0),
+        net: Number(it.total || 0),
+      };
+    }
+
+    // Fallback to calculation if backend values not available
+    const qty = Number(it.quantity || 0);
+    const rate = Number(it.unitPrice ?? it.rate ?? 0);
+    const gst = Number(it.gst ?? 0);
+    const disc = Number(it.discount ?? 0);
+
+    const base = +(qty * rate); // raw base
+    const discountAmount = disc > 0 && disc <= 100 ? +(base * disc) / 100 : +disc; // percent or absolute
+    const taxable = +(base - (discountAmount || 0));
+    const gstAmount = +(taxable * gst) / 100;
+    const net = +(taxable + gstAmount);
+
+    return {
+      qty,
+      rate: +rate,
+      gst: +gst,
+      discountAmount: +discountAmount,
+      taxable: +taxable,
+      gstAmount: +gstAmount,
+      net: +net,
+    };
+  };
+
+  const computeTotals = (inv: any) => {
+    // If backend provides pre-calculated values, use them
+    if (inv.subtotal && inv.cgst && inv.sgst && inv.amount) {
+      console.log("🔢 Using backend pre-calculated values:", {
+        subtotal: inv.subtotal,
+        cgst: inv.cgst,
+        sgst: inv.sgst,
+        amount: inv.amount,
+        roundOff: inv.roundOff
       });
 
-      // Footer / total
-      doc.setFontSize(12);
-      // @ts-ignore
-      doc.text(`Total Amount: ₹${invoice.totalAmount}`, 14, doc.lastAutoTable.finalY + 20);
+      return {
+        taxableTotal: Number(inv.subtotal) - Number(inv.cgst) - Number(inv.sgst),
+        totalGst: Number(inv.cgst) + Number(inv.sgst),
+        cgst: Number(inv.cgst),
+        sgst: Number(inv.sgst),
+        subtotal: Number(inv.subtotal),
+        shipping: Number(inv.shipping || 0),
+        roundOff: Number(inv.roundOff || 0),
+        total: Number(inv.amount),
+      };
+    }
 
-      // Save the file
-      doc.save(`${invoice.invoiceNumber}.pdf`);
+    // Fallback to calculation if backend values not available
+    const items = Array.isArray(inv.invoice_items || inv.items) ? (inv.invoice_items || inv.items) : [];
+    let taxableTotal = 0;
+    let totalGst = 0;
+    let subtotal = 0; // sum of nets (taxable + gst)
+
+    items.forEach((it: any) => {
+      const r = calcRow(it);
+      taxableTotal += r.taxable;
+      totalGst += r.gstAmount;
+      subtotal += r.net;
+    });
+
+    const cgst = +(totalGst / 2).toFixed(2);
+    const sgst = +(totalGst / 2).toFixed(2);
+
+    const shipping = Number(inv.shipping || 0);
+
+    // Subtotal for roundoff calculation should include shipping (if any)
+    const rawTotalBeforeRound = +(subtotal + shipping);
+
+    // Round off to nearest rupee (businessy behavior).
+    const roundedTotal = Math.round(rawTotalBeforeRound);
+    const roundOff = +(roundedTotal - rawTotalBeforeRound).toFixed(2);
+
+    const total = +(rawTotalBeforeRound + roundOff).toFixed(2);
+
+    return {
+      taxableTotal: +taxableTotal.toFixed(2),
+      totalGst: +totalGst.toFixed(2),
+      cgst,
+      sgst,
+      subtotal: +subtotal.toFixed(2),
+      shipping: +shipping.toFixed(2),
+      roundOff,
+      total,
+    };
+  };
+
+  const generatePrintableHTML = (inv: any, docType: string) => {
+    // Handle backend response structure - data might be nested under 'data' property
+    const invoiceData = inv.data || inv;
+    console.log("🔍 Processing invoice data:", invoiceData);
+
+    const t = computeTotals(invoiceData);
+    const itemsHtml = (Array.isArray(invoiceData.invoice_items || invoiceData.items) ? (invoiceData.invoice_items || invoiceData.items) : []).map((it: any, idx: number) => {
+      const r = calcRow(it);
+      return `<tr style="page-break-inside:avoid">
+        <td style="padding:8px;border:1px solid #ddd;text-align:center">${idx + 1}</td>
+        <td style="padding:8px;border:1px solid #ddd">${safe(it.description) || "-"}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:center">${safe(it.hsn || it.hsn_sac || "-")}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.qty}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.rate}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.gst}%</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.taxable}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.net}</td>
+      </tr>`;
+    }).join("\n");
+
+    const style = `
+      html,body{margin:0;padding:0;background:#f7fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;color:#111827}
+      .sheet{max-width:900px;margin:18px auto;background:#fff;padding:20px;border-radius:6px;border:1px solid #e6eef5}
+      .header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+      .seller{font-weight:700;color:#0b5cf3}
+      .muted{color:#6b7280;font-size:13px}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      th{background:#f3f4f6;padding:8px;border:1px solid #e6e6e6;text-align:left;font-weight:700}
+      td{padding:8px;border:1px solid #e6e6e6;font-size:13px}
+      .right{text-align:right}
+      .no-print{display:block}
+      @media print {
+        .no-print{display:none}
+        .sheet{box-shadow:none;border-radius:0;margin:0;padding:12px}
+      }
+      tr{page-break-inside:avoid}
+      @media (max-width:640px){
+        .header{flex-direction:column}
+      }
+    `;
+
+    const docTitle = docType === "invoices" ? "INVOICE" : "DOCUMENT";
+
+    const docNumber = invoiceData.number || invoiceData.invoiceNumber || invoiceData.billNo;
+
+    const partyName = invoiceData.clientName || invoiceData.partyName || invoiceData.customerName || invoiceData.billTo?.name;
+
+    const html = `<!doctype html>
+      <html>
+      <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${docTitle} ${safe(docNumber)}</title><style>${style}</style></head>
+      <body>
+        <div class="sheet">
+          <div class="header">
+            <div style="flex:1">
+              <div class="seller">${safe(invoiceData.billFrom?.businessName || invoiceData.billFrom?.name || "Seller Name")}</div>
+              <div class="muted">${safe(invoiceData.billFrom?.address || "")}</div>
+              <div class="muted">Phone: ${safe(invoiceData.billFrom?.phone || "")} • Email: ${safe(invoiceData.billFrom?.email || "")}</div>
+              <div class="muted">GSTIN: ${safe(invoiceData.billFrom?.gst || invoiceData.billFrom?.gstin || invoiceData.gstin || "")}</div>
+            </div>
+            <div style="width:340px;text-align:right">
+              <div style="font-size:18px;font-weight:800">${docTitle}</div>
+              <div style="margin-top:8px" class="muted">${docTitle} No: <strong>${safe(docNumber)}</strong></div>
+              <div class="muted">Date: ${fmtDate(invoiceData.issueDate || invoiceData.date || invoiceData.dateOfSale || invoiceData.dateIssued)}</div>
+              ${invoiceData.dueDate ? `<div class="muted">Due Date: ${fmtDate(invoiceData.dueDate)}</div>` : ""}
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+            <div style="flex:1;border:1px solid #eef2f6;padding:10px">
+              <div style="font-weight:700">Customer Name & Billing Address</div>
+              <div style="margin-top:6px">${safe(partyName)}</div>
+              <div class="muted">${safe(invoiceData.clientAddress || invoiceData.billTo?.address || invoiceData.address || "")}</div>
+              <div class="muted">GSTIN: ${safe(invoiceData.clientGst || invoiceData.billTo?.gst || invoiceData.billTo?.gstin || invoiceData.gstin || "")}</div>
+              <div class="muted">Phone: ${safe(invoiceData.clientPhone || invoiceData.billTo?.phone || invoiceData.phone || "")}</div>
+              <div class="muted">Email: ${safe(invoiceData.clientEmail || invoiceData.billTo?.email || invoiceData.email || "")}</div>
+            </div>
+
+            <div style="width:320px;border:1px solid #eef2f6;padding:10px">
+              <div style="font-weight:700">Shipping Address</div>
+              <div style="margin-top:6px">${safe(invoiceData.shipTo?.name || "")}</div>
+              <div class="muted">${safe(invoiceData.shipTo?.address || invoiceData.shippingAddress || invoiceData.clientAddress || "")}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;text-align:center">S No</th>
+                  <th>Description</th>
+                  <th style="width:100px;text-align:center">HSN / SAC</th>
+                  <th style="width:60px;text-align:right">Qty</th>
+                  <th style="width:100px;text-align:right">Item Rate</th>
+                  <th style="width:70px;text-align:right">Tax %</th>
+                  <th style="width:110px;text-align:right">Taxable Value</th>
+                  <th style="width:120px;text-align:right">Net Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:12px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:1">
+              <div style="font-weight:700;margin-bottom:6px">Declaration</div>
+              <div class="muted" style="white-space:pre-wrap;margin-top:6px">We declare that this ${docTitle.toLowerCase()} shows the actual price of the goods / services described and that all particulars are true and correct.</div>
+              ${invoiceData.description || invoiceData.remark || invoiceData.reason || invoiceData.notes ? `<div style="margin-top:12px;font-weight:700;margin-bottom:6px">Remarks</div><div class="muted">${safe(invoiceData.description || invoiceData.remark || invoiceData.reason || invoiceData.notes)}</div>` : ""}
+            </div>
+
+            <div style="width:340px">
+              <div style="border:1px solid #eef2f6;padding:10px;background:#fcfeff">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Taxable Amount</div><div class="right">₹${t.taxableTotal}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">CGST</div><div class="right">₹${t.cgst}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">SGST</div><div class="right">₹${t.sgst}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Sub Total</div><div class="right">₹${t.subtotal}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Round Off</div><div class="right">₹${t.roundOff}</div></div>
+                <div style="border-top:1px dashed #e6e6e6;padding-top:8px;margin-top:8px;font-weight:800;display:flex;justify-content:space-between">
+                  <div>Total</div><div class="right">₹${t.total}</div>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#6b7280"><strong>In Words:</strong> ${numberToWords(t.total)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:14px;gap:12px;flex-wrap:wrap">
+            <div style="flex:1"></div>
+            <div style="width:260px;text-align:center">
+              <div style="height:48px"></div>
+              <div style="margin-top:6px;font-weight:700">For ${safe(invoiceData.billFrom?.businessName || invoiceData.billFrom?.name || "Seller")}</div>
+              <div style="height:56px"></div>
+              <div style="border-top:1px solid #e6e6e6;margin-top:6px;padding-top:6px" class="muted">Authorised Signatory</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;text-align:center;font-size:12px;color:#6b7280">Original For Recipient</div>
+        </div>
+      </body>
+      </html>`;
+
+    return html;
+  };
+
+  const handleDownload = async (invoice: Invoice) => {
+    try {
+      console.log("🔄 Starting download for invoice:", invoice);
+
+      // Fetch complete invoice data by ID
+      const invoiceId = (invoice as any).id || (invoice as any)._id;
+      console.log("📥 Fetching complete invoice data for ID:", invoiceId);
+      const response = await api.get(`/api/invoices/${invoiceId}`);
+      const completeInvoiceData = response.data;
+      console.log("✅ Complete invoice data received:", completeInvoiceData);
+
+      // Console log the complete backend response data
+      console.log("📤 Complete backend response data for download:", completeInvoiceData);
+
+      const html = generatePrintableHTML(completeInvoiceData, "invoices");
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      const docNumber = completeInvoiceData.invoiceNumber || completeInvoiceData.billNo || completeInvoiceData.number;
+      const safeName = (docNumber || "invoice").replace(/[^\w-]/g, "_");
+      a.download = `${safeName}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+      console.log("✅ Download completed successfully");
     } catch (err: any) {
-      alert(err.message || "Failed to generate invoice PDF");
+      console.error("❌ Download error:", err);
+      alert(`Could not download invoice. Error: ${err.message || "Unknown error"}`);
     }
   };
 
@@ -417,11 +806,14 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       { label: "Overdue", value: "overdue" },
     ];
 
+    // Ensure invoices is always an array
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
     return filterButtons.map(btn => ({
       ...btn,
       count: btn.value === "all"
-        ? invoices.length
-        : invoices.filter(inv => mapStatusToFilter(inv.paymentStatus || "") === btn.value).length
+        ? safeInvoices.length
+        : safeInvoices.filter(inv => mapStatusToFilter(inv.status || "") === btn.value).length
     }));
   };
 
@@ -698,33 +1090,39 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
 
           {/* Table */}
           <div className="w-full overflow-x-auto rounded-md border">
-            <table className="min-w-[900px]">
+            <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Invoice Number</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Customer Name</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Product</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Quantity</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Unit Price</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Total Amount</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Date of Sale</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Payment Status</th>
-                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-500 sm:px-6">Actions</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 w-1/6">Invoice Number</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 w-1/6">Customer Name</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 w-1/6">Total Amount</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 w-1/6">Due Date</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 w-1/6">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 w-1/6">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {currentInvoices && currentInvoices.map((invoice) => (
-                  <tr key={invoice.id || (invoice as any)._id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-3 py-4 text-sm font-medium text-gray-900 sm:px-6">{invoice.invoiceNumber}</td>
-                    <td className="px-3 py-4 sm:px-6">{invoice.customerName}</td>
-                    <td className="px-3 py-4 sm:px-6">{invoice.product}</td>
-                    <td className="px-3 py-4 sm:px-6">{invoice.quantity}</td>
-                    <td className="px-3 py-4 sm:px-6">₹{(invoice as any).unitPrice?.toLocaleString?.()}</td>
-                    <td className="px-3 py-4 sm:px-6">₹{(invoice as any).totalAmount?.toLocaleString?.()}</td>
-                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-6">{(invoice as any).dateOfSale || (invoice as any).date}</td>
-                    <td className="px-3 py-4 sm:px-6">{getStatusBadge(invoice.paymentStatus)}</td>
-                    <td className="px-3 py-4 sm:px-6">
+                  <tr key={(invoice as any)._id || (invoice as any).id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 w-1/6">{getInvoiceNumber(invoice)}</td>
+                    <td className="px-6 py-4 w-1/6">{getCustomerName(invoice)}</td>
+                    <td className="px-6 py-4 w-1/6">₹{(() => {
+                      const total = invoice.total ||
+                        (invoice as any).totalAmount ||
+                        (invoice as any).amount ||
+                        (invoice as any).grandTotal ||
+                        (invoice as any).grand_total || 0;
+                      return typeof total === 'number' ? total.toLocaleString() : String(total);
+                    })()}</td>
+                    <td className="px-6 py-4 w-1/6">{formatDueDate(
+                      (invoice as any).dueDate ||
+                      (invoice as any).due_date ||
+                      (invoice as any).paymentDueDate ||
+                      (invoice as any).payment_due_date
+                    )}</td>
+                    <td className="px-6 py-4 w-1/6">{getStatusBadge(invoice.status || 'pending')}</td>
+                    <td className="px-6 py-4 w-1/6">
                       <div className="flex items-center gap-2">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -736,7 +1134,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                             <DropdownMenuItem onClick={() => handleDownload(invoice)}>
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(invoice.id || (invoice as any)._id)}>
+                            <DropdownMenuItem className="text-red-500" onClick={() => handleDelete((invoice as any)._id || (invoice as any).id)}>
                               <Trash className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -747,7 +1145,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                 ))}
                 {currentInvoices && currentInvoices.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-gray-500 sm:px-6">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                       No invoices found for selected filter.
                     </td>
                   </tr>
@@ -762,16 +1160,16 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 <div className="text-center text-sm text-gray-700 sm:text-left">
                   Showing {filteredInvoices.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredInvoices.length)} of {filteredInvoices.length} results
-                  {(hasActiveFilters() && filteredInvoices.length !== invoices.length) &&
-                    ` (filtered from ${invoices.length} total)`
+                  {(hasActiveFilters() && filteredInvoices.length !== (Array.isArray(invoices) ? invoices.length : 0)) &&
+                    ` (filtered from ${Array.isArray(invoices) ? invoices.length : 0} total)`
                   }
                 </div>
 
                 <div className="flex items-center justify-center gap-2">
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage - 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" /> Previous
@@ -789,10 +1187,10 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                       </Button>
                     ))}
                   </div>
-                  <Button 
-                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer" 
-                    size="sm" 
-                    onClick={() => goToPage(currentPage + 1)} 
+                  <Button
+                    className="hover:bg-white bg-white text-slate-500 hover:text-[#654BCD] cursor-pointer"
+                    size="sm"
+                    onClick={() => goToPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
                     Next <ChevronRight className="h-4 w-4 ml-1" />

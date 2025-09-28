@@ -1,6 +1,59 @@
-# React + TypeScript + Vite
+# Invoice Management App - Frontend Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React + TypeScript + Vite frontend for the Invoice Management System with microservices backend.
+
+## 🚀 Quick Start
+
+### Environment Setup
+
+1. **Run the environment setup script:**
+   ```bash
+   ./setup-env.sh
+   ```
+
+2. **Or manually create environment file:**
+   - Copy `.env.example` to `.env` for your environment setup
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server (uses .env)
+npm run dev
+
+# Build for production (uses .env)
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## 🌐 Backend Configuration
+
+The app automatically switches between local and production backends:
+
+- **Local Development**: `http://localhost:3000` (API Gateway)
+- **Production**: `https://api-gateway-914987176295.asia-south1.run.app`
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_BACKEND_URL` | Backend API URL (defaults to localhost:3000) |
+| `VITE_API_BASE_URL` | API Base URL (same as backend URL) |
+| `VITE_NODE_ENV` | Environment mode (development/production) |
+
+**Note**: The app automatically uses the production URL when `NODE_ENV=production`, otherwise it uses localhost.
+
+## 🏗️ Architecture
+
+This frontend connects to a microservices backend with the following services:
+- **API Gateway** (Port 3000) - Main entry point
+- **Auth Service** (Port 3001) - Authentication & authorization
+- **Business Service** (Port 3002) - Core business logic
+- **AI Service** (Port 3003) - AI-powered invoice scanning
 
 Currently, two official plugins are available:
 

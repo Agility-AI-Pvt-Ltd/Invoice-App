@@ -13,19 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import axios from "axios";
-
-// Fetch business logo function
-export async function fetchBusinessLogo(token: string): Promise<string> {
-  const response = await axios.get(
-    "https://invoice-backend-604217703209.asia-south1.run.app/api/profile/logo",
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: "blob",
-    }
-  );
-  return URL.createObjectURL(response.data); // returns usable image URL
-}
+import { fetchBusinessLogo } from "@/services/api/settings";
 
 const NavbarUpdated = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -58,7 +46,7 @@ const NavbarUpdated = () => {
       setIsLoggedIn(true);
 
       // Fetch user logo
-      fetchBusinessLogo(authToken)
+      fetchBusinessLogo()
         .then(url => setLogoUrl(url))
         .catch(err => console.error('Failed to fetch logo:', err));
 

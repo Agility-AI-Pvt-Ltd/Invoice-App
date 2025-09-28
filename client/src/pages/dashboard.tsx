@@ -9,7 +9,6 @@ import { useProfile } from '@/contexts/ProfileContext';
 import Layout from '@/layouts/dashboard-layout';
 import { Navigate } from 'react-router-dom';
 import { getDashboardStats, type DashboardStat } from '@/services/api/dashboard';
-import Cookies from 'js-cookie';
 
 const Dashboard = () => {
   const { loading, error, isAuthenticated } = useProfile();
@@ -18,12 +17,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = Cookies.get('authToken');
-        if (!token){
-          console.error('No authentication token found');
-          return;
-        } 
-        const data = await getDashboardStats(token);
+        const data = await getDashboardStats();
         setStats(data);
       } catch (err) {
         console.error('Failed to load stats:', err);

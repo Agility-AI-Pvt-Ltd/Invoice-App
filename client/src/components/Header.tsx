@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import ProfileAvatar from "./ui/ProfileAvatar";
-import { fetchBusinessLogo } from "./setting";
-import Cookies from "js-cookie";
+import { fetchBusinessLogo } from "@/services/api/settings";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 
 const Header: React.FC<any> = ({ label }: { label: string }) => {
     const [avatarUrl, setAvatarUrl] = useState<any>(); // fallback
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string>("");
+    const [error] = useState<string>("");
     function toTitleCase(input: string = ""): string {
         return input
             .replace(/-/g, " ") // Replace hyphens with spaces
@@ -21,13 +20,13 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const token = Cookies.get("authToken") || "";
-                const logo = await fetchBusinessLogo(token);
+                const logo = await fetchBusinessLogo();
                 console.log(logo)
                 setAvatarUrl(logo);
             } catch (err: any) {
-                console.error("Failed to fetch profile:", err.message);
-                setError("Failed to load profile");
+                console.warn("Failed to fetch logo, using default:", err.message);
+                // Don't set error state for logo failures - use default avatar instead
+                setAvatarUrl(""); // Use default avatar
             } finally {
                 setLoading(false);
             }

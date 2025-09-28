@@ -1,6 +1,6 @@
 // FILE: client/src/components/invoice-form/Step3Form.tsx
 
-import { useState, useEffect, useContext, useCallback, useRef } from "react";
+import { useState, useEffect, useContext, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/Input";
 // import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,36 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Search, Loader2 } from "lucide-react";
+import { Trash2, Search, Loader2, X } from "lucide-react";
 import { NavbarButton } from "../ui/resizable-navbar";
 import { InvoiceContext } from "@/contexts/InvoiceContext";
-import { searchInventory } from "@/services/api/lookup";
-
-// Enhanced inventory type based on the API response
-interface EnhancedInventory {
-  _id?: string;
-  name?: string;
-  description?: string;
-  hsn_code?: string;
-  hsn?: string;
-  unit_price?: number;
-  price?: number;
-  gst_rate?: number;
-  gst?: number;
-  discount?: number;
-  category?: string;
-  brand?: string;
-  model?: string;
-  specifications?: string;
-  unit?: string;
-  min_stock?: number;
-  current_stock?: number;
-  supplier?: string;
-  cost_price?: number;
-  selling_price?: number;
-  tax_rate?: number;
-  status?: string;
-}
+import { BASE_URL } from "@/lib/api-config";
+import axios from "axios";
+import Cookies from "js-cookie";
+import type { InventoryItem } from "@/types/inventory";
 
 type Item = {
   id?: number | string;
@@ -60,6 +37,320 @@ type Props = {
   setItems?: (items: Item[]) => void;
 };
 
+// Row-specific inventory search component
+interface RowInventorySearchProps {
+  rowIndex: number;
+  onInventorySelect: (inventory: InventoryItem, rowIndex: number) => void;
+  onSearchResults: (results: InventoryItem[], rowIndex: number) => void;
+  onSearchClear: (rowIndex: number) => void;
+  onLoadingChange: (loading: boolean, rowIndex: number) => void;
+  placeholder?: string;
+  currentValue: string;
+  onValueChange: (value: string) => void;
+  fieldError?: string;
+}
+
+function RowInventorySearch({
+  rowIndex,
+  onInventorySelect,
+  onSearchResults,
+  onSearchClear,
+  onLoadingChange,
+  placeholder = "Start typing item name...",
+  currentValue,
+  onValueChange,
+  fieldError
+}: RowInventorySearchProps) {
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const token = Cookies.get("authToken") || "";
+
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      handleClearSearch();
+      return;
+    }
+
+    console.log(`🔍 Row ${rowIndex} - Searching inventory:`, query);
+    setIsSearching(true);
+    onLoadingChange(true, rowIndex);
+    setHasSearched(true);
+
+    try {
+      // First, let's check what products are available
+      console.log(`🔍 Row ${rowIndex} - Checking available products first...`);
+      try {
+        const allItemsResponse = await axios.get(`${BASE_URL}/api/inventory/items`, {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+        console.log(`📦 Row ${rowIndex} - All available products:`, allItemsResponse.data);
+        if (allItemsResponse.data && allItemsResponse.data.data) {
+          console.log(`📦 Row ${rowIndex} - Available product names:`, allItemsResponse.data.data.map((item: Record<string, unknown>) => item.name || item.productName || item.product_name));
+        }
+      } catch (err) {
+        console.log(`❌ Row ${rowIndex} - Could not fetch all products:`, err);
+      }
+
+      const encodedName = encodeURIComponent(query.trim());
+      const searchUrl = `${BASE_URL}/api/inventory/${encodedName}`;
+
+      console.log(`🔍 Row ${rowIndex} - Searching inventory by name:`, searchUrl);
+      console.log(`🔍 Row ${rowIndex} - Search query:`, query.trim());
+
+      const response = await axios.get(searchUrl, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+
+      console.log(`📦 Row ${rowIndex} - Search API response:`, response.data);
+      console.log(`📦 Row ${rowIndex} - Response status:`, response.status);
+      console.log(`🔍 Row ${rowIndex} - Search term used:`, query.trim());
+      console.log(`🔍 Row ${rowIndex} - Encoded search term:`, encodedName);
+      console.log(`🔍 Row ${rowIndex} - Full search URL:`, searchUrl);
+
+      // Handle different response formats
+      let results: Record<string, unknown>[] = [];
+
+      if (Array.isArray(response.data)) {
+        results = response.data;
+        console.log(`📦 Row ${rowIndex} - Direct array response, items:`, results.length);
+      } else if (response.data && Array.isArray(response.data.data)) {
+        results = response.data.data;
+        console.log(`📦 Row ${rowIndex} - Nested data array, items:`, results.length);
+      } else if (response.data && typeof response.data === 'object' && (response.data.name || response.data.productName)) {
+        // Single item result
+        results = [response.data];
+        console.log(`📦 Row ${rowIndex} - Single item result`);
+      } else {
+        console.log(`📦 Row ${rowIndex} - No recognizable data format, response:`, response.data);
+      }
+
+      // Normalize the results to match the expected format (only required fields)
+      const normalizedResults = results.map((item: Record<string, unknown>) => ({
+        id: (item.id as string) || (item._id as string) || Math.random().toString(),
+        productName: (item.name as string) || (item.productName as string) || (item.product_name as string) || 'Unknown Product',
+        category: (item.category as string) || 'Uncategorized',
+        unitPrice: (item.unitPrice as number) || (item.unit_price as number) || (item.price as number) || 0,
+        inStock: (item.inStock as number) || (item.in_stock as number) || (item.quantity as number) || 0,
+        discount: (item.discount as number) || 0,
+        totalValue: ((item.unitPrice as number) || (item.unit_price as number) || 0) * ((item.inStock as number) || (item.in_stock as number) || 0),
+        status: ((item.status as string) || (((item.inStock as number) || (item.in_stock as number) || 0) > 0 ? 'In Stock' : 'Out of Stock')) as "In Stock" | "Out of Stock" | "Low in Stock"
+      }));
+
+      console.log(`✅ Row ${rowIndex} - Normalized search results:`, normalizedResults);
+      console.log(`✅ Row ${rowIndex} - Number of results:`, normalizedResults.length);
+      console.log(`🔍 Row ${rowIndex} - Sample result structure:`, normalizedResults[0]);
+
+      setSearchResults(normalizedResults);
+      onSearchResults(normalizedResults, rowIndex);
+      setShowSuggestions(true);
+
+    } catch (error: unknown) {
+      console.error(`❌ Row ${rowIndex} - Search by name failed:`, error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: unknown; status?: number } };
+        console.error(`Error details for row ${rowIndex}:`, axiosError.response?.data);
+        console.error(`Error status for row ${rowIndex}:`, axiosError.response?.status);
+      }
+      if (error && typeof error === 'object' && 'message' in error) {
+        console.error(`Error message for row ${rowIndex}:`, (error as { message: string }).message);
+      }
+
+      // Fallback: Try searching using the regular items endpoint with search parameter
+      try {
+        console.log(`🔄 Row ${rowIndex} - Trying fallback search with items endpoint...`);
+        const fallbackUrl = `${BASE_URL}/api/inventory/items?search=${encodeURIComponent(query.trim())}`;
+        console.log(`🔍 Row ${rowIndex} - Fallback search URL:`, fallbackUrl);
+
+        const fallbackResponse = await axios.get(fallbackUrl, {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+
+        console.log(`📦 Row ${rowIndex} - Fallback search response:`, fallbackResponse.data);
+
+        // Handle fallback response
+        let fallbackResults: Record<string, unknown>[] = [];
+
+        if (Array.isArray(fallbackResponse.data)) {
+          fallbackResults = fallbackResponse.data;
+        } else if (fallbackResponse.data && Array.isArray(fallbackResponse.data.data)) {
+          fallbackResults = fallbackResponse.data.data;
+        }
+
+        // Normalize fallback results (only required fields)
+        const normalizedFallbackResults = fallbackResults.map((item: Record<string, unknown>) => ({
+          id: (item.id as string) || (item._id as string) || Math.random().toString(),
+          productName: (item.name as string) || (item.productName as string) || (item.product_name as string) || 'Unknown Product',
+          category: (item.category as string) || 'Uncategorized',
+          unitPrice: (item.unitPrice as number) || (item.unit_price as number) || (item.price as number) || 0,
+          inStock: (item.inStock as number) || (item.in_stock as number) || (item.quantity as number) || 0,
+          discount: (item.discount as number) || 0,
+          totalValue: ((item.unitPrice as number) || (item.unit_price as number) || 0) * ((item.inStock as number) || (item.in_stock as number) || 0),
+          status: ((item.status as string) || (((item.inStock as number) || (item.in_stock as number) || 0) > 0 ? 'In Stock' : 'Out of Stock')) as "In Stock" | "Out of Stock" | "Low in Stock"
+        }));
+
+        console.log(`✅ Row ${rowIndex} - Fallback search results:`, normalizedFallbackResults);
+        setSearchResults(normalizedFallbackResults);
+        onSearchResults(normalizedFallbackResults, rowIndex);
+        setShowSuggestions(true);
+
+      } catch (fallbackError: unknown) {
+        console.error(`❌ Row ${rowIndex} - Fallback search also failed:`, fallbackError);
+        // If both searches fail, show empty results
+        setSearchResults([]);
+        onSearchResults([], rowIndex);
+      }
+    } finally {
+      setIsSearching(false);
+      onLoadingChange(false, rowIndex);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchResults([]);
+    setHasSearched(false);
+    setShowSuggestions(false);
+    onSearchClear(rowIndex);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    onValueChange(value);
+
+    // Auto-search as user types (with debounce)
+    if (value.trim()) {
+      const timeoutId = setTimeout(() => {
+        handleSearch(value);
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      handleClearSearch();
+    }
+  };
+
+  const handleInputFocus = () => {
+    if (searchResults.length > 0) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleInventorySelect = (inventory: InventoryItem) => {
+    console.log(`🎯 Row ${rowIndex} - Inventory selected:`, inventory);
+    onInventorySelect(inventory, rowIndex);
+    setShowSuggestions(false);
+  };
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.row-inventory-search-container')) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative row-inventory-search-container">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <Input
+          type="text"
+          placeholder={isSearching ? "Searching..." : placeholder}
+          value={currentValue}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          className="pl-10 pr-10 w-full"
+          disabled={isSearching}
+          aria-invalid={!!fieldError}
+        />
+        {isSearching && (
+          <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+          </div>
+        )}
+        {currentValue && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onValueChange("");
+              handleClearSearch();
+            }}
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+            disabled={isSearching}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Inventory Suggestions Dropdown */}
+      {showSuggestions && searchResults.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          {searchResults.map((inventory, invIndex) => (
+            <div
+              key={inventory.id || invIndex}
+              className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+              onClick={() => handleInventorySelect(inventory)}
+            >
+              <div className="font-medium text-sm text-gray-900">
+                {inventory.productName}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                <div className="flex flex-wrap gap-2">
+                  <span>Category: {inventory.category}</span>
+                  <span>•</span>
+                  <span>Price: ₹{inventory.unitPrice}</span>
+                  <span>•</span>
+                  <span>Stock: {inventory.inStock}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <span>Status: {inventory.status}</span>
+                  <span>•</span>
+                  <span>Discount: {inventory.discount}%</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Search Results Summary */}
+      {hasSearched && !isSearching && currentValue.trim() && (
+        <div className="mt-1 text-xs text-gray-600">
+          {searchResults.length > 0 ? (
+            <span className="text-green-600">
+              Found {searchResults.length} item{searchResults.length !== 1 ? 's' : ''} matching "{currentValue}"
+            </span>
+          ) : (
+            <span className="text-red-600">
+              No items found matching "{currentValue}"
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Field Error Display */}
+      {fieldError && (
+        <p className="text-sm text-red-600 mt-1">{fieldError}</p>
+      )}
+    </div>
+  );
+}
+
 export default function Step3ItemTable({ items: propItems, setItems: propSetItems }: Props) {
   return (
     <div className="mt-6 space-y-4">
@@ -72,7 +363,13 @@ export default function Step3ItemTable({ items: propItems, setItems: propSetItem
 }
 
 export function AddItem({ items: externalItems, setItems: externalSetItems }: Props) {
-  const ctx = useContext(InvoiceContext) as any | undefined;
+  const ctx = useContext(InvoiceContext) as unknown as {
+    invoice?: { items?: Item[] };
+    setInvoice?: (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => void;
+    fieldErrors?: Record<string, string>;
+    clearFieldError?: (path: string) => void;
+    setFieldErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  } | undefined;
   const fieldErrors: Record<string, string> = ctx?.fieldErrors ?? {};
 
   // local fallback state (kept for compatibility if parent doesn't pass items)
@@ -80,34 +377,30 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
   ]);
 
-  // Inventory search state for each row
-  const [inventorySearchTerms, setInventorySearchTerms] = useState<Record<number, string>>({});
-  const [inventorySuggestions, setInventorySuggestions] = useState<Record<number, EnhancedInventory[]>>({});
-  const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
-  const [showSuggestions, setShowSuggestions] = useState<Record<number, boolean>>({});
-  const searchTimeoutRefs = useRef<Record<number, NodeJS.Timeout | null>>({});
 
   // Determine whether we should use external props or context or local
   const usingExternal = !!(externalItems && externalSetItems);
   const usingContext = !!(ctx && !usingExternal);
 
-  const items = usingExternal
-    ? (externalItems as Item[])
-    : usingContext
-    ? ((ctx.invoice?.items as Item[]) || [])
-    : localItems;
+  const items = useMemo(() => {
+    return usingExternal
+      ? (externalItems as Item[])
+      : usingContext
+        ? ((ctx.invoice?.items as Item[]) || [])
+        : localItems;
+  }, [usingExternal, externalItems, usingContext, ctx?.invoice?.items, localItems]);
 
-  const setItems = usingExternal
-    ? (externalSetItems as (items: Item[]) => void)
-    : usingContext
-    ? ((
-        updated: Item[]
-      ) =>
-        ctx.setInvoice((prev: any) => ({
-          ...prev,
+  const setItems = useMemo(() => {
+    return usingExternal
+      ? (externalSetItems as (items: Item[]) => void)
+      : usingContext
+        ? ((updated: Item[]) =>
+        (ctx?.setInvoice?.((prev: Record<string, unknown>) => ({
+          ...(prev || {}),
           items: updated,
-        })))
-    : setLocalItems;
+        })) as unknown))
+        : setLocalItems;
+  }, [usingExternal, externalSetItems, usingContext, ctx, setLocalItems]);
 
   // ensure at least one row exists (compatible with previous behavior)
   useEffect(() => {
@@ -125,120 +418,55 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       ctx.clearFieldError(path);
     } else if (typeof ctx.setFieldErrors === "function") {
       // conservative fallback (if setFieldErrors exists)
-      ctx.setFieldErrors((prev: any) => {
-        const copy = { ...(prev || {}) };
+      ctx.setFieldErrors((prev) => {
+        const previous = (prev || {}) as Record<string, string>;
+        const copy: Record<string, string> = { ...previous };
         delete copy[path];
         return copy;
       });
     }
   };
 
-  // Enhanced inventory search with debouncing
-  const performInventorySearch = useCallback(async (searchTerm: string, rowIndex: number) => {
-    if (!searchTerm || searchTerm.trim().length < 2) {
-      setInventorySuggestions(prev => ({ ...prev, [rowIndex]: [] }));
-      return;
-    }
+  // Row inventory search callbacks
+  const handleRowInventorySelect = useCallback((inventory: InventoryItem, rowIndex: number) => {
+    console.log(`🎯 Row ${rowIndex} - Inventory selected:`, inventory);
 
-    setIsSearching(prev => ({ ...prev, [rowIndex]: true }));
-    try {
-      const inventory = await searchInventory(searchTerm);
-      setInventorySuggestions(prev => ({ ...prev, [rowIndex]: inventory }));
-    } catch (error) {
-      console.error("Inventory search error:", error);
-      setInventorySuggestions(prev => ({ ...prev, [rowIndex]: [] }));
-    } finally {
-      setIsSearching(prev => ({ ...prev, [rowIndex]: false }));
-    }
-  }, []);
-
-  // Debounced search effect for each row
-  useEffect(() => {
-    Object.entries(inventorySearchTerms).forEach(([rowIndexStr, searchTerm]) => {
-      const rowIndex = parseInt(rowIndexStr);
-      
-      if (searchTimeoutRefs.current[rowIndex]) {
-        clearTimeout(searchTimeoutRefs.current[rowIndex]);
-      }
-
-      if (searchTerm.trim().length >= 2) {
-        searchTimeoutRefs.current[rowIndex] = setTimeout(() => {
-          performInventorySearch(searchTerm, rowIndex);
-        }, 300); // 300ms debounce
-      } else {
-        setInventorySuggestions(prev => ({ ...prev, [rowIndex]: [] }));
-      }
-    });
-
-    return () => {
-      Object.values(searchTimeoutRefs.current).forEach(timeout => {
-        if (timeout) clearTimeout(timeout);
-      });
-    };
-  }, [inventorySearchTerms, performInventorySearch]);
-
-  // Handle inventory selection and autofill
-  const handleInventorySelect = (inventory: EnhancedInventory, rowIndex: number) => {
     const updated = [...items];
-    const existing = { ...(updated[rowIndex] as any) };
-    
+    const existing = { ...(updated[rowIndex] as Item) } as Item;
+
+    // Map inventory fields to item fields
     updated[rowIndex] = {
       ...existing,
-      description: existing.description || (inventory.name || inventory.description || ""),
-      hsn: existing.hsn || (inventory.hsn_code || inventory.hsn || ""),
-      unitPrice: existing.unitPrice || (inventory.unit_price || inventory.price || inventory.selling_price || 0),
-      gst: existing.gst || (inventory.gst_rate || inventory.gst || inventory.tax_rate || 0),
-      discount: existing.discount ?? (inventory.discount || 0),
-    } as any;
-    
+      description: inventory.productName,
+      hsn: "", // HSN will need to be filled manually or from inventory
+      unitPrice: inventory.unitPrice,
+      gst: 0, // GST will need to be filled manually or from inventory
+      discount: inventory.discount,
+    } as Item;
+
     setItems(updated);
+    console.log(`✅ Row ${rowIndex} updated with inventory data`);
+  }, [items, setItems]);
 
-    // Clear search and suggestions for this row
-    setInventorySearchTerms(prev => ({ ...prev, [rowIndex]: inventory.hsn_code || inventory.hsn || "" }));
-    setInventorySuggestions(prev => ({ ...prev, [rowIndex]: [] }));
-    setShowSuggestions(prev => ({ ...prev, [rowIndex]: false }));
-  };
-
-  // Handle HSN input change
-  const handleHsnChange = (index: number, value: string) => {
-    setInventorySearchTerms(prev => ({ ...prev, [index]: value }));
-    
-    // Show suggestions if there are any
-    if (inventorySuggestions[index] && inventorySuggestions[index].length > 0) {
-      setShowSuggestions(prev => ({ ...prev, [index]: true }));
-    }
-  };
-
-  // Handle HSN input focus
-  const handleHsnFocus = (index: number) => {
-    if (inventorySuggestions[index] && inventorySuggestions[index].length > 0) {
-      setShowSuggestions(prev => ({ ...prev, [index]: true }));
-    }
-  };
-
-  // Handle click outside to close suggestions
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.inventory-search-container')) {
-        setShowSuggestions({});
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+  const handleRowSearchResults = useCallback((results: InventoryItem[], rowIndex: number) => {
+    console.log(`🔍 Row ${rowIndex} - Search results received:`, results);
   }, []);
+
+  const handleRowSearchClear = useCallback((rowIndex: number) => {
+    console.log(`🧹 Row ${rowIndex} - Search cleared`);
+  }, []);
+
+  const handleRowLoadingChange = useCallback((loading: boolean, rowIndex: number) => {
+    console.log(`⏳ Row ${rowIndex} - Loading:`, loading);
+  }, []);
+
 
   const handleChange = (index: number, field: keyof Item, value: string) => {
     const updatedItems = [...items];
-    const current = { ...(updatedItems[index] as any) };
+    const current = { ...(updatedItems[index] as Item) } as Item;
 
     if (field === "description" || field === "hsn") {
       current[field] = value;
-      // If it's HSN field, also update search term
-      if (field === "hsn") {
-        handleHsnChange(index, value);
-      }
     } else {
       // numeric fields: allow empty strings while typing, block single '-' etc.
       let newValue = value;
@@ -267,7 +495,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
 
 
   const handleNumericFocus = (index: number, field: keyof Item) => {
-    const current = items[index]?.[field as keyof Item] as any;
+    const current = items[index]?.[field as keyof Item] as unknown;
     if (current === 0 || current === "0") {
       const updated = [...items];
       updated[index] = { ...updated[index], [field]: "" };
@@ -276,7 +504,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   };
 
   const handleNumericBlur = (index: number, field: keyof Item) => {
-    const current = items[index]?.[field as keyof Item] as any;
+    const current = items[index]?.[field as keyof Item] as unknown;
     if (current === "" || current === null || typeof current === "undefined") {
       const updated = [...items];
       updated[index] = { ...updated[index], [field]: "0" };
@@ -300,60 +528,21 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   };
 
   const addItem = () => {
-    const newIndex = items.length;
     setItems([
       ...items,
       { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
     ]);
-    
-    // Initialize search state for new row
-    setInventorySearchTerms(prev => ({ ...prev, [newIndex]: "" }));
-    setInventorySuggestions(prev => ({ ...prev, [newIndex]: [] }));
-    setIsSearching(prev => ({ ...prev, [newIndex]: false }));
-    setShowSuggestions(prev => ({ ...prev, [newIndex]: false }));
   };
 
   const removeItem = (id: number | string) => {
-    const indexToRemove = items.findIndex(item => item.id === id);
-    
     // if only one item remains, keep at least one (consistent behavior)
     const updated = items.filter((it) => it.id !== id);
     if (updated.length === 0) {
       setItems([
         { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
       ]);
-      
-      // Reset search state for the remaining row
-      setInventorySearchTerms({ 0: "" });
-      setInventorySuggestions({ 0: [] });
-      setIsSearching({ 0: false });
-      setShowSuggestions({ 0: false });
     } else {
       setItems(updated);
-      
-      // Clean up search state for removed row
-      if (indexToRemove >= 0) {
-        setInventorySearchTerms(prev => {
-          const newState = { ...prev };
-          delete newState[indexToRemove];
-          return newState;
-        });
-        setInventorySuggestions(prev => {
-          const newState = { ...prev };
-          delete newState[indexToRemove];
-          return newState;
-        });
-        setIsSearching(prev => {
-          const newState = { ...prev };
-          delete newState[indexToRemove];
-          return newState;
-        });
-        setShowSuggestions(prev => {
-          const newState = { ...prev };
-          delete newState[indexToRemove];
-          return newState;
-        });
-      }
     }
   };
 
@@ -406,57 +595,30 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
               <TableRow key={item.id ?? index}>
                 <TableCell>{index + 1}</TableCell>
 
-                {/* Item Name => description (mandatory) */}
+                {/* Item Name => description (mandatory) with inventory search */}
+                <TableCell>
+                  <RowInventorySearch
+                    rowIndex={index}
+                    onInventorySelect={handleRowInventorySelect}
+                    onSearchResults={handleRowSearchResults}
+                    onSearchClear={handleRowSearchClear}
+                    onLoadingChange={handleRowLoadingChange}
+                    placeholder="Start typing item name..."
+                    currentValue={item.description as string}
+                    onValueChange={(value) => handleChange(index, "description", value)}
+                    fieldError={fieldErrors[`items.${index}.description`]}
+                  />
+                </TableCell>
+
+                {/* HSN Code (manual input) */}
                 <TableCell>
                   <Input
                     className="w-full"
-                    value={item.description as string}
-                    onChange={(e) => handleChange(index, "description", e.target.value)}
-                    aria-invalid={!!fieldErrors[`items.${index}.description`]}
+                    value={item.hsn as string}
+                    onChange={(e) => handleChange(index, "hsn", e.target.value)}
+                    placeholder="Enter HSN code"
+                    aria-invalid={!!fieldErrors[`items.${index}.hsn`]}
                   />
-                  {fieldErrors[`items.${index}.description`] && (
-                    <p className="text-sm text-red-600 mt-1">{fieldErrors[`items.${index}.description`]}</p>
-                  )}
-                </TableCell>
-
-                {/* HSN with Search */}
-                <TableCell>
-                  <div className="relative inventory-search-container">
-                    <Input
-                      className="w-full pr-10"
-                      value={item.hsn as string}
-                      onChange={(e) => handleChange(index, "hsn", e.target.value)}
-                      onFocus={() => handleHsnFocus(index)}
-                      placeholder="Start typing HSN code..."
-                      aria-invalid={!!fieldErrors[`items.${index}.hsn`]}
-                    />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
-                      {isSearching[index] && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
-                      <Search className="h-4 w-4 text-gray-400" />
-                    </div>
-                    
-                    {/* Inventory Suggestions Dropdown */}
-                    {showSuggestions[index] && inventorySuggestions[index] && inventorySuggestions[index].length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {inventorySuggestions[index].map((inventory, invIndex) => (
-                          <div
-                            key={inventory._id || invIndex}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                            onClick={() => handleInventorySelect(inventory, index)}
-                          >
-                            <div className="font-medium text-sm">
-                              {inventory.name || inventory.description}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              HSN: {inventory.hsn_code || inventory.hsn} • 
-                              Price: ₹{inventory.unit_price || inventory.price || inventory.selling_price || 0} • 
-                              GST: {inventory.gst_rate || inventory.gst || inventory.tax_rate || 0}%
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                   {fieldErrors[`items.${index}.hsn`] && (
                     <p className="text-sm text-red-600 mt-1">{fieldErrors[`items.${index}.hsn`]}</p>
                   )}

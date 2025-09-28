@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search,  Trash2, ChevronDown } from "lucide-react";
+import { Trash2, ChevronDown, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,19 +38,19 @@ import type {
 } from "@/types/inventory";
 import { Checkbox } from "../components/ui/Checkbox";
 import { InventoryActionsBar } from "./InventoryActionBar";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import axios from "axios";
-import { INVENTORY_API } from "@/services/api/inventory";
 import Cookies from "js-cookie";
-import { Input } from "./ui/Input";
+import { BASE_URL } from "@/lib/api-config";
+import InventorySearch from "./InventorySearch";
+
 
 type Props = {
-    // optional callback when user clicks Edit button (parent should open the product form with initial data)
-    onEdit?: (item: InventoryItem) => void;
     // optional external signal to force refresh (incrementing number)
     refreshSignal?: number;
     // optional callback after successful delete
     onDeleteSuccess?: () => void;
+    // optional callback when edit button is clicked
+    onEdit?: (item: InventoryItem) => void;
 };
 
 const StatusBadge = ({ status }: { status: InventoryItem["status"] }) => {
@@ -75,24 +75,49 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess }: Props) {
+export default function InventoryTable({ refreshSignal, onDeleteSuccess, onEdit }: Props) {
     const [data, setData] = useState<PaginatedResponse<InventoryItem> | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [filters, setFilters] = useState<InventoryFilters>({});
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
+    const [isSearchMode, setIsSearchMode] = useState(false);
     const token = Cookies.get("authToken") || "";
-    const isAllSelected =
-        data && selectedItems.length === data.data.length && data.data.length > 0;
+
+    // Use search results if in search mode, otherwise use regular data
+    const displayData = isSearchMode ? searchResults : (data?.data || []);
+    const isAllSelected = displayData && selectedItems.length === displayData.length && displayData.length > 0;
+
+    // Debug logging
+    console.log('🔍 Current state:', { isSearchMode, searchResultsLength: searchResults.length, displayDataLength: displayData.length });
+    if (isSearchMode) {
+        console.log('🔍 In search mode, displayData:', displayData);
+    }
 
     const toggleSelectAll = () => {
-        if (!data) return;
+        if (!displayData) return;
         if (isAllSelected) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(data.data.map((item) => item.id));
+            setSelectedItems(displayData.map((item) => item.id));
         }
+    };
+
+    const handleSearchResults = (results: InventoryItem[]) => {
+        console.log('🔍 Received search results in InventoryTable:', results);
+        console.log('🔍 Number of search results:', results.length);
+        console.log('🔍 Sample search result:', results[0]);
+        setSearchResults(results);
+        setIsSearchMode(true);
+        setSelectedItems([]);
+    };
+
+    const handleSearchClear = () => {
+        setSearchResults([]);
+        setIsSearchMode(false);
+        setSelectedItems([]);
     };
 
     const toggleSelectItem = (id: string) => {
@@ -114,20 +139,94 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                 ...(filters.sortOrder ? { sortOrder: filters.sortOrder } : {}),
             });
 
-            const res = await axios.get<PaginatedResponse<InventoryItem>>(
-                `${INVENTORY_API.ITEMS}?${params.toString()}`,
-                {
-                    headers: {
-                        Authorization: token ? `Bearer ${token}` : "",
-                    },
-                }
-            );
+            const fullUrl = `${BASE_URL}/api/inventory/items?${params.toString()}`;
+            console.log('🔍 Fetching inventory items from:', fullUrl);
 
-            setData(res.data);
+            const res = await axios.get(fullUrl, {
+                headers: {
+                    Authorization: token ? `Bearer ${token}` : "",
+                },
+            });
+
+            console.log('📦 Raw API response:', res.data);
+            console.log('📦 Response status:', res.status);
+            console.log('📦 Response headers:', res.headers);
+
+            // Handle different response formats
+            const responseData = res.data as any;
+            let processedData: PaginatedResponse<InventoryItem>;
+
+            if (responseData && typeof responseData === 'object') {
+                if ('data' in responseData && 'pagination' in responseData) {
+                    // Direct PaginatedResponse format
+                    processedData = responseData;
+                } else if ('success' in responseData && responseData.data) {
+                    // Wrapped response format from backend
+                    processedData = responseData.data;
+                } else if (Array.isArray(responseData)) {
+                    // Direct array response
+                    processedData = {
+                        data: responseData.map((item: any) => ({
+                            id: item.id || item._id || Math.random().toString(),
+                            productName: item.name || item.productName || item.product_name || 'Unknown Product',
+                            category: item.category || 'Uncategorized',
+                            unitPrice: item.unitPrice || item.unit_price || item.price || 0,
+                            inStock: item.inStock || item.in_stock || item.quantity || 0,
+                            discount: item.discount || 0,
+                            totalValue: (item.unitPrice || item.unit_price || 0) * (item.inStock || item.in_stock || 0),
+                            status: item.status || (item.inStock > 0 ? 'In Stock' : 'Out of Stock')
+                        })),
+                        pagination: {
+                            page: currentPage,
+                            limit: itemsPerPage,
+                            total: responseData.length,
+                            totalPages: Math.ceil(responseData.length / itemsPerPage)
+                        }
+                    };
+                } else {
+                    // Fallback: create empty response
+                    processedData = {
+                        data: [],
+                        pagination: {
+                            page: 1,
+                            limit: 10,
+                            total: 0,
+                            totalPages: 0
+                        }
+                    };
+                }
+            } else {
+                // Fallback: create empty response
+                processedData = {
+                    data: [],
+                    pagination: {
+                        page: 1,
+                        limit: 10,
+                        total: 0,
+                        totalPages: 0
+                    }
+                };
+            }
+
+            console.log('✅ Processed inventory data:', processedData);
+            setData(processedData);
             // reset selection when data changes
             setSelectedItems([]);
-        } catch (error) {
-            console.error("Failed to fetch inventory items:", error);
+        } catch (error: any) {
+            console.error("❌ Failed to fetch inventory items:", error);
+            console.error("Error details:", error.response?.data);
+            console.error("Error status:", error.response?.status);
+            console.error("Error message:", error.message);
+            // Set empty data on error to prevent crashes
+            setData({
+                data: [],
+                pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0,
+                    totalPages: 0
+                }
+            });
         } finally {
             setLoading(false);
         }
@@ -161,7 +260,7 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
         if (!confirm("Are you sure you want to delete this item?")) return;
         try {
             setLoading(true);
-            await axios.delete(`${INVENTORY_API.ITEMS}/${id}`, {
+            await axios.delete(`${BASE_URL}/api/inventory/items/${id}`, {
                 headers: { Authorization: token ? `Bearer ${token}` : "" },
             });
             // refresh list
@@ -172,15 +271,6 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
             alert("Failed to delete item");
         } finally {
             setLoading(false);
-        }
-    };
-    //@ts-ignore
-    const handleEditClick = (item: InventoryItem) => {
-        if (onEdit) {
-            onEdit(item);
-        } else {
-            // no-op if parent didn't pass onEdit; keep UI unchanged
-            console.warn("Edit clicked but no onEdit handler provided by parent.");
         }
     };
 
@@ -267,15 +357,30 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <h2 className="text-lg font-semibold text-gray-900">Inventory Items</h2>
                     <div className="flex justify-between sm:flex-row gap-2">
-                        <SearchBar
-                            handleSearch={(query) =>
-                                setFilters((prev) => ({ ...prev, search: query }))
-                            }
+                        <InventorySearch
+                            onSearchResults={handleSearchResults}
+                            onSearchClear={handleSearchClear}
+                            onLoadingChange={setLoading}
                         />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                                console.log('🧪 Testing API health first...');
+                                try {
+                                    const healthRes = await axios.get(`${BASE_URL}/api/inventory/health`);
+                                    console.log('✅ API Health:', healthRes.data);
+                                } catch (err) {
+                                    console.log('❌ API Health failed:', err);
+                                }
+                                console.log('🔄 Fetching all inventory items...');
+                                fetchData();
+                            }}
+                            disabled={loading}
+                        >
+                            {loading ? "Loading..." : "Test & Refresh"}
+                        </Button>
                         <InventoryActionsBar
-                            filters={filters}
-                            setFilters={setFilters}
-                            setCurrentPage={setCurrentPage}
                             data={data}
                         />
                     </div>
@@ -361,7 +466,7 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {data?.data.map((item) => (
+                            {displayData.map((item) => (
                                 <TableRow key={item.id} className="hover:bg-gray-50">
                                     <TableCell>
                                         <Checkbox
@@ -373,14 +478,7 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                                     </TableCell>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-3">
-                                            <img
-                                                src={
-                                                    item.image ||
-                                                    "/placeholder.svg?height=40&width=40&query=product image"
-                                                }
-                                                alt={item.productName}
-                                                className="w-10 h-10 rounded object-cover flex-shrink-0"
-                                            />
+
                                             <div className="truncate max-w-[150px]">
                                                 <span className="text-sm text-gray-900 truncate block">
                                                     {item.productName}
@@ -398,9 +496,11 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
-                                            {/* <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button> */}
+                                            {onEdit && (
+                                                <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                             <Button variant="ghost" size="sm" onClick={() => deleteItem(item.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -429,55 +529,25 @@ export default function InventoryTable({ onEdit, refreshSignal, onDeleteSuccess 
                             </SelectContent>
                         </Select>
                         <span>
-                            {data
-                                ? `${(data.pagination.page - 1) * data.pagination.limit + 1}-${Math.min(
-                                    data.pagination.page * data.pagination.limit,
-                                    data.pagination.total
-                                )} of ${data.pagination.total} items`
-                                : ""}
+                            {isSearchMode
+                                ? `${displayData.length} search result${displayData.length !== 1 ? 's' : ''}`
+                                : data
+                                    ? `${(data.pagination.page - 1) * data.pagination.limit + 1}-${Math.min(
+                                        data.pagination.page * data.pagination.limit,
+                                        data.pagination.total
+                                    )} of ${data.pagination.total} items`
+                                    : ""
+                            }
                         </span>
                     </div>
-                    <Pagination>
-                        <PaginationContent>{renderPaginationItems()}</PaginationContent>
-                    </Pagination>
+                    {!isSearchMode && (
+                        <Pagination>
+                            <PaginationContent>{renderPaginationItems()}</PaginationContent>
+                        </Pagination>
+                    )}
                 </div>
             </CardContent>
         </Card>
     );
 }
 
-function SearchBar({ handleSearch }: { handleSearch: (query: string) => void }) {
-    return (
-        <>
-            <div className="sm:hidden">
-                <Popover>
-                    <PopoverTrigger>
-                        <Button
-                            size="icon"
-                            variant="outline"
-                            className="hover:bg-slate-200"
-                            title="Search"
-                        >
-                            <Search className="h-4 w-4 text-gray-600" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-2">
-                        <Input
-                            placeholder="Search..."
-                            className="w-full"
-                            onChange={(e) => handleSearch(e.target.value)}
-                        />
-                    </PopoverContent>
-                </Popover>
-            </div>
-            <div className="hidden sm:block relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                    placeholder="Search..."
-                    className="pl-10 w-full sm:w-64"
-                    onChange={(e) => handleSearch(e.target.value)}
-                />
-            </div>
-        </>
-    );
-}

@@ -6,6 +6,7 @@ import AddProductForm from "@/components/product-form/productForm";
 import AddServiceForm from "@/components/service-form/service-form";
 import { NavbarButton } from "@/components/ui/resizable-navbar"
 import { useState } from "react";
+import type { InventoryItem } from "@/types/inventory";
 
 const Inventory = () => {
     // Controls whether the product form page/view is shown (same as original behavior)
@@ -16,8 +17,8 @@ const Inventory = () => {
     const [refreshSignal, setRefreshSignal] = useState(0);
 
     // New: store item when editing so we can pass as `initial` to AddProductForm
-    const [editingItem, setEditingItem] = useState<any | null>(null);
-    const [editingServiceItem, setEditingServiceItem] = useState<any | null>(null);
+    const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+    const [editingServiceItem, setEditingServiceItem] = useState<InventoryItem | null>(null);
 
 
 
@@ -31,7 +32,7 @@ const Inventory = () => {
     };
 
     // Open edit form with initial data (called by InventoryTable.onEdit)
-    const openEditForm = (item: any) => {
+    const openEditForm = (item: InventoryItem) => {
         setEditingItem(item);
         setShowAddProductForm(true);
     };
@@ -61,11 +62,11 @@ const Inventory = () => {
         setShowAddServiceForm(true);
     };
 
-    //@ts-ignore
-    const openEditServiceForm = (item: any) => {
-        setEditingServiceItem(item);
-        setShowAddServiceForm(true);
-    };
+    // Note: Service edit functionality can be added here when needed
+    // const openEditServiceForm = (item: InventoryItem) => {
+    //     setEditingServiceItem(item);
+    //     setShowAddServiceForm(true);
+    // };
 
     const handleServiceSaved = () => {
         setShowAddServiceForm(false);

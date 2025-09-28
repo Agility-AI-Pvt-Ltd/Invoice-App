@@ -1,5 +1,6 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { SETTINGS_API } from '../routes/settings';
+import { routes } from '@/lib/routes/route';
 
 // Types
 export interface User {
@@ -64,14 +65,10 @@ export interface NotificationSettings {
 /**
  * Get user profile
  */
-export const getUserProfile = async (token: string): Promise<UserProfile> => {
+export const getUserProfile = async (): Promise<UserProfile> => {
   try {
-    const response = await axios.get(SETTINGS_API.PROFILE, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.get(SETTINGS_API.PROFILE);
+    return { data: response.data.data };
   } catch (error) {
     console.error('Error fetching user profile:', error);
     throw error;
@@ -81,14 +78,10 @@ export const getUserProfile = async (token: string): Promise<UserProfile> => {
 /**
  * Update user profile
  */
-export const updateUserProfile = async (token: string, updates: ProfileUpdate): Promise<{ success: boolean }> => {
+export const updateUserProfile = async (updates: ProfileUpdate): Promise<{ success: boolean }> => {
   try {
-    const response = await axios.put(SETTINGS_API.UPDATE_PROFILE, updates, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.put(SETTINGS_API.UPDATE_PROFILE, updates);
+    return response.data.data;
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;
@@ -98,14 +91,10 @@ export const updateUserProfile = async (token: string, updates: ProfileUpdate): 
 /**
  * Change user password
  */
-export const changePassword = async (token: string, passwordData: PasswordChange): Promise<{ success: boolean; message: string }> => {
+export const changePassword = async (passwordData: PasswordChange): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await axios.put(SETTINGS_API.CHANGE_PASSWORD, passwordData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    const response = await api.put(SETTINGS_API.CHANGE_PASSWORD, passwordData);
+    return response.data.data;
   } catch (error) {
     console.error('Error changing password:', error);
     throw error;
@@ -115,18 +104,17 @@ export const changePassword = async (token: string, passwordData: PasswordChange
 /**
  * Upload business logo
  */
-export const uploadBusinessLogo = async (token: string, file: File): Promise<{ success: boolean; message: string; fileUrl: string }> => {
+export const uploadBusinessLogo = async (file: File): Promise<{ success: boolean; message: string; fileUrl: string }> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await axios.post(SETTINGS_API.UPLOAD_LOGO, formData, {
+    const response = await api.post(SETTINGS_API.UPLOAD_LOGO, formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response.data.data;
   } catch (error) {
     console.error('Error uploading business logo:', error);
     throw error;
@@ -136,13 +124,9 @@ export const uploadBusinessLogo = async (token: string, file: File): Promise<{ s
 /**
  * Get app settings
  */
-export const getAppSettings = async (token: string): Promise<AppSettings> => {
+export const getAppSettings = async (): Promise<AppSettings> => {
   try {
-    const response = await axios.get(SETTINGS_API.APP_SETTINGS, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(SETTINGS_API.APP_SETTINGS);
     return response.data;
   } catch (error) {
     console.error('Error fetching app settings:', error);
@@ -160,13 +144,9 @@ export const getAppSettings = async (token: string): Promise<AppSettings> => {
 /**
  * Update app settings
  */
-export const updateAppSettings = async (token: string, settings: Partial<AppSettings>): Promise<{ success: boolean }> => {
+export const updateAppSettings = async (settings: Partial<AppSettings>): Promise<{ success: boolean }> => {
   try {
-    const response = await axios.put(SETTINGS_API.APP_SETTINGS, settings, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.put(SETTINGS_API.APP_SETTINGS, settings);
     return response.data;
   } catch (error) {
     console.error('Error updating app settings:', error);
@@ -177,13 +157,9 @@ export const updateAppSettings = async (token: string, settings: Partial<AppSett
 /**
  * Get notification settings
  */
-export const getNotificationSettings = async (token: string): Promise<NotificationSettings> => {
+export const getNotificationSettings = async (): Promise<NotificationSettings> => {
   try {
-    const response = await axios.get(SETTINGS_API.NOTIFICATION_SETTINGS, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(SETTINGS_API.NOTIFICATION_SETTINGS);
     return response.data;
   } catch (error) {
     console.error('Error fetching notification settings:', error);
@@ -202,16 +178,29 @@ export const getNotificationSettings = async (token: string): Promise<Notificati
 /**
  * Update notification settings
  */
-export const updateNotificationSettings = async (token: string, settings: Partial<NotificationSettings>): Promise<{ success: boolean }> => {
+export const updateNotificationSettings = async (settings: Partial<NotificationSettings>): Promise<{ success: boolean }> => {
   try {
-    const response = await axios.put(SETTINGS_API.NOTIFICATION_SETTINGS, settings, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.put(SETTINGS_API.NOTIFICATION_SETTINGS, settings);
     return response.data;
   } catch (error) {
     console.error('Error updating notification settings:', error);
     throw error;
+  }
+};
+
+/**
+ * Fetch business logo
+ */
+export const fetchBusinessLogo = async (): Promise<string> => {
+  try {
+    console.log("🔍 Fetching business logo from:", routes.auth.getLogo);
+    const response = await api.get(routes.auth.getLogo, {
+      responseType: "blob",
+    });
+    console.log("✅ Business logo fetched successfully");
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    console.log("ℹ️ Logo endpoint not available (using default avatar) - this is normal if no logo is uploaded");
+    return "";
   }
 }; 

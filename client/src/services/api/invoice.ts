@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '@/lib/api';
 import { INVOICE_API } from '../routes/invoice';
 
 // Types
@@ -70,7 +70,6 @@ export interface InvoiceMetrics {
  * Get all invoices with filters and pagination
  */
 export const getInvoices = async (
-  token: string,
   page: number = 1,
   limit: number = 10,
   filters?: InvoiceFilters
@@ -78,10 +77,7 @@ export const getInvoices = async (
   try {
     const params: any = { page, limit, ...filters };
     
-    const response = await axios.get(INVOICE_API.GET_ALL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(INVOICE_API.GET_ALL, {
       params,
     });
     return response.data;
@@ -94,13 +90,9 @@ export const getInvoices = async (
 /**
  * Get invoice by ID
  */
-export const getInvoice = async (token: string, invoiceId: string): Promise<Invoice> => {
+export const getInvoice = async (invoiceId: string): Promise<Invoice> => {
   try {
-    const response = await axios.get(`${INVOICE_API.GET_BY_ID}/${invoiceId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(`${INVOICE_API.GET_BY_ID}/${invoiceId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching invoice:', error);
@@ -111,13 +103,9 @@ export const getInvoice = async (token: string, invoiceId: string): Promise<Invo
 /**
  * Create new invoice
  */
-export const createInvoice = async (token: string, invoice: Invoice): Promise<{ message: string; invoice: Invoice }> => {
+export const createInvoice = async (invoice: Invoice): Promise<{ message: string; invoice: Invoice }> => {
   try {
-    const response = await axios.post(INVOICE_API.CREATE, invoice, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.post(INVOICE_API.CREATE, invoice);
     return response.data;
   } catch (error) {
     console.error('Error creating invoice:', error);
@@ -128,13 +116,9 @@ export const createInvoice = async (token: string, invoice: Invoice): Promise<{ 
 /**
  * Update invoice
  */
-export const updateInvoice = async (token: string, invoiceId: string, updates: Partial<Invoice>): Promise<{ message: string; invoice: Invoice }> => {
+export const updateInvoice = async (invoiceId: string, updates: Partial<Invoice>): Promise<{ message: string; invoice: Invoice }> => {
   try {
-    const response = await axios.put(`${INVOICE_API.UPDATE}/${invoiceId}`, updates, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.put(`${INVOICE_API.UPDATE}/${invoiceId}`, updates);
     return response.data;
   } catch (error) {
     console.error('Error updating invoice:', error);
@@ -145,13 +129,9 @@ export const updateInvoice = async (token: string, invoiceId: string, updates: P
 /**
  * Delete invoice
  */
-export const deleteInvoice = async (token: string, invoiceId: string): Promise<{ message: string }> => {
+export const deleteInvoice = async (invoiceId: string): Promise<{ message: string }> => {
   try {
-    const response = await axios.delete(`${INVOICE_API.DELETE}/${invoiceId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.delete(`${INVOICE_API.DELETE}/${invoiceId}`);
     return response.data;
   } catch (error) {
     console.error('Error deleting invoice:', error);
@@ -162,13 +142,9 @@ export const deleteInvoice = async (token: string, invoiceId: string): Promise<{
 /**
  * Duplicate invoice
  */
-export const duplicateInvoice = async (token: string, invoiceId: string): Promise<Invoice> => {
+export const duplicateInvoice = async (invoiceId: string): Promise<Invoice> => {
   try {
-    const response = await axios.post(`${INVOICE_API.DUPLICATE}/${invoiceId}`, {}, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.post(`${INVOICE_API.DUPLICATE}/${invoiceId}`, {});
     return response.data;
   } catch (error) {
     console.error('Error duplicating invoice:', error);
@@ -179,12 +155,9 @@ export const duplicateInvoice = async (token: string, invoiceId: string): Promis
 /**
  * Download invoice as PDF
  */
-export const downloadInvoice = async (token: string, invoiceId: string): Promise<Blob> => {
+export const downloadInvoice = async (invoiceId: string): Promise<Blob> => {
   try {
-    const response = await axios.get(`${INVOICE_API.DOWNLOAD}/${invoiceId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(`${INVOICE_API.DOWNLOAD}/${invoiceId}`, {
       responseType: 'blob',
     });
     return response.data;
@@ -198,16 +171,12 @@ export const downloadInvoice = async (token: string, invoiceId: string): Promise
  * Export invoices to CSV
  */
 export const exportInvoices = async (
-  token: string,
   filters?: InvoiceFilters
 ): Promise<Blob> => {
   try {
     const params: any = { ...filters };
     
-    const response = await axios.get(INVOICE_API.EXPORT, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await api.get(INVOICE_API.EXPORT, {
       params,
       responseType: 'blob',
     });
@@ -221,13 +190,9 @@ export const exportInvoices = async (
 /**
  * Get invoice clients
  */
-export const getInvoiceClients = async (token: string): Promise<string[]> => {
+export const getInvoiceClients = async (): Promise<string[]> => {
   try {
-    const response = await axios.get(INVOICE_API.CLIENTS, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(INVOICE_API.CLIENTS);
     return response.data;
   } catch (error) {
     console.error('Error fetching invoice clients:', error);
@@ -238,13 +203,9 @@ export const getInvoiceClients = async (token: string): Promise<string[]> => {
 /**
  * Get client details by name
  */
-export const getClientDetails = async (token: string, clientName: string): Promise<BillTo> => {
+export const getClientDetails = async (clientName: string): Promise<BillTo> => {
   try {
-    const response = await axios.get(`${INVOICE_API.CLIENT_DETAILS}/${encodeURIComponent(clientName)}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(`${INVOICE_API.CLIENT_DETAILS}/${encodeURIComponent(clientName)}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching client details:', error);
@@ -255,14 +216,13 @@ export const getClientDetails = async (token: string, clientName: string): Promi
 /**
  * Scan invoice from image
  */
-export const scanInvoice = async (token: string, file: File): Promise<{ success: boolean; message: string; invoiceId: string; invoiceType: string }> => {
+export const scanInvoice = async (file: File): Promise<{ success: boolean; message: string; invoiceId: string; invoiceType: string }> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await axios.post(INVOICE_API.SCAN, formData, {
+    const response = await api.post(INVOICE_API.SCAN, formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
     });

@@ -7,8 +7,10 @@ import Step2Form from "./Step2Form";
 import Step3Form from "./Step3Form";
 import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
-import axios from "axios";
-import Cookies from "js-cookie";
+import api from "@/lib/api";
+
+
+
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
@@ -27,7 +29,8 @@ const steps = [
   { label: "Sub Total", icon: CurlyBraces },
 ];
 
-const API_BASE = "https://invoice-backend-604217703209.asia-south1.run.app";
+
+
 
 /* ------------------ Helpers ------------------ */
 
@@ -195,7 +198,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
           amount:
             it?.amount !== undefined
               ? Number(it.amount)
-              : +( ( (it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0) ) ).toFixed(2),
+              : +(((it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0))).toFixed(2),
         };
       });
     } else {
@@ -212,10 +215,10 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // only use flattened item if any meaningful field present
       const hasAny = Boolean(
         possibleItem.description ||
-          possibleItem.hsn ||
-          possibleItem.unitPrice ||
-          possibleItem.amount ||
-          possibleItem.quantity > 1
+        possibleItem.hsn ||
+        possibleItem.unitPrice ||
+        possibleItem.amount ||
+        possibleItem.quantity > 1
       );
       out.items = hasAny ? [possibleItem] : defaultInvoice.items;
     }
@@ -415,23 +418,23 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   */
   // (validation helpers kept unchanged)...
 
-  const formatValidationErrors = (errs: ValidationError[]) => {
-    if (!errs || errs.length === 0) return "";
-    errs.sort((a, b) => a.step - b.step);
-    const grouped: Record<number, string[]> = {};
-    errs.forEach((e) => {
-      grouped[e.step] = grouped[e.step] || [];
-      grouped[e.step].push(e.message);
-    });
-    const stepLabels = ["", "Invoice Details", "Party Details", "Item Details", "Sub Total"];
-    const lines: string[] = [];
-    Object.keys(grouped).forEach((s) => {
-      const stepNum = Number(s);
-      lines.push(`${stepLabels[stepNum] || "Step " + stepNum}:`);
-      grouped[stepNum].forEach((m) => lines.push(` • ${m}`));
-    });
-    return lines.join("\n");
-  };
+  // const formatValidationErrors = (errs: ValidationError[]) => {
+  //   if (!errs || errs.length === 0) return "";
+  //   errs.sort((a, b) => a.step - b.step);
+  //   const grouped: Record<number, string[]> = {};
+  //   errs.forEach((e) => {
+  //     grouped[e.step] = grouped[e.step] || [];
+  //     grouped[e.step].push(e.message);
+  //   });
+  //   const stepLabels = ["", "Invoice Details", "Party Details", "Item Details", "Sub Total"];
+  //   const lines: string[] = [];
+  //   Object.keys(grouped).forEach((s) => {
+  //     const stepNum = Number(s);
+  //     lines.push(`${stepLabels[stepNum] || "Step " + stepNum}:`);
+  //     grouped[stepNum].forEach((m) => lines.push(` • ${m}`));
+  //   });
+  //   return lines.join("\n");
+  // };
 
   const setErrorsFromArray = (errs: ValidationError[]) => {
     const fe: FieldErrors = {};
@@ -455,7 +458,195 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   };
 
   /* ------------------ Save ------------------ */
-  const handleSave = async (status: "draft" | "sent") => {
+  // const handleSave = async (status: "draft" | "sent") => {
+  //   setSaving(true);
+  //   try {
+  //     // ensure totals are current
+  //     const totals = computeTotals(invoice);
+
+  //     // merge totals into candidate for validation
+  //     const candidate: InvoiceModel = { ...invoice, ...totals };
+
+  //     // client-side validation at field level
+  //     const fieldLevelErrors = validateAllStepsFields(candidate);
+  //     if (fieldLevelErrors.length > 0) {
+  //       const firstStep = Math.min(...fieldLevelErrors.map((e) => e.step));
+  //       setStep(firstStep);
+  //       setErrorsFromArray(fieldLevelErrors);
+  //       const msg = formatValidationErrors(fieldLevelErrors);
+  //       alert("Please fix the following before saving:\n\n" + msg);
+  //       setSaving(false);
+  //       return;
+  //     }
+
+  //     // Build payload & sanitize
+  //     const payload = sanitizePayload({
+  //       ...candidate,
+  //       status,
+  //     } as any);
+
+  //     // Debug payload being sent
+  //     console.log("📤 Invoice Payload Debug:");
+  //     console.log("📤 Full payload:", JSON.stringify(payload, null, 2));
+  //     console.log("📤 Payload keys:", Object.keys(payload));
+  //     console.log("📤 Required fields check:");
+  //     console.log("📤 - customerName:", payload.billTo?.name || "MISSING");
+  //     console.log("📤 - date:", payload.date || "MISSING");
+  //     console.log("📤 - items:", payload.items ? `${payload.items.length} items` : "MISSING");
+  //     console.log("📤 - total:", payload.total || "MISSING");
+
+  //     // choose PUT when editing (id exists), otherwise POST
+  //     const id = (invoice as any)._id || (invoice as any).id;
+  //     let res;
+  //     if (id) {
+  //       // Update existing invoice (backend must accept PUT /api/invoices/:id)
+  //       res = await api.put(`/api/invoices/${id}`, payload);
+  //     } else {
+  //       // Create new invoice
+  //       res = await api.post(`/api/invoices`, payload);
+  //     }
+
+  //     // backend returns { message, invoice: {...} } or similar
+  //     const savedInvoice = (res?.data && (res.data.invoice ?? res.data)) || res.data;
+
+  //     // Notify the app that an invoice was created/updated
+  //     window.dispatchEvent(new CustomEvent("invoice:created", { detail: savedInvoice }));
+
+  //     // Friendly user message
+  //     alert(id ? "Invoice updated successfully." : "Invoice created successfully.");
+
+  //     // close form
+  //     onCancel();
+  //   } catch (err: any) {
+  //     console.error("Save invoice error:", err);
+
+  //     // Enhanced error debugging
+  //     console.log("🚨 Backend Error Debug:");
+  //     console.log("🚨 Error status:", err.response?.status);
+  //     console.log("🚨 Error data:", err.response?.data);
+  //     console.log("🚨 Full error response:", JSON.stringify(err.response, null, 2));
+
+  //     // Handle invalid token specifically - TEMPORARILY DISABLED FOR DEBUGGING
+  //     if (err.response?.status === 401 && err.response?.data?.detail === "Invalid token") {
+  //       console.log("🔑 Invalid token detected - BUT NOT AUTO-LOGGING OUT FOR DEBUGGING");
+
+  //       // Show error but don't logout automatically
+  //       toast({
+  //         title: "Authentication Error",
+  //         description: "Backend rejected your token. Check console for details.",
+  //         variant: "destructive",
+  //       });
+
+  //       // DON'T clear tokens or redirect - let user see the error
+  //       // return; // Exit early to prevent further error processing
+  //     }
+
+  //     // --- robust server-side validation parsing & mapping to inline fields ---
+  //     const resp = err?.response?.data;
+  //     const serverErrors: ValidationError[] = [];
+
+  //     const fieldToStep = (fieldName: string | undefined) => {
+  //       if (!fieldName) return 1;
+  //       const f = String(fieldName);
+  //       if (f.startsWith("billFrom") || f.startsWith("billTo") || f.startsWith("shipTo") || ["name", "email", "phone", "address", "gst", "pan", "companyName", "businessName", "state"].some(k => f.includes(k))) return 2;
+  //       if (f.startsWith("items") || f.startsWith("item") || f.includes("quantity") || f.includes("unitPrice") || f.includes("description")) return 3;
+  //       if (["subtotal", "total", "cgst", "sgst", "igst", "shipping", "discount"].some(k => f.includes(k))) return 4;
+  //       if (["date", "dueDate", "invoiceNumber", "paymentTerms", "status", "currency"].some(k => f.includes(k))) return 1;
+  //       return 1;
+  //     };
+
+  //     if (resp && Array.isArray(resp.validation)) {
+  //       resp.validation.forEach((it: any) => {
+  //         let field: string | undefined;
+  //         if (it.instancePath) {
+  //           field = it.instancePath.replace(/^\//, "").replace(/\//g, ".");
+  //         } else if (it.loc && Array.isArray(it.loc) && it.loc.length >= 2) {
+  //           field = it.loc[1];
+  //         } else if (it.dataPath) {
+  //           field = it.dataPath.replace(/^\./, "").replace(/\//g, ".");
+  //         }
+  //         const msg = it.message || it.msg || JSON.stringify(it);
+  //         serverErrors.push({ step: fieldToStep(field), message: msg, field });
+  //       });
+  //     } else if (resp && Array.isArray(resp.errors)) {
+  //       resp.errors.forEach((it: any) => {
+  //         let field = it.param ?? (it.path && (Array.isArray(it.path) ? it.path.join(".") : it.path));
+  //         const msg = it.msg ?? it.message ?? JSON.stringify(it);
+  //         serverErrors.push({ step: fieldToStep(field), message: msg, field });
+  //       });
+  //     } else if (resp && resp.detail) {
+  //       if (Array.isArray(resp.detail)) {
+  //         resp.detail.forEach((d: any) => {
+  //           if (typeof d === "string") {
+  //             serverErrors.push({ step: 1, message: d });
+  //           } else if (d?.loc && Array.isArray(d.loc) && d.loc.length >= 2) {
+  //             const field = d.loc[1];
+  //             serverErrors.push({ step: fieldToStep(field), message: d.msg || d.message || JSON.stringify(d), field });
+  //           } else if (d?.param) {
+  //             serverErrors.push({ step: fieldToStep(d.param), message: d.msg || d.message || JSON.stringify(d), field: d.param });
+  //           } else {
+  //             serverErrors.push({ step: 1, message: JSON.stringify(d) });
+  //           }
+  //         });
+  //       } else if (typeof resp.detail === "object") {
+  //         Object.keys(resp.detail).forEach((k) => {
+  //           const v = resp.detail[k];
+  //           if (Array.isArray(v)) {
+  //             v.forEach((m: any) => serverErrors.push({ step: fieldToStep(k), message: String(m), field: k }));
+  //           } else {
+  //             serverErrors.push({ step: fieldToStep(k), message: String(v), field: k });
+  //           }
+  //         });
+  //       } else if (typeof resp.detail === "string") {
+  //         serverErrors.push({ step: 1, message: resp.detail });
+  //       }
+  //     } else if (resp && typeof resp === "object") {
+  //       const potentialFields = Object.keys(resp).filter(k => !["message", "status", "statusCode"].includes(k));
+  //       if (potentialFields.length > 0) {
+  //         potentialFields.forEach((k) => {
+  //           const v = resp[k];
+  //           if (typeof v === "string") {
+  //             serverErrors.push({ step: fieldToStep(k), message: v, field: k });
+  //           } else if (Array.isArray(v)) {
+  //             v.forEach((m: any) => serverErrors.push({ step: fieldToStep(k), message: String(m), field: k }));
+  //           }
+  //         });
+  //       }
+  //     }
+
+  //     if (serverErrors.length === 0) {
+  //       if (resp && resp.message) {
+  //         serverErrors.push({ step: 1, message: resp.message });
+  //       } else if (err?.message) {
+  //         serverErrors.push({ step: 1, message: err.message });
+  //       } else {
+  //         serverErrors.push({ step: 1, message: "Server validation error. Check console for full response." });
+  //       }
+  //     }
+
+  //     setFieldErrors((prev) => {
+  //       const out: FieldErrors = { ...(prev || {}) };
+  //       serverErrors.forEach((e) => {
+  //         if (e.field) out[e.field] = e.message;
+  //         else out[`_step_${e.step}`] = e.message;
+  //       });
+  //       return out;
+  //     });
+
+  //     const firstStep = Math.min(...serverErrors.map((s) => s.step || 1));
+  //     setStep(firstStep);
+
+  //     const shortMsgs = serverErrors.slice(0, 6).map((s, i) => `${i + 1}. ${s.message}${s.field ? ` (${s.field})` : ""}`);
+  //     alert("Server validation failed. Fix the highlighted fields.\n\n" + shortMsgs.join("\n"));
+
+  //     console.info("Parsed server validation errors:", serverErrors);
+  //     console.debug("Full server response (for debugging):", resp);
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
+
+  const handleSaveDraft = async () => {
     setSaving(true);
     try {
       // ensure totals are current
@@ -464,49 +655,25 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // merge totals into candidate for validation
       const candidate: InvoiceModel = { ...invoice, ...totals };
 
-      // client-side validation at field level
-      const fieldLevelErrors = validateAllStepsFields(candidate);
-      if (fieldLevelErrors.length > 0) {
-        const firstStep = Math.min(...fieldLevelErrors.map((e) => e.step));
-        setStep(firstStep);
-        setErrorsFromArray(fieldLevelErrors);
-        const msg = formatValidationErrors(fieldLevelErrors);
-        alert("Please fix the following before saving:\n\n" + msg);
-        setSaving(false);
-        return;
-      }
-
       // Build payload & sanitize
       const payload = sanitizePayload({
         ...candidate,
-        status,
+        status: "draft",
       } as any);
 
-      // token: support localStorage and common cookie names
-      const cookieToken =
-        Cookies.get("token") ||
-        Cookies.get("authToken") ||
-        Cookies.get("bearer") ||
-        Cookies.get("access_token");
-      const token = localStorage.getItem("token") || cookieToken || undefined;
-
-      const axiosConfig: any = {
-        withCredentials: true,
-        headers: { "Content-Type": "application/json" }, // explicit content-type
-      };
-      if (token) {
-        axiosConfig.headers.Authorization = `Bearer ${token}`;
-      }
+      // Debug payload being sent
+      console.log("📤 Draft Invoice Payload Debug:");
+      console.log("📤 Full payload:", JSON.stringify(payload, null, 2));
 
       // choose PUT when editing (id exists), otherwise POST
       const id = (invoice as any)._id || (invoice as any).id;
       let res;
       if (id) {
-        // Update existing invoice (backend must accept PUT /api/invoices/:id)
-        res = await axios.put(`${API_BASE}/api/invoices/${id}`, payload, axiosConfig);
+        // Update existing invoice
+        res = await api.put(`/api/invoices/${id}`, payload);
       } else {
         // Create new invoice
-        res = await axios.post(`${API_BASE}/api/invoices`, payload, axiosConfig);
+        res = await api.post(`/api/invoices`, payload);
       }
 
       // backend returns { message, invoice: {...} } or similar
@@ -515,125 +682,19 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // Notify the app that an invoice was created/updated
       window.dispatchEvent(new CustomEvent("invoice:created", { detail: savedInvoice }));
 
-      // Friendly user message
-      alert(id ? "Invoice updated successfully." : "Invoice created successfully.");
+      // Show success alert
+      alert("Invoice saved successfully in the database!");
 
       // close form
       onCancel();
     } catch (err: any) {
-      console.error("Save invoice error:", err);
+      console.error("Save draft invoice error:", err);
 
-      // --- robust server-side validation parsing & mapping to inline fields ---
-      const resp = err?.response?.data;
-      const serverErrors: ValidationError[] = [];
-
-      const fieldToStep = (fieldName: string | undefined) => {
-        if (!fieldName) return 1;
-        const f = String(fieldName);
-        if (f.startsWith("billFrom") || f.startsWith("billTo") || f.startsWith("shipTo") || ["name","email","phone","address","gst","pan","companyName","businessName","state"].some(k => f.includes(k))) return 2;
-        if (f.startsWith("items") || f.startsWith("item") || f.includes("quantity") || f.includes("unitPrice") || f.includes("description")) return 3;
-        if (["subtotal","total","cgst","sgst","igst","shipping","discount"].some(k => f.includes(k))) return 4;
-        if (["date","dueDate","invoiceNumber","paymentTerms","status","currency"].some(k => f.includes(k))) return 1;
-        return 1;
-      };
-
-      if (resp && Array.isArray(resp.validation)) {
-        resp.validation.forEach((it: any) => {
-          let field: string | undefined;
-          if (it.instancePath) {
-            field = it.instancePath.replace(/^\//, "").replace(/\//g, ".");
-          } else if (it.loc && Array.isArray(it.loc) && it.loc.length >= 2) {
-            field = it.loc[1];
-          } else if (it.dataPath) {
-            field = it.dataPath.replace(/^\./, "").replace(/\//g, ".");
-          }
-          const msg = it.message || it.msg || JSON.stringify(it);
-          serverErrors.push({ step: fieldToStep(field), message: msg, field });
-        });
-      } else if (resp && Array.isArray(resp.errors)) {
-        resp.errors.forEach((it: any) => {
-          let field = it.param ?? (it.path && (Array.isArray(it.path) ? it.path.join(".") : it.path));
-          const msg = it.msg ?? it.message ?? JSON.stringify(it);
-          serverErrors.push({ step: fieldToStep(field), message: msg, field });
-        });
-      } else if (resp && resp.detail) {
-        if (Array.isArray(resp.detail)) {
-          resp.detail.forEach((d: any) => {
-            if (typeof d === "string") {
-              serverErrors.push({ step: 1, message: d });
-            } else if (d?.loc && Array.isArray(d.loc) && d.loc.length >= 2) {
-              const field = d.loc[1];
-              serverErrors.push({ step: fieldToStep(field), message: d.msg || d.message || JSON.stringify(d), field });
-            } else if (d?.param) {
-              serverErrors.push({ step: fieldToStep(d.param), message: d.msg || d.message || JSON.stringify(d), field: d.param });
-            } else {
-              serverErrors.push({ step: 1, message: JSON.stringify(d) });
-            }
-          });
-        } else if (typeof resp.detail === "object") {
-          Object.keys(resp.detail).forEach((k) => {
-            const v = resp.detail[k];
-            if (Array.isArray(v)) {
-              v.forEach((m: any) => serverErrors.push({ step: fieldToStep(k), message: String(m), field: k }));
-            } else {
-              serverErrors.push({ step: fieldToStep(k), message: String(v), field: k });
-            }
-          });
-        } else if (typeof resp.detail === "string") {
-          serverErrors.push({ step: 1, message: resp.detail });
-        }
-      } else if (resp && typeof resp === "object") {
-        const potentialFields = Object.keys(resp).filter(k => !["message","status","statusCode"].includes(k));
-        if (potentialFields.length > 0) {
-          potentialFields.forEach((k) => {
-            const v = resp[k];
-            if (typeof v === "string") {
-              serverErrors.push({ step: fieldToStep(k), message: v, field: k });
-            } else if (Array.isArray(v)) {
-              v.forEach((m: any) => serverErrors.push({ step: fieldToStep(k), message: String(m), field: k }));
-            }
-          });
-        }
-      }
-
-      if (serverErrors.length === 0) {
-        if (resp && resp.message) {
-          serverErrors.push({ step: 1, message: resp.message });
-        } else if (err?.message) {
-          serverErrors.push({ step: 1, message: err.message });
-        } else {
-          serverErrors.push({ step: 1, message: "Server validation error. Check console for full response." });
-        }
-      }
-
-      setFieldErrors((prev) => {
-        const out: FieldErrors = { ...(prev || {}) };
-        serverErrors.forEach((e) => {
-          if (e.field) out[e.field] = e.message;
-          else out[`_step_${e.step}`] = e.message;
-        });
-        return out;
-      });
-
-      const firstStep = Math.min(...serverErrors.map((s) => s.step || 1));
-      setStep(firstStep);
-
-      const shortMsgs = serverErrors.slice(0, 6).map((s, i) => `${i + 1}. ${s.message}${s.field ? ` (${s.field})` : ""}`);
-      alert("Server validation failed. Fix the highlighted fields.\n\n" + shortMsgs.join("\n"));
-
-      console.info("Parsed server validation errors:", serverErrors);
-      console.debug("Full server response (for debugging):", resp);
+      // Show error alert
+      alert(`Failed to save invoice: ${err.response?.data?.message || err.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleSaveAndSend = async () => {
-    await handleSave("sent");
-  };
-
-  const handleSaveDraft = async () => {
-    console.log("Draft Save");
   };
 
   // Handler to open print preview modal
@@ -742,13 +803,6 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
                   className="w-full sm:w-auto px-6 py-2 border-3 border-[#785FDA] text-gray-700 font-semibold rounded-md hover:bg-gray-100 transition duration-200"
                 >
                   Print Preview
-                </button>
-                <button
-                  onClick={() => handleSaveAndSend()}
-                  disabled={saving}
-                  className="w-full sm:w-auto px-6 py-2 bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white font-semibold rounded-md hover:opacity-90 transition duration-200"
-                >
-                  Save and Send
                 </button>
               </>
             )}
@@ -870,10 +924,10 @@ function validateStepFields(s: number, inv: InvoiceModel): ValidationError[] {
   return errs;
 }
 
-function validateAllStepsFields(inv: InvoiceModel) {
-  const all: ValidationError[] = [];
-  for (let s = 1; s <= 4; s++) {
-    all.push(...validateStepFields(s, inv));
-  }
-  return all;
-}
+// function validateAllStepsFields(inv: InvoiceModel) {
+//   const all: ValidationError[] = [];
+//   for (let s = 1; s <= 4; s++) {
+//     all.push(...validateStepFields(s, inv));
+//   }
+//   return all;
+// }
