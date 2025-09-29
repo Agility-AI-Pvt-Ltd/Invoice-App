@@ -6,7 +6,7 @@ const Hero = () => {
   const [displayedText, setDisplayedText] = useState("");
   const initialText = "made for every business.";
 
-  const loopWords = ["freelancer", "startup", "enterprise", "business"];
+  const loopWords = ["startup", "enterprise", "business"];
   const [loopIndex, setLoopIndex] = useState(0);
   const [wordIndex, setWordIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -79,7 +79,7 @@ const Hero = () => {
 
           <p className="text-lg md:text-xl text-black/64 max-w-2xl mx-auto mb-8 leading-relaxed">
             Create, manage, and track invoices effortlessly
-            <span className="block">whether you're a freelancer, startup, or enterprise.</span>
+            <span className="block">whether you're building a startup, or enterprise.</span>
           </p>
 
           <CTAButtons />
