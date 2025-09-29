@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Step4FormProps = {
   formData: any;
@@ -54,7 +54,7 @@ export default function Step4Form({ formData, setFormData }: Step4FormProps) {
       </div>
 
       {/* Tags */}
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <Label htmlFor="tags" className="text-sm font-medium">Tags</Label>
         <Select
           value={formData.tags || ""}
@@ -71,7 +71,7 @@ export default function Step4Form({ formData, setFormData }: Step4FormProps) {
             <SelectItem value="tag3">Tag 3</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div> */}
     </div>
   );
 }

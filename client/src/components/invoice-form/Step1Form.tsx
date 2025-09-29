@@ -135,7 +135,7 @@ export default function Step1Form() {
                 Select
               </option>
               <option value="paid">Paid</option>
-              <option value="unpaid">Unpaid</option>
+              {/* <option value="unpaid">Unpaid</option> */}
               <option value="pending">Pending</option>
             </select>
             <ChevronDown
