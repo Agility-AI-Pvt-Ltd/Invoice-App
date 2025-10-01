@@ -15,6 +15,7 @@ interface Profile {
     isGstRegistered: boolean;
     gstNumber?: string;
     businessLogo?: string;
+    profilePicture?: string;
 }
 
 interface ProfileContextType {
@@ -76,6 +77,8 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
                     phone: '',
                     panNumber: '',
                     isGstRegistered: false,
+                    businessLogo: '',
+                    profilePicture: '',
                     // Add other common profile fields as needed
                 });
                 setIsAuthenticated(true);

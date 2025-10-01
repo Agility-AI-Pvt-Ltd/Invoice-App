@@ -1,55 +1,12 @@
 import api from '@/lib/api';
 import { INVOICE_API } from '../routes/invoice';
+import type { InvoiceModel, InvoiceItem, Party } from '@/types/invoice';
 
-// Types
-export interface InvoiceItem {
-  description: string;
-  hsn?: string;
-  quantity: number;
-  unitPrice: number;
-  gst?: number;
-  discount?: number;
-  amount?: number;
-}
-
-export interface BillTo {
-  name: string;
-  email?: string;
-  address: string;
-  state?: string;
-  gst?: string;
-  pan?: string;
-  phone?: string;
-}
-
-export interface ShipTo {
-  name?: string;
-  address?: string;
-  gst?: string;
-  pan?: string;
-  phone?: string;
-  email?: string;
-}
-
-export interface Invoice {
-  _id?: string;
-  user?: string;
-  invoiceNumber: string;
-  date: string;
-  dueDate?: string;
-  billTo: BillTo;
-  shipTo?: ShipTo;
-  items: InvoiceItem[];
-  notes?: string;
-  currency?: string;
-  status?: string;
-  subtotal?: number;
-  cgst?: number;
-  sgst?: number;
-  igst?: number;
-  total?: number;
-  termsAndConditions?: string;
-}
+// Re-export types for backward compatibility
+export type Invoice = InvoiceModel;
+export type BillTo = Party;
+export type ShipTo = Party;
+export type { InvoiceItem };
 
 export interface InvoiceFilters {
   status?: string;
@@ -68,34 +25,50 @@ export interface InvoiceMetrics {
 
 /**
  * Get all invoices with filters and pagination
+ * Backend returns complete invoice data with billTo object and items array
  */
 export const getInvoices = async (
   page: number = 1,
   limit: number = 10,
   filters?: InvoiceFilters
-): Promise<{ data: Invoice[]; total: number; page: number; totalPages: number }> => {
+): Promise<{ data: InvoiceModel[]; total: number; page: number; totalPages: number }> => {
   try {
     const params: any = { page, limit, ...filters };
     
+    console.log('🔍 Fetching invoices with params:', params);
     const response = await api.get(INVOICE_API.GET_ALL, {
       params,
     });
+    
+    console.log('✅ Invoices response:', response.data);
+    
+    // Backend returns data array with complete invoice objects
+    // Each invoice has: billTo (nested object), items (array with parsed numbers)
     return response.data;
   } catch (error) {
-    console.error('Error fetching invoices:', error);
+    console.error('❌ Error fetching invoices:', error);
     throw error;
   }
 };
 
 /**
- * Get invoice by ID
+ * Get invoice by ID with full details
+ * Returns complete invoice with billTo object, items array, and all fields
  */
-export const getInvoice = async (invoiceId: string): Promise<Invoice> => {
+export const getInvoice = async (invoiceId: string): Promise<InvoiceModel> => {
   try {
+    console.log(`🔍 Fetching invoice with ID: ${invoiceId}`);
     const response = await api.get(`${INVOICE_API.GET_BY_ID}/${invoiceId}`);
-    return response.data;
+    
+    // Handle different response structures
+    const invoice = response.data.data || response.data;
+    console.log('✅ Invoice data received:', invoice);
+    console.log('📋 Invoice billTo:', invoice.billTo);
+    console.log('📦 Invoice items:', invoice.items);
+    
+    return invoice as InvoiceModel;
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    console.error('❌ Error fetching invoice:', error);
     throw error;
   }
 };
@@ -103,12 +76,14 @@ export const getInvoice = async (invoiceId: string): Promise<Invoice> => {
 /**
  * Create new invoice
  */
-export const createInvoice = async (invoice: Invoice): Promise<{ message: string; invoice: Invoice }> => {
+export const createInvoice = async (invoice: Partial<InvoiceModel>): Promise<{ message: string; invoice: InvoiceModel }> => {
   try {
+    console.log('📝 Creating invoice:', invoice);
     const response = await api.post(INVOICE_API.CREATE, invoice);
+    console.log('✅ Invoice created:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error creating invoice:', error);
+    console.error('❌ Error creating invoice:', error);
     throw error;
   }
 };
@@ -116,12 +91,14 @@ export const createInvoice = async (invoice: Invoice): Promise<{ message: string
 /**
  * Update invoice
  */
-export const updateInvoice = async (invoiceId: string, updates: Partial<Invoice>): Promise<{ message: string; invoice: Invoice }> => {
+export const updateInvoice = async (invoiceId: string, updates: Partial<InvoiceModel>): Promise<{ message: string; invoice: InvoiceModel }> => {
   try {
+    console.log(`📝 Updating invoice ${invoiceId}:`, updates);
     const response = await api.put(`${INVOICE_API.UPDATE}/${invoiceId}`, updates);
+    console.log('✅ Invoice updated:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error updating invoice:', error);
+    console.error('❌ Error updating invoice:', error);
     throw error;
   }
 };
@@ -131,10 +108,12 @@ export const updateInvoice = async (invoiceId: string, updates: Partial<Invoice>
  */
 export const deleteInvoice = async (invoiceId: string): Promise<{ message: string }> => {
   try {
+    console.log(`🗑️ Deleting invoice: ${invoiceId}`);
     const response = await api.delete(`${INVOICE_API.DELETE}/${invoiceId}`);
+    console.log('✅ Invoice deleted');
     return response.data;
   } catch (error) {
-    console.error('Error deleting invoice:', error);
+    console.error('❌ Error deleting invoice:', error);
     throw error;
   }
 };
@@ -142,12 +121,14 @@ export const deleteInvoice = async (invoiceId: string): Promise<{ message: strin
 /**
  * Duplicate invoice
  */
-export const duplicateInvoice = async (invoiceId: string): Promise<Invoice> => {
+export const duplicateInvoice = async (invoiceId: string): Promise<InvoiceModel> => {
   try {
+    console.log(`📋 Duplicating invoice: ${invoiceId}`);
     const response = await api.post(`${INVOICE_API.DUPLICATE}/${invoiceId}`, {});
+    console.log('✅ Invoice duplicated:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error duplicating invoice:', error);
+    console.error('❌ Error duplicating invoice:', error);
     throw error;
   }
 };
@@ -203,12 +184,14 @@ export const getInvoiceClients = async (): Promise<string[]> => {
 /**
  * Get client details by name
  */
-export const getClientDetails = async (clientName: string): Promise<BillTo> => {
+export const getClientDetails = async (clientName: string): Promise<Party> => {
   try {
+    console.log(`🔍 Fetching client details for: ${clientName}`);
     const response = await api.get(`${INVOICE_API.CLIENT_DETAILS}/${encodeURIComponent(clientName)}`);
+    console.log('✅ Client details:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error fetching client details:', error);
+    console.error('❌ Error fetching client details:', error);
     throw error;
   }
 };

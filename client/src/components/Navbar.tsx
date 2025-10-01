@@ -13,14 +13,14 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import { fetchBusinessLogo } from "@/services/api/settings";
+import { useProfile } from "@/contexts/ProfileContext";
 
 const NavbarUpdated = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string>("");
   const navigate = useNavigate();
+  const { profile } = useProfile();
 
   const navItems = [
     { name: "Features", link: "#features" },
@@ -44,13 +44,6 @@ const NavbarUpdated = () => {
     const authToken = Cookies.get('authToken');
     if (authToken) {
       setIsLoggedIn(true);
-
-      // Fetch user logo
-      fetchBusinessLogo()
-        .then(url => setLogoUrl(url))
-        .catch(err => console.error('Failed to fetch logo:', err));
-
-
     }
   }, []);
 
@@ -117,9 +110,17 @@ const NavbarUpdated = () => {
                 className="cursor-pointer hover:scale-105 transition-transform"
               >
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={logoUrl} alt="Profile" />
+                  <AvatarImage 
+                    src={profile?.data?.profilePicture || ""} 
+                    alt="Profile"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      img.src = ""; // force fallback to initials
+                    }}
+                  />
                   <AvatarFallback>
-                    {"U"}
+                    {profile?.data?.name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -179,9 +180,17 @@ const NavbarUpdated = () => {
                   className="flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
                 >
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={logoUrl} alt="Profile" />
+                    <AvatarImage 
+                      src={profile?.data?.profilePicture || ""} 
+                      alt="Profile"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.src = ""; // force fallback to initials
+                      }}
+                    />
                     <AvatarFallback>
-                      {"U"}
+                      {profile?.data?.name?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>
                 </div>

@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import ProfileAvatar from "./ui/ProfileAvatar";
-import { fetchBusinessLogo } from "@/services/api/settings";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
+import { useProfile } from "@/contexts/ProfileContext";
 
 const Header: React.FC<any> = ({ label }: { label: string }) => {
-    const [avatarUrl, setAvatarUrl] = useState<any>(); // fallback
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error] = useState<string>("");
+    const { profile, loading } = useProfile();
+    
     function toTitleCase(input: string = ""): string {
         return input
             .replace(/-/g, " ") // Replace hyphens with spaces
@@ -16,24 +15,9 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
             .join(" ");         // Join with spaces
     }
 
-    //TODO : Replace with useProfile context
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const logo = await fetchBusinessLogo();
-                console.log(logo)
-                setAvatarUrl(logo);
-            } catch (err: any) {
-                console.warn("Failed to fetch logo, using default:", err.message);
-                // Don't set error state for logo failures - use default avatar instead
-                setAvatarUrl(""); // Use default avatar
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchProfile();
-    }, []);
+    // Get profile picture URL from profile context
+    const profilePictureUrl = profile?.data?.profilePicture || "";
+    const userName = profile?.data?.name || "User";
 
     const navigate = useNavigate();
     return (
@@ -50,8 +34,16 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                     {/* <Notification /> */}
                     <>
                         <Avatar className="w-6 h-6 sm:w-10 sm:h-10 cursor-pointer" onClick={() => navigate('/app/profile')}>
-                            <AvatarImage src={avatarUrl} alt="Profile" />
-                            <AvatarFallback>{"U"}</AvatarFallback>
+                            <AvatarImage 
+                                src={profilePictureUrl} 
+                                alt="Profile"
+                                crossOrigin="anonymous"
+                                onError={(e) => {
+                                    const img = e.currentTarget as HTMLImageElement;
+                                    img.src = ""; // force fallback to initials
+                                }}
+                            />
+                            <AvatarFallback>{userName.charAt(0)}</AvatarFallback>
                         </Avatar>
                     </>
                 </div>
@@ -61,7 +53,18 @@ const Header: React.FC<any> = ({ label }: { label: string }) => {
                     {/* <DateRangePicker iconOnly /> */}
                     {/* <SearchBar iconOnly /> */}
                     {/* <Notification /> */}
-                    <ProfileAvatar imgUrl={avatarUrl} loading={loading} error={error} />
+                    <Avatar className="w-8 h-8 cursor-pointer" onClick={() => navigate('/app/profile')}>
+                        <AvatarImage 
+                            src={profilePictureUrl} 
+                            alt="Profile"
+                            crossOrigin="anonymous"
+                            onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                img.src = ""; // force fallback to initials
+                            }}
+                        />
+                        <AvatarFallback>{userName.charAt(0)}</AvatarFallback>
+                    </Avatar>
                 </div>
             </div>
         </div>
