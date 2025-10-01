@@ -21,9 +21,24 @@ const api = axios.create({
 // Request interceptor for authentication and throttling
 api.interceptors.request.use((config) => {
   const token = Cookies.get("authToken");
+  console.log("🔑 Auth Token Check:", { 
+    hasToken: !!token, 
+    tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
+    url: config.url 
+  });
+  
   if (token) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
+    console.log("✅ Authorization header added");
+  } else {
+    console.warn("⚠️ No auth token found - request may fail");
+  }
+  
+  // Handle FormData requests - remove Content-Type to let axios set it with boundary
+  if (config.data instanceof FormData) {
+    console.log("📁 FormData detected - removing Content-Type header");
+    delete config.headers['Content-Type'];
   }
   
   // Create a unique key for this request

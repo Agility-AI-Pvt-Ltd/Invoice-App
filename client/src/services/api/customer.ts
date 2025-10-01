@@ -1,7 +1,12 @@
 import api from '@/lib/api';
+import type { FullCustomer, CustomerResponse, CustomerFilters, CustomerFormData } from '@/types/customer';
 
-// Types
-export interface Customer {
+// Re-export types for backward compatibility
+export type { FullCustomer as Customer, CustomerResponse, CustomerFilters, CustomerFormData };
+export type { FullCustomer, CustomerFormData };
+
+// Legacy Customer type for backward compatibility
+export interface LegacyCustomer {
   id: number;
   name: string;
   email: string;
@@ -11,22 +16,6 @@ export interface Customer {
   gstNumber?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CustomerResponse {
-  data: Customer[];
-  pagination: {
-    page: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-  };
-}
-
-export interface CustomerFilters {
-  page?: number;
-  limit?: number;
-  search?: string;
 }
 
 /**
@@ -102,14 +91,20 @@ export const getCustomers = async (
 };
 
 /**
- * Get customer by ID
+ * Get customer by ID with full details
+ * Includes billing/shipping addresses, payment terms, currency, etc.
  */
-export const getCustomerById = async (id: number): Promise<Customer> => {
+export const getCustomerById = async (id: number): Promise<FullCustomer> => {
   try {
+    console.log(`🔍 Fetching full customer data for ID: ${id}`);
     const response = await api.get(`/api/customers/${id}`);
-    return response.data.data;
+    
+    const customer = response.data.data || response.data;
+    console.log('✅ Full customer data received:', customer);
+    
+    return customer as FullCustomer;
   } catch (error) {
-    console.error('Error fetching customer:', error);
+    console.error('❌ Error fetching customer by ID:', error);
     throw error;
   }
 };

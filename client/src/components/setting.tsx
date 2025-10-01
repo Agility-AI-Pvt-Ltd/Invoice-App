@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, fetchBusinessLogo, type UserProfile } from "@/services/api/settings";
+import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, uploadProfilePicture, fetchBusinessLogo, type UserProfile } from "@/services/api/settings";
+import { getApiBaseUrl } from "@/lib/api-config";
 import { useToast } from "@/hooks/use-toast";
 // Removed fetchBusinessLogo - moved to services/api/settings.ts to fix HMR issues
 
@@ -47,6 +48,9 @@ export default function Settings() {
     logoUrl: ""
   });
 
+  // Profile picture state
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string>("");
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -55,10 +59,20 @@ export default function Settings() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  
+  // Profile picture upload state
+  const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const [profilePictureMessage, setProfilePictureMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // 🔹 Function to clear password message
   const clearPasswordMessage = () => {
     setPasswordMessage(null);
+  };
+
+  // 🔹 Function to clear profile picture message
+  const clearProfilePictureMessage = () => {
+    setProfilePictureMessage(null);
   };
 
   // 🔹 Check if form has changes
@@ -83,6 +97,31 @@ export default function Settings() {
     }
   };
 
+  // 🔹 Normalize backend-returned file paths/URLs into a public URL we can render
+  const normalizePublicUrl = (value?: string | null): string => {
+    if (!value) return "";
+    const placeholderNames = ["profile-placeholder.jpg", "placeholder.jpg", "default-avatar.jpg"]; // ignore placeholders
+    const trimmedValue = value.trim();
+    if (!trimmedValue || placeholderNames.includes(trimmedValue)) return "";
+    // Absolute URL
+    if (/^https?:\/\//i.test(trimmedValue)) return trimmedValue;
+    // Strip leading slashes and use API Gateway URL (localhost:4000)
+    const noLead = trimmedValue.replace(/^\/+/, "");
+    return `${getApiBaseUrl()}/${noLead}`;
+  };
+
+  // 🔹 Load cached profile picture (fallback until backend persists)
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('profilePictureUrl');
+      if (cached && !cached.startsWith('blob:')) {
+        setProfilePictureUrl(cached);
+      } else if (cached && cached.startsWith('blob:')) {
+        localStorage.removeItem('profilePictureUrl');
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -95,6 +134,14 @@ export default function Settings() {
         }
         console.log(userData)
         setUserProfile(userData);
+
+        // Get profile picture URL from backend (separate from business logo)
+        const rawProfilePic = (userData as any)?.data?.profilePicture || "";
+        const initialProfilePicUrl = normalizePublicUrl(rawProfilePic);
+        if (initialProfilePicUrl) {
+          setProfilePictureUrl(initialProfilePicUrl);
+          try { localStorage.setItem('profilePictureUrl', initialProfilePicUrl); } catch {}
+        }
 
         const profileData = {
           name: userData.data.name || "",
@@ -137,6 +184,16 @@ export default function Settings() {
     }
   }, [passwordMessage]);
 
+  // 🔹 Auto-clear profile picture success messages after 5 seconds
+  useEffect(() => {
+    if (profilePictureMessage?.type === "success") {
+      const timer = setTimeout(() => {
+        clearProfilePictureMessage();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [profilePictureMessage]);
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -159,14 +216,15 @@ export default function Settings() {
 
       // 🔹 Update original data to match current form data after successful save
       setOriginalData({ ...formData });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail || "Failed to update profile";
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: errorMessage,
         variant: "destructive",
       });
-      setMessage({ type: "error", text: "Failed to update profile" });
+      setMessage({ type: "error", text: errorMessage });
     }
   };
 
@@ -181,13 +239,13 @@ export default function Settings() {
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
+    if (passwordData.newPassword.length < 6) {
       toast({
         title: "Error",
-        description: "New password must be at least 8 characters long",
+        description: "New password must be at least 6 characters long",
         variant: "destructive",
       });
-      setPasswordMessage({ type: "error", text: "New password must be at least 8 characters long" });
+      setPasswordMessage({ type: "error", text: "New password must be at least 6 characters long" });
       return;
     }
 
@@ -210,7 +268,7 @@ export default function Settings() {
       });
     } catch (error: any) {
       console.error('Error changing password:', error);
-      const errorMessage = error.response?.data?.detail || "Failed to change password";
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail || "Failed to change password";
       toast({
         title: "Error",
         description: errorMessage,
@@ -249,7 +307,7 @@ export default function Settings() {
 
     try {
       setUploadingLogo(true);
-      await uploadBusinessLogo(selectedFile);
+      const res = await uploadBusinessLogo(selectedFile);
 
       toast({
         title: "Success",
@@ -260,15 +318,22 @@ export default function Settings() {
       const updatedProfile = await getUserProfile();
       setUserProfile(updatedProfile);
 
-      // 🔹 Refresh logo after upload
-      await refreshLogo();
+      // 🔹 Use returned URL if present, else refresh from API
+      const uploadedUrl = (res?.fileUrl || (res as any)?.logoUrl) as string | undefined;
+      if (uploadedUrl) {
+        const fullUrl = normalizePublicUrl(uploadedUrl);
+        setFormData(prev => ({ ...prev, logoUrl: fullUrl }));
+        setOriginalData(prev => ({ ...prev, logoUrl: fullUrl }));
+      } else {
+        await refreshLogo();
+      }
 
       setSelectedFile(null);
       const fileInput = document.getElementById('logo-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
     } catch (error: any) {
       console.error('Error uploading logo:', error);
-      const errorMessage = error.response?.data?.detail || "Failed to upload logo";
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail || "Failed to upload logo";
       toast({
         title: "Error",
         description: errorMessage,
@@ -277,6 +342,97 @@ export default function Settings() {
       setMessage({ type: "error", text: errorMessage });
     } finally {
       setUploadingLogo(false);
+    }
+  };
+
+  const handleProfileFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Error",
+          description: "Only image files (JPEG, JPG, PNG, GIF, WebP) are allowed!",
+          variant: "destructive",
+        });
+        setProfilePictureMessage({ type: "error", text: "Only image files (JPEG, JPG, PNG, GIF, WebP) are allowed!" });
+        return;
+      }
+
+      // Validate file size (5MB = 5 * 1024 * 1024 bytes)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "File size must be less than 5MB",
+          variant: "destructive",
+        });
+        setProfilePictureMessage({ type: "error", text: "File size must be less than 5MB" });
+        return;
+      }
+
+      setSelectedProfileFile(file);
+      // Immediate local preview so the user sees the image in the circle
+      const localUrl = URL.createObjectURL(file);
+      setProfilePictureUrl(localUrl);
+      setProfilePictureMessage(null); // Clear any previous messages
+    }
+  };
+
+  const handleProfilePictureUpload = async () => {
+    if (!selectedProfileFile) {
+      toast({
+        title: "Error",
+        description: "Please select a file first",
+        variant: "destructive",
+      });
+      setProfilePictureMessage({ type: "error", text: "Please select a file first" });
+      return;
+    }
+
+    try {
+      setUploadingProfilePicture(true);
+      const result = await uploadProfilePicture(selectedProfileFile);
+
+      toast({
+        title: "Success",
+        description: "Profile picture uploaded successfully",
+      });
+      setProfilePictureMessage({ type: "success", text: "Profile picture uploaded successfully" });
+
+      // Update the profile picture URL with the response data
+      const pp = result?.data?.fileUrl || result?.data?.profilePicture;
+      // Ignore backend placeholder paths; keep the local preview
+      const isPlaceholder = typeof pp === 'string' && pp.includes('profile-placeholder.jpg');
+      if (pp && !isPlaceholder) {
+        const url = normalizePublicUrl(pp);
+        setProfilePictureUrl(url);
+        try { localStorage.setItem('profilePictureUrl', url); } catch {}
+      }
+
+      // Update the user profile with the new profile picture
+      const updatedProfile = await getUserProfile();
+      setUserProfile(updatedProfile);
+
+      setSelectedProfileFile(null);
+      const fileInput = document.getElementById('profile-picture-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+    } catch (error: any) {
+      console.error('Error uploading profile picture:', error);
+      // Local preview fallback so user can at least see selected image
+      if (selectedProfileFile) {
+        const localUrl = URL.createObjectURL(selectedProfileFile);
+        setProfilePictureUrl(localUrl);
+      }
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail || "Failed to upload profile picture";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setProfilePictureMessage({ type: "error", text: errorMessage });
+    } finally {
+      setUploadingProfilePicture(false);
     }
   };
 
@@ -313,12 +469,84 @@ export default function Settings() {
           <Card className="p-4 sm:p-6 xl:col-span-1 bg-white">
             <div className="flex flex-col items-center space-y-4 mb-6">
               <Avatar className="w-24 h-24 sm:w-32 sm:h-32">
-                <AvatarImage src={formData.logoUrl} alt="Profile" />
+                <AvatarImage
+                  src={profilePictureUrl || ""}
+                  alt="Profile"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    console.error('❌ Image failed to load:', profilePictureUrl);
+                    console.error('💡 If you see CORS error, backend needs to add CORS headers to /uploads route');
+                    img.src = ""; // force Radix Avatar to show fallback initials
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Profile picture loaded successfully:', profilePictureUrl);
+                  }}
+                />
                 <AvatarFallback>{userProfile?.data?.name?.charAt(0)}</AvatarFallback>
               </Avatar>
-              <Button variant="link" className="text-primary font-medium p-0 h-auto text-sm sm:text-base">
-                {/* Change Profile Photo */}
-              </Button>
+              
+              {/* Profile Picture Upload Section */}
+              <div className="space-y-2 w-full max-w-xs">
+                <Label htmlFor="profile-picture-upload" className="text-sm font-medium text-foreground text-center block">
+                  Profile Picture
+                </Label>
+                <div className="relative">
+                  <input
+                    id="profile-picture-upload"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleProfileFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    aria-label="Upload profile picture"
+                    title="Upload profile picture"
+                  />
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-primary transition-colors">
+                    {selectedProfileFile ? (
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-600 font-medium">
+                          {selectedProfileFile.name}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {(selectedProfileFile.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-sm text-gray-600">
+                          Click to upload
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          JPEG, JPG, PNG, GIF, WebP (max 5MB)
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {selectedProfileFile && (
+                  <Button
+                    type="button"
+                    onClick={handleProfilePictureUpload}
+                    disabled={uploadingProfilePicture}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                    size="sm"
+                  >
+                    {uploadingProfilePicture ? "Uploading..." : "Upload Profile Picture"}
+                  </Button>
+                )}
+                
+                {profilePictureMessage && (
+                  <div
+                    className={`p-2 rounded-md text-xs font-medium ${profilePictureMessage.type === "success"
+                      ? "bg-green-100 text-green-700 border border-green-400"
+                      : "bg-red-100 text-red-700 border border-red-400"
+                      }`}
+                  >
+                    {profilePictureMessage.text}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -549,6 +777,17 @@ export default function Settings() {
                       onChange={handleFileSelect}
                       className="bg-background border-input"
                     />
+                    {formData.logoUrl && (
+                      <div className="flex items-center gap-3 pt-1">
+                        <img
+                          src={formData.logoUrl}
+                          alt="Business Logo Preview"
+                          className="h-10 w-10 rounded border"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <span className="text-xs text-muted-foreground break-all">{formData.logoUrl}</span>
+                      </div>
+                    )}
                     {selectedFile && (
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">{selectedFile.name}</span>
