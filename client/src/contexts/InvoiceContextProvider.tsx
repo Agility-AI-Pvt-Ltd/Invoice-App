@@ -1,8 +1,9 @@
 // Enhanced Invoice Context Provider with Draft Management
 // Provides persistent state across route changes and auto-save functionality
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import type { InvoiceModel, InvoiceDraft } from '@/types/invoice';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import type { InvoiceModel } from '@/types/invoice';
 import type { FullCustomer } from '@/types/customer';
 import {
   saveDraft,

@@ -2,8 +2,8 @@ import api from '@/lib/api';
 import type { FullCustomer, CustomerResponse, CustomerFilters, CustomerFormData } from '@/types/customer';
 
 // Re-export types for backward compatibility
-export type { FullCustomer as Customer, CustomerResponse, CustomerFilters, CustomerFormData };
-export type { FullCustomer, CustomerFormData };
+export type Customer = FullCustomer;
+export type { FullCustomer, CustomerResponse, CustomerFilters, CustomerFormData };
 
 // Legacy Customer type for backward compatibility
 export interface LegacyCustomer {

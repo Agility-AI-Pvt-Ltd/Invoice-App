@@ -1,11 +1,10 @@
 import React from "react";
-import ProfileAvatar from "./ui/ProfileAvatar";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/contexts/ProfileContext";
 
 const Header: React.FC<any> = ({ label }: { label: string }) => {
-    const { profile, loading } = useProfile();
+    const { profile } = useProfile();
     
     function toTitleCase(input: string = ""): string {
         return input
