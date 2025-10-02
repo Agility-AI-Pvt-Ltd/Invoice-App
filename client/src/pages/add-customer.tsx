@@ -5,6 +5,7 @@ import Step2Form from "@/components/customer-form/Step2Form";
 import Step3Form from "@/components/customer-form/Step3Form";
 import Step4Form from "@/components/customer-form/Step4Form";
 import { InfoIcon, MapPin, Receipt } from "lucide-react";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 type Props = {
   onCancel: () => void;
@@ -21,8 +22,11 @@ const steps = [
 export default function MultiStepForm({ onCancel, initialData }: Props) {
   const [step, setStep] = useState(1);
 
-  // 🔹 Central state for all form data
-  const [formData, setFormData] = useState<any>({
+  // Generate unique form ID for draft persistence
+  const formId = `customer-form-${initialData?.id ? `edit-${initialData.id}` : 'new'}`;
+
+  // Default form data structure
+  const defaultFormData = {
     // Step 1
     customerType: initialData?.customerType || "",
     name: initialData?.fullName || initialData?.name || "",  // Changed from fullName to name
@@ -63,6 +67,26 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
 
     // Keep original ID for updates
     id: initialData?.id,
+  };
+
+  // 🔹 Use form persistence hook for draft functionality
+  const {
+    formData,
+    setFormData,
+    updateField,
+    updateNestedField,
+    isDirty,
+    hasSavedState,
+    clearSavedState,
+    resetForm
+  } = useFormPersistence({
+    formId,
+    initialData: defaultFormData,
+    autoSave: true,
+    autoSaveDelay: 1000,
+    onRestore: (restoredData) => {
+      console.log('📂 Customer form draft restored:', restoredData);
+    }
   });
 
   // Helper: try to extract useful messages from backend validation response
@@ -93,53 +117,11 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
     }
   };
 
-  // Update form data when initialData changes (for editing)
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        // Step 1
-        customerType: initialData?.customerType || "",
-        name: initialData?.fullName || initialData?.name || "",  // Changed from fullName to name
-        email: initialData?.email || "",
-        phone: initialData?.phone || "",
-        companyName: initialData?.companyName || "",
-        website: initialData?.website || "",
-
-        // Step 2
-        billingAddress: initialData?.billingAddress || "",
-        billingAddressLine1: initialData?.billingAddressLine1 || "",
-        billingAddressLine2: initialData?.billingAddressLine2 || "",
-        billingCity: initialData?.billingCity || "",
-        billingState: initialData?.billingState || "",
-        billingZip: initialData?.billingZip || "",
-        billingCountry: initialData?.billingCountry || "",
-        shippingAddress: initialData?.shippingAddress || "",
-        shippingAddressLine1: initialData?.shippingAddressLine1 || "",
-        shippingAddressLine2: initialData?.shippingAddressLine2 || "",
-        shippingCity: initialData?.shippingCity || "",
-        shippingState: initialData?.shippingState || "",
-        shippingZip: initialData?.shippingZip || "",
-        shippingCountry: initialData?.shippingCountry || "",
-
-        // Step 3
-        pan: initialData?.pan || "",
-        documents: initialData?.documents || [],
-        gstRegistered: initialData?.gstRegistered || "",
-        gstNumber: initialData?.gstNumber || "",
-        supplyPlace: initialData?.supplyPlace || "",
-        currency: initialData?.currency || "INR",
-        paymentTerms: initialData?.paymentTerms || "",
-
-        // Step 4
-        logo: null,
-        notes: initialData?.notes || "",
-        tags: initialData?.tags || "",
-
-        // Keep original ID for updates
-        id: initialData?.id,
-      });
-    }
-  }, [initialData]);
+  // Handle cancel with draft cleanup
+  const handleCancel = () => {
+    clearSavedState(); // Clear the draft when user cancels
+    onCancel();
+  };
 
   const nextStep = async () => {
     if (step === 4) {
@@ -230,6 +212,9 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
 
         console.log(`✅ Customer ${isEditing ? 'updated' : 'added'} successfully`);
 
+        // Clear draft data on successful save
+        clearSavedState();
+
         // dispatch global event so lists can refresh (no UI change)
         const eventName = isEditing ? "customer:updated" : "customer:added";
         window.dispatchEvent(new CustomEvent(eventName, { detail: res }));
@@ -287,6 +272,15 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
 
   return (
     <div className="p-8">
+      {/* Draft indicator */}
+      {hasSavedState && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-700">
+            💾 Draft saved automatically. Your changes will be preserved if you navigate away.
+          </p>
+        </div>
+      )}
+      
       <StepIndicator currentStep={step} steps={steps} />
 
       <div className="mt-6">
@@ -306,7 +300,7 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
 
       <div className="flex justify-between items-center mt-6">
         <button
-          onClick={onCancel}
+          onClick={handleCancel}
           className="text-gray-500 hover:text-gray-700 text-sm"
         >
           Cancel

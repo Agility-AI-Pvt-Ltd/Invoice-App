@@ -8,9 +8,7 @@ import Step3Form from "./Step3Form";
 import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import api from "@/lib/api";
-
-
-
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
@@ -260,8 +258,29 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     return out as InvoiceModel;
   };
 
-  // use initialData if provided (edit mode) otherwise default
-  const [invoice, setInvoice] = useState<InvoiceModel>(mergeWithDefaults(initialData));
+  // Generate unique form ID for draft persistence
+  const formId = `invoice-form-${initialData?.id || initialData?._id ? `edit-${initialData.id || initialData._id}` : 'new'}`;
+
+  // 🔹 Use form persistence hook for draft functionality
+  const {
+    formData: invoice,
+    setFormData: setInvoice,
+    updateField,
+    updateNestedField,
+    isDirty,
+    hasSavedState,
+    clearSavedState,
+    resetForm
+  } = useFormPersistence({
+    formId,
+    initialData: mergeWithDefaults(initialData),
+    autoSave: true,
+    autoSaveDelay: 1000,
+    onRestore: (restoredData) => {
+      console.log('📂 Invoice form draft restored:', restoredData);
+    }
+  });
+
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
@@ -272,15 +291,11 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   type FieldErrors = Record<string, string>;
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  // If parent provides initialData later (e.g. via event) update local state
-  useEffect(() => {
-    if (initialData) {
-      const merged = mergeWithDefaults(initialData);
-      setInvoice(merged);
-      setStep(1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData]);
+  // Handle cancel with draft cleanup
+  const handleCancel = () => {
+    clearSavedState(); // Clear the draft when user cancels
+    onCancel();
+  };
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
@@ -685,6 +700,9 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // Show success alert
       alert("Invoice saved successfully in the database!");
 
+      // Clear draft data on successful save
+      clearSavedState();
+
       // close form
       onCancel();
     } catch (err: any) {
@@ -751,6 +769,15 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       } as any}
     >
       <div className="w-full px-2 sm:px-6 lg:px-8 py-6">
+        {/* Draft indicator */}
+        {hasSavedState && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-700">
+              💾 Draft saved automatically. Your changes will be preserved if you navigate away.
+            </p>
+          </div>
+        )}
+        
         <StepIndicator currentStep={step} steps={steps} />
 
         <div className="mt-6">
@@ -762,7 +789,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
 
         <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-6 gap-4">
           <button
-            onClick={onCancel}
+            onClick={handleCancel}
             className="text-gray-500 hover:text-gray-700 text-sm w-full sm:w-auto"
           >
             Cancel

@@ -26,3 +26,4 @@ dist-ssr
 
 .env
 package-lock.json
+DRAFT_FUNCTIONALITY_TEST.md
