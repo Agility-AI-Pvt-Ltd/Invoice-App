@@ -18,6 +18,7 @@ import autoTable from "jspdf-autotable";
 import { useProfile } from "@/contexts/ProfileContext";
 import { searchCustomers, searchInventory } from "@/services/api/lookup";
 import { getApiBaseUrl } from "@/lib/api-config";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const API_BASE = getApiBaseUrl();
 
@@ -62,7 +63,11 @@ interface FormData {
 }
 
 export default function CreditNoteForm({ onClose, onSuccess, initialData }: CreditNoteFormProps) {
-  const [formData, setFormData] = useState<FormData>({
+  // Generate unique form ID for draft persistence
+  const formId = `credit-note-form-${initialData?.id ? `edit-${initialData.id}` : 'new'}`;
+
+  // Default form data structure
+  const defaultFormData: FormData = {
     creditNoteNumber: "",
     creditNoteDate: new Date().toISOString().split('T')[0],
     againstInvoiceNumber: "",
@@ -93,12 +98,40 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     applyToNextInvoice: false,
     refund: false,
     remark: "",
+  };
+
+  // 🔹 Use form persistence hook for draft functionality
+  const {
+    formData,
+    setFormData,
+    hasSavedState,
+    clearSavedState
+  } = useFormPersistence({
+    formId,
+    initialData: defaultFormData,
+    autoSave: true,
+    autoSaveDelay: 1000,
+    onRestore: (restoredData) => {
+      console.log('📂 Credit note form draft restored:', restoredData);
+    }
   });
 
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const { toast } = useToast();
   const { loading: profileLoading } = useProfile();
+
+  // Handle cancel with draft cleanup
+  const handleClose = () => {
+    clearSavedState(); // Clear the draft when user cancels
+    onClose();
+  };
+
+  // Handle success with draft cleanup
+  const handleSuccess = () => {
+    clearSavedState(); // Clear the draft when form is successfully saved
+    onSuccess();
+  };
 
   // Customer search state
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
@@ -569,8 +602,8 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
         description: isUpdate ? "Credit note updated successfully!" : "Credit note created successfully!",
       });
 
-      onSuccess();
-      onClose();
+      handleSuccess();
+      handleClose();
     } catch (error) {
       console.error("Error saving credit note:", error);
       toast({
@@ -595,6 +628,15 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Draft indicator */}
+      {hasSavedState && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-700">
+            💾 Draft saved automatically. Your changes will be preserved if you navigate away.
+          </p>
+        </div>
+      )}
+      
       {/* Credit Note Details */}
       <div className="bg-white rounded-lg p-6">
         <div className="flex items-center justify-between mb-8 bg-[#e8e5f5] w-full rounded-[8px] py-2 px-4">
@@ -1044,7 +1086,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
 
       {/* Footer Buttons */}
       <div className="flex justify-between pt-6">
-        <Button type="button" onClick={onClose} className="bg-white text-[#654BCD] hover:text-white hover:bg-gradient-to-b hover:from-[#B5A3FF] via-[#785FDA] hover:to-[#9F91D8] cursor-pointer">
+        <Button type="button" onClick={handleClose} className="bg-white text-[#654BCD] hover:text-white hover:bg-gradient-to-b hover:from-[#B5A3FF] via-[#785FDA] hover:to-[#9F91D8] cursor-pointer">
           Back
         </Button>
         <div className="flex gap-2">

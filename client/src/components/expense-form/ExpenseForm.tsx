@@ -9,6 +9,7 @@ import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie"; // ✅ use js-cookie like InvoiceForm
 import { getApiBaseUrl } from "@/lib/api-config";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 type Props = {
   onCancel: () => void;
@@ -77,13 +78,33 @@ const API_BASE = getApiBaseUrl();
 export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated }: Props) {
   const [step, setStep] = useState(1);
 
-  const [formData, setFormData] = useState<ExpenseFormShape>({
+  // Generate unique form ID for draft persistence
+  const formId = `expense-form-${initialData?.id ? `edit-${initialData.id}` : 'new'}`;
+
+  // Default form data structure
+  const defaultFormData: ExpenseFormShape = {
     step1: {},
     step2: {},
     step3: {
       items: [{ id: Date.now(), name: "", hsn: "", qty: 0, price: 0, gst: 0, discount: 0 }],
     },
     step4: {},
+  };
+
+  // 🔹 Use form persistence hook for draft functionality
+  const {
+    formData,
+    setFormData,
+    hasSavedState,
+    clearSavedState
+  } = useFormPersistence({
+    formId,
+    initialData: defaultFormData,
+    autoSave: true,
+    autoSaveDelay: 1000,
+    onRestore: (restoredData) => {
+      console.log('📂 Expense form draft restored:', restoredData);
+    }
   });
 
   // NEW: key to force remount of child step components when initialData changes.
@@ -92,6 +113,12 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
   // NEW: ensure we only render child forms after mapped data is applied,
   // so uncontrolled inputs using defaultValue will get correct initial mount values.
   const [initialized, setInitialized] = useState<boolean>(false);
+
+  // Handle cancel with draft cleanup
+  const handleCancel = () => {
+    clearSavedState(); // Clear the draft when user cancels
+    onCancel();
+  };
 
   // Errors: per-step map of fieldPath -> message
   const [errors, setErrors] = useState<{
@@ -418,6 +445,7 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
             safeDispatch("expense:updated", updated);
           }
 
+          clearSavedState(); // Clear draft on successful save
           onCancel();
           alert("✅ Expense updated successfully!");
         } else {
@@ -440,6 +468,7 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
             safeDispatch("expense:created", created);
           }
 
+          clearSavedState(); // Clear draft on successful save
           onCancel();
           alert("✅ Expense created successfully!");
         } else {
@@ -487,6 +516,15 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
 
   return (
     <div className="w-full px-2 sm:px-6 lg:px-8 py-6">
+      {/* Draft indicator */}
+      {hasSavedState && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-700">
+            💾 Draft saved automatically. Your changes will be preserved if you navigate away.
+          </p>
+        </div>
+      )}
+      
       <StepIndicator currentStep={step} steps={steps} />
 
       <div className="mt-6">
@@ -532,7 +570,7 @@ export default function ExpenseForm({ onCancel, initialData, onSaved, onCreated 
 
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-6 gap-4">
         <button
-          onClick={onCancel}
+          onClick={handleCancel}
           className="text-gray-500 hover:text-gray-700 text-sm w-full sm:w-auto"
         >
           Cancel

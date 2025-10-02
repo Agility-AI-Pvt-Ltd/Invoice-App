@@ -9,6 +9,7 @@ import Step3Form from "./Step3Form";
 import Step4Form from "./Step4Form";
 import { BanknoteX, CurlyBraces, LocationEdit, Pin } from "lucide-react";
 import api from "@/lib/api"; // <-- keep this, ensure client/src/lib/api.ts exists
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 type Props = {
   onCancel: () => void;
@@ -40,16 +41,41 @@ const steps = [
 export default function SalesForm({ onCancel }: Props) {
   const [step, setStep] = useState(1);
 
-  // Shared form data across all steps
-  const [formData, setFormData] = useState({
+  // Generate unique form ID for draft persistence
+  const formId = 'sales-form-new';
+
+  // Default form data structure
+  const defaultFormData = {
     step1: {} as any,
     step2: {} as any,
     step3: {} as any,
     step4: {} as any,
+  };
+
+  // 🔹 Use form persistence hook for draft functionality
+  const {
+    formData,
+    setFormData,
+    hasSavedState,
+    clearSavedState
+  } = useFormPersistence({
+    formId,
+    initialData: defaultFormData,
+    autoSave: true,
+    autoSaveDelay: 1000,
+    onRestore: (restoredData) => {
+      console.log('📂 Sales form draft restored:', restoredData);
+    }
   });
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+
+  // Handle cancel with draft cleanup
+  const handleCancel = () => {
+    clearSavedState(); // Clear the draft when user cancels
+    onCancel();
+  };
 
   // helper to update partial data for a step
   const updateStepData = (key: StepKey, partial: any) => {
@@ -155,6 +181,8 @@ export default function SalesForm({ onCancel }: Props) {
     try {
       const payload = assembleInvoiceFromSteps({ ...formData, step4: { ...(formData.step4 || {}), status: "draft" } });
       await createSales(payload);
+      // Clear draft on successful save
+      clearSavedState();
       // close modal/form
       onCancel();
     } catch (e) {
@@ -167,6 +195,8 @@ export default function SalesForm({ onCancel }: Props) {
     try {
       const payload = assembleInvoiceFromSteps({ ...formData, step4: { ...(formData.step4 || {}), status: "sent" } });
       await createSales(payload);
+      // Clear draft on successful save
+      clearSavedState();
       onCancel();
     } catch (e) {
       console.error(e);
@@ -175,6 +205,15 @@ export default function SalesForm({ onCancel }: Props) {
 
   return (
     <div className="w-full px-2 sm:px-6 lg:px-8 py-6">
+      {/* Draft indicator */}
+      {hasSavedState && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-700">
+            💾 Draft saved automatically. Your changes will be preserved if you navigate away.
+          </p>
+        </div>
+      )}
+      
       <StepIndicator currentStep={step} steps={steps} />
 
       <div className="mt-6">
@@ -189,7 +228,7 @@ export default function SalesForm({ onCancel }: Props) {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-6 gap-4">
-        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm w-full sm:w-auto">
+        <button onClick={handleCancel} className="text-gray-500 hover:text-gray-700 text-sm w-full sm:w-auto">
           Cancel
         </button>
 
