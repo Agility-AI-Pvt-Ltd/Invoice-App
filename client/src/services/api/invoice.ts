@@ -63,7 +63,29 @@ export const getInvoice = async (invoiceId: string): Promise<InvoiceModel> => {
     // Handle different response structures
     const invoice = response.data.data || response.data;
     console.log('✅ Invoice data received:', invoice);
-    console.log('📋 Invoice billTo:', invoice.billTo);
+    console.log('📋 Flat client fields from backend:');
+    console.log('  - clientName:', invoice.clientName);
+    console.log('  - clientEmail:', invoice.clientEmail);
+    console.log('  - clientPhone:', invoice.clientPhone);
+    console.log('  - clientAddress:', invoice.clientAddress);
+    console.log('  - clientCity:', invoice.clientCity);
+    console.log('  - clientState:', invoice.clientState);
+    console.log('  - clientCountry:', invoice.clientCountry);
+    console.log('  - clientGst:', invoice.clientGst);
+    console.log('  - clientPan:', invoice.clientPan);
+    console.log('📋 Nested billTo object:', invoice.billTo);
+    if (invoice.billTo) {
+      console.log('  - billTo.companyName:', invoice.billTo.companyName);
+      console.log('  - billTo.name:', invoice.billTo.name);
+      console.log('  - billTo.email:', invoice.billTo.email);
+      console.log('  - billTo.phone:', invoice.billTo.phone);
+      console.log('  - billTo.address:', invoice.billTo.address);
+      console.log('  - billTo.city:', invoice.billTo.city);
+      console.log('  - billTo.state:', invoice.billTo.state);
+      console.log('  - billTo.country:', invoice.billTo.country);
+      console.log('  - billTo.gstNumber:', invoice.billTo.gstNumber);
+      console.log('  - billTo.panNumber:', invoice.billTo.panNumber);
+    }
     console.log('📦 Invoice items:', invoice.items);
     
     return invoice as InvoiceModel;

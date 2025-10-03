@@ -2746,7 +2746,8 @@ export default function Receipts() {
       }
 
       const response = await api.get(endpoint);
-      const detailedData = response.data;
+      // ⚠️ Extract actual data from response wrapper {success: true, data: {...}}
+      const detailedData = response.data.data || response.data;
       console.log(`Fetched detailed data for ${activeTab}:`, detailedData); // Debug log
 
       if (activeTab === "invoices") {

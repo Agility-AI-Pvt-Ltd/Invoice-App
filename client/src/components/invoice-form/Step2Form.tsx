@@ -343,56 +343,46 @@ export default function Step2Form() {
   }, [customerSearchTerm, performCustomerSearch]);
 
   // Handle customer selection and autofill
-  const handleCustomerSelect = (customer: EnhancedCustomer) => {
+  // ⚠️ Backend returns: city, state, zipCode, address, billingAddress, shippingAddress
+  const handleCustomerSelect = (customer: any) => {
     if (!ctx) return;
 
-    // Build billing address from components
-    const billingAddress = [
-      customer.billingAddressLine1,
-      customer.billingAddressLine2,
-      customer.billingCity,
-      customer.billingState,
-      customer.billingZip,
-      customer.billingCountry
-    ].filter(Boolean).join(", ");
+    console.log('🔍 Customer selected for auto-fill:', customer);
 
-    // Build shipping address from components
-    const shippingAddress = [
-      customer.shippingAddressLine1,
-      customer.shippingAddressLine2,
-      customer.shippingCity,
-      customer.shippingState,
-      customer.shippingZip,
-      customer.shippingCountry
-    ].filter(Boolean).join(", ");
+    // ⚠️ Backend provides direct fields: city, state, zipCode (not billingCity, billingState, billingZip)
+    const city = customer.city || customer.billingCity || "";
+    const state = customer.state || customer.billingState || "";
+    const zipCode = customer.zipCode || customer.zip || customer.billingZip || "";
+    const country = customer.country || customer.billingCountry || "India";
+
+    // Use billingAddress if provided, otherwise use address
+    const addressLine = customer.billingAddress || customer.address || customer.billingAddressLine1 || "";
 
     ctx.setInvoice((prev: any) => ({
       ...prev,
       billTo: {
         ...(prev.billTo || {}),
-        name: customer.fullName || customer.name || "",
-        companyName: customer.companyName || "",
+        name: customer.name || customer.fullName || "",
+        companyName: customer.company || customer.companyName || "",
         email: customer.email || "",
         phone: customer.phone || "",
-        address: billingAddress || customer.billingAddress || "",
-        shippingAddress: shippingAddress || customer.shippingAddress || "",
-        city: customer.billingCity || "",
-        state: customer.billingState || "",
-        zip: customer.billingZip || "",
-        country: customer.billingCountry || "India",
-        gst: customer.gstNumber || "",
-        pan: customer.pan || "",
-        gstRegistered: customer.gstRegistered || "",
-        supplyPlace: customer.supplyPlace || "",
-        currency: customer.currency || "INR",
-        paymentTerms: customer.paymentTerms || "",
-        website: customer.website || "",
-        customerType: customer.customerType || "",
+        address: addressLine,
+        city: city, // ⚠️ Backend uses city (not billingCity)
+        state: state, // ⚠️ Backend uses state (not billingState)
+        zip: zipCode, // ⚠️ Backend uses zipCode (not billingZip)
+        zipCode: zipCode,
+        country: country,
+        gst: customer.gstNumber || customer.gst || "",
+        gstNumber: customer.gstNumber || customer.gst || "",
+        pan: customer.panNumber || customer.pan || "",
+        panNumber: customer.panNumber || customer.pan || "",
       },
     }));
 
+    console.log('✅ Invoice billTo updated with customer data');
+
     // Clear search and suggestions
-    setCustomerSearchTerm(customer.fullName || customer.name || "");
+    setCustomerSearchTerm(customer.name || customer.fullName || "");
     setCustomerSuggestions([]);
     setShowSuggestions(false);
   };
@@ -436,18 +426,25 @@ export default function Step2Form() {
     const p: any = (profile as any) || null;
     const data = (p && (p.data || p)) || null;
     if (!data) return;
+    
+    console.log('🔄 Auto-filling seller details from profile:', data);
+    
     ctx.setInvoice((prev: any) => ({
       ...prev,
       billFrom: {
         ...(prev.billFrom || {}),
-        businessName: prev.billFrom?.businessName || data.company || data.name || "",
+        businessName: prev.billFrom?.businessName || data.businessName || data.company || data.name || "",
         address: prev.billFrom?.address || data.address || "",
-        state: prev.billFrom?.state || (data.state ?? ""),
+        city: prev.billFrom?.city || data.city || "", // ⚠️ NEW - Auto-fill city
+        state: prev.billFrom?.state || data.state || "",
+        country: prev.billFrom?.country || data.country || "India", // ⚠️ NEW - Auto-fill country
         email: prev.billFrom?.email || data.email || "",
         phone: prev.billFrom?.phone || data.phone || "",
-        gst: prev.billFrom?.gst || data.gstNumber || "",
+        gst: prev.billFrom?.gst || data.gst || data.gstNumber || "",
       },
     }));
+    
+    console.log('✅ Seller details auto-filled');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
@@ -500,6 +497,22 @@ export default function Step2Form() {
             )}
           </div>
 
+          {/* Business City */}
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="businessCity">City</Label>
+            <Input
+              id="businessCity"
+              placeholder="City"
+              className="h-11 px-3 text-sm"
+              value={invoice.billFrom?.city ?? ""}
+              onChange={(e) => setBillFromField("city", e.target.value)}
+              aria-invalid={!!fieldErrors["billFrom.city"]}
+            />
+            {fieldErrors["billFrom.city"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.city"]}</p>
+            )}
+          </div>
+
           {/* State */}
           <div className="relative flex flex-col space-y-1">
             <Label htmlFor="state">
@@ -520,6 +533,22 @@ export default function Step2Form() {
             />
             {fieldErrors["billFrom.state"] && (
               <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.state"]}</p>
+            )}
+          </div>
+
+          {/* Business Country */}
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="businessCountry">Country</Label>
+            <Input
+              id="businessCountry"
+              placeholder="Country"
+              className="h-11 px-3 text-sm"
+              value={invoice.billFrom?.country ?? "India"}
+              onChange={(e) => setBillFromField("country", e.target.value)}
+              aria-invalid={!!fieldErrors["billFrom.country"]}
+            />
+            {fieldErrors["billFrom.country"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billFrom.country"]}</p>
             )}
           </div>
 
@@ -664,6 +693,83 @@ export default function Step2Form() {
             />
             {fieldErrors["billTo.address"] && (
               <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.address"]}</p>
+            )}
+          </div>
+
+          {/* City */}
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="customerCity">City</Label>
+            <Input
+              id="customerCity"
+              placeholder="City"
+              className="h-11 px-3 text-sm"
+              value={invoice.billTo?.city ?? ""}
+              onChange={(e) => setBillToField("city", e.target.value)}
+              aria-invalid={!!fieldErrors["billTo.city"]}
+            />
+            {fieldErrors["billTo.city"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.city"]}</p>
+            )}
+          </div>
+
+          {/* State */}
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="customerState">State</Label>
+            <Input
+              id="customerState"
+              placeholder="State"
+              className="h-11 px-3 text-sm"
+              value={invoice.billTo?.state ?? ""}
+              onChange={(e) => setBillToField("state", e.target.value)}
+              aria-invalid={!!fieldErrors["billTo.state"]}
+            />
+            {fieldErrors["billTo.state"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.state"]}</p>
+            )}
+          </div>
+
+          {/* Zip Code */}
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="customerZip">Zip Code</Label>
+            <Input
+              id="customerZip"
+              placeholder="Zip Code"
+              className="h-11 px-3 text-sm"
+              value={invoice.billTo?.zip ?? invoice.billTo?.zipCode ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Set both zip and zipCode for compatibility
+                if (!ctx) return;
+                ctx.setInvoice((prev: any) => ({
+                  ...prev,
+                  billTo: { 
+                    ...(prev.billTo || {}), 
+                    zip: value,
+                    zipCode: value
+                  },
+                }));
+                clearField("billTo.zip");
+              }}
+              aria-invalid={!!fieldErrors["billTo.zip"]}
+            />
+            {fieldErrors["billTo.zip"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.zip"]}</p>
+            )}
+          </div>
+
+          {/* Country */}
+          <div className="flex flex-col space-y-1">
+            <Label htmlFor="customerCountry">Country</Label>
+            <Input
+              id="customerCountry"
+              placeholder="Country"
+              className="h-11 px-3 text-sm"
+              value={invoice.billTo?.country ?? "India"}
+              onChange={(e) => setBillToField("country", e.target.value)}
+              aria-invalid={!!fieldErrors["billTo.country"]}
+            />
+            {fieldErrors["billTo.country"] && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors["billTo.country"]}</p>
             )}
           </div>
 

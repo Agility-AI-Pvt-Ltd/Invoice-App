@@ -7,6 +7,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Download, MoveLeft, MoveRight, Pencil, Trash2 } from "lucide-react";
+
 import MultiStepForm from "./add-customer";
 
 // 🔹 Added imports for dropdowns & menu (used for Filter and Export/Import)
@@ -599,66 +600,84 @@ export default function CustomerDashboard() {
     }
   };
 
+  // Convert backend state (MAHARASHTRA) to frontend format (maharashtra)
+  const normalizeState = (state: string | undefined): string => {
+    if (!state) return "";
+    // Backend sends uppercase like "MAHARASHTRA", frontend expects lowercase with dashes
+    return state.toLowerCase().replace(/\s+/g, "-");
+  };
+
   // Map customer API response to form data structure
+  // ⚠️ Backend returns: city, state, zipCode (not billingCity, billingState, billingZip)
   const mapCustomerToFormData = (customer: any) => {
     console.log("🔍 Mapping customer for edit:", customer);
-    console.log("🏠 Address fields in customer data:");
+    console.log("🏠 Backend address fields in customer data:");
     console.log("  - address:", customer.address);
+    console.log("  - city:", customer.city); // ⚠️ Backend uses city
+    console.log("  - state:", customer.state); // ⚠️ Backend uses state
+    console.log("  - zipCode:", customer.zipCode); // ⚠️ Backend uses zipCode
+    console.log("  - country:", customer.country);
     console.log("  - billingAddress:", customer.billingAddress);
-    console.log("  - billingAddressLine1:", customer.billingAddressLine1);
-    console.log("  - billingAddressLine2:", customer.billingAddressLine2);
-    console.log("  - billingCity:", customer.billingCity);
-    console.log("  - billingState:", customer.billingState);
-    console.log("  - billingZip:", customer.billingZip);
-    console.log("  - billingCountry:", customer.billingCountry);
+    console.log("  - shippingAddress:", customer.shippingAddress);
 
     const mappedData = {
-      // Step 1 - Basic Information (handle both nested and flat structures)
+      // Step 1 - Basic Information (4 fields from backend)
       customerType: customer.customerType || "",
-      name: customer.customer?.name || customer.name || customer.fullName || "",
-      email: customer.company?.email || customer.email || "",
+      name: customer.name || customer.fullName || "",
+      email: customer.email || "",
       phone: customer.phone || "",
-      companyName: customer.company?.name || customer.company || customer.companyName || "",
+      companyName: customer.company || customer.companyName || "",
       website: customer.website || "",
 
-      // Step 2 - Address Details (handle both nested and flat structures)
-      billingAddress: customer.address || customer.billingAddress || "",
-      billingAddressLine1: customer.billingAddressLine1 || customer.billingAddress || customer.address || "",
-      billingAddressLine2: customer.billingAddressLine2 || "",
-      billingCity: customer.billingCity || customer.city || "",
-      billingState: customer.billingState || customer.state || "",
-      billingZip: customer.billingZip || customer.zip || customer.zipCode || customer.pincode || "",
-      billingCountry: customer.billingCountry || customer.country || "India",
-      shippingAddress: customer.shippingAddress || "",
-      shippingAddressLine1: customer.shippingAddressLine1 || "",
-      shippingAddressLine2: customer.shippingAddressLine2 || "",
-      shippingCity: customer.shippingCity || "",
-      shippingState: customer.shippingState || "",
-      shippingZip: customer.shippingZip || "",
-      shippingCountry: customer.shippingCountry || "India",
+      // Step 2 - Address Details (8 fields from backend)
+      // ⚠️ Backend returns: address, city, state, zipCode, country, billingAddress, shippingAddress
+      billingAddress: customer.billingAddress || customer.address || "",
+      billingAddressLine1: customer.address || customer.billingAddress || "",
+      billingAddressLine2: "",
+      billingCity: customer.city || "", // ⚠️ Backend uses city (not billingCity)
+      billingState: normalizeState(customer.state), // ⚠️ Convert MAHARASHTRA to maharashtra
+      billingZip: customer.zipCode || customer.zip || "", // ⚠️ Backend uses zipCode
+      billingCountry: customer.country || "India",
+      
+      // Shipping address (parse if string)
+      shippingAddress: typeof customer.shippingAddress === 'string' 
+        ? customer.shippingAddress 
+        : "",
+      shippingAddressLine1: typeof customer.shippingAddress === 'string' 
+        ? customer.shippingAddress 
+        : "",
+      shippingAddressLine2: "",
+      shippingCity: "",
+      shippingState: "",
+      shippingZip: "",
+      shippingCountry: "India",
 
-      // Step 3 - Tax and Other Details
+      // Step 3 - Tax and Payment (5 fields from backend)
       pan: customer.panNumber || customer.pan || "",
-      gstRegistered: customer.gstRegistered || "",
+      gstRegistered: customer.gstNumber ? "yes" : "",
       gstNumber: customer.gstNumber || "",
-      supplyPlace: customer.supplyPlace || "",
+      supplyPlace: customer.state || "",
       currency: customer.currency || "INR",
       paymentTerms: customer.paymentTerms || "",
+      customPaymentDays: customer.customPaymentDays || "",
 
-      // Step 4 - Additional Info
-      logo: null,
+      // Step 4 - Additional Info (2 fields)
+      contactPerson: customer.contactPerson || "",
       notes: customer.notes || "",
       tags: customer.tags || "",
+      logo: null,
 
       // Keep original ID for updates
       id: customer.id || customer._id,
     };
 
-    console.log("🔧 Mapped form data for editing:");
+    console.log("✅ Mapped form data for editing (ALL backend fields):");
     console.log("  - billingAddress:", mappedData.billingAddress);
-    console.log("  - billingAddressLine1:", mappedData.billingAddressLine1);
     console.log("  - billingCity:", mappedData.billingCity);
-    console.log("  - billingState:", mappedData.billingState);
+    console.log("  - billingState (converted):", customer.state, "→", mappedData.billingState);
+    console.log("  - billingZip:", mappedData.billingZip);
+    console.log("  - billingCountry:", mappedData.billingCountry);
+    console.log("  - Full mapped data:", mappedData);
 
     return mappedData;
   };

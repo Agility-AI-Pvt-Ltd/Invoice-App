@@ -12,11 +12,13 @@ export interface User {
   email: string;
   businessName: string;
   address: string;
+  city?: string;
+  state: string;
+  country?: string;
   gst?: string;
   pan?: string;
   phone?: string;
   website?: string;
-  state: string;
   isGstRegistered?: boolean;
   businessLogo?: string;
   profilePicture?: string;
@@ -33,13 +35,18 @@ export interface UserProfile {
 
 export interface ProfileUpdate {
   name?: string;
-  company?: string;
+  businessName?: string; // Company name
+  company?: string; // Alias for businessName
   address?: string;
+  city?: string; // City field
+  state?: string;
+  country?: string; // Country field
   gst?: string;
+  gstNumber?: string; // Backend uses gstNumber
   pan?: string;
+  panNumber?: string; // Backend uses panNumber
   phone?: string;
   website?: string;
-  state?: string;
   isGstRegistered?: boolean;
   businessLogo?: string;
 }
@@ -93,11 +100,13 @@ export const getUserProfile = async (): Promise<UserProfile> => {
       email: raw?.email || "",
       businessName: raw?.businessName || raw?.company || "",
       address: raw?.address || "",
+      city: raw?.city || "",
+      state: raw?.state || "",
+      country: raw?.country || "India",
       gst: raw?.gst || raw?.gstNumber || "",
       pan: raw?.pan || raw?.panNumber || "",
       phone: raw?.phone || raw?.PhoneNumber || "",
       website: raw?.website || "",
-      state: raw?.state || "",
       isGstRegistered: !!(raw?.isGstRegistered),
       businessLogo: raw?.businessLogo || raw?.logoUrl || "",
       profilePicture: normalizeUrl(raw?.profilePicture || ""),
@@ -118,13 +127,17 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 
 /**
  * Update user profile
+ * Backend requires: PUT /api/profile (not POST, not /api/profile/update)
  */
 export const updateUserProfile = async (updates: ProfileUpdate): Promise<{ success: boolean }> => {
   try {
-    await api.post(SETTINGS_API.UPDATE_PROFILE, updates);
+    console.log('📤 Updating profile with data:', updates);
+    console.log('🔧 Using PUT method to:', SETTINGS_API.PROFILE);
+    await api.put(SETTINGS_API.PROFILE, updates); // ✅ Changed from POST to PUT, using PROFILE instead of UPDATE_PROFILE
+    console.log('✅ Profile updated successfully');
     return { success: true };
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    console.error('❌ Error updating user profile:', error);
     throw error;
   }
 };

@@ -3,19 +3,63 @@ import type { ReactNode } from "react";
 import { getProfile } from "@/services/api/auth";
 import Cookies from "js-cookie";
 
+// Complete Profile interface matching backend /api/profile response (30+ fields)
 interface Profile {
+    // User Identity (4 fields)
     _id: string;
     name: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
-    company: string;
+    
+    // Business Info (7 fields)
+    businessName?: string;
     address: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
     phone: string;
+    PhoneNumber?: string; // Backend also returns this
     website?: string;
-    panNumber: string;
+    
+    // Tax Registration (3 fields)
+    gst?: string;
+    pan?: string;
+    panNumber?: string; // Legacy field
+    gstNumber?: string; // Legacy field
     isGstRegistered: boolean;
-    gstNumber?: string;
+    
+    // Company Registration (2 fields)
+    companyRegNumber?: string;
+    cinNumber?: string;
+    
+    // Images (3 fields)
     businessLogo?: string;
+    logoUrl?: string;
     profilePicture?: string;
+    
+    // Bank Details (5 fields)
+    bankName?: string;
+    bankAccountNumber?: string;
+    bankIfscCode?: string;
+    bankBranch?: string;
+    upiId?: string;
+    
+    // Invoice Settings (5 fields)
+    invoicePrefix?: string;
+    invoiceStartNumber?: number;
+    termsAndConditions?: string;
+    defaultCurrency?: string;
+    defaultPaymentTerms?: string;
+    
+    // App Settings (3 fields)
+    plan?: string;
+    dateFormat?: string;
+    currency?: string;
+    
+    // Legacy support
+    company?: string; // Alias for businessName
 }
 
 interface ProfileContextType {

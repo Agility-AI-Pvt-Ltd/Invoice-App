@@ -50,20 +50,26 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     billFrom: {
       businessName: "",
       address: "",
+      city: "",
       state: "",
+      country: "India",
       email: "",
       phone: "",
       gst: "",
     },
     billTo: {
       name: "",
+      companyName: "",
       email: "",
-      address: "",
-      state: "",
-      gst: "",
-      gstin: "",
-      pan: "",
       phone: "",
+      address: "",
+      city: "",
+      state: "",
+      country: "India",
+      gst: "",
+      gstNumber: "",
+      pan: "",
+      panNumber: "",
     },
     shipTo: {},
     items: [
@@ -122,6 +128,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
      and returns a complete InvoiceModel-shaped object.
   */
   const mergeWithDefaults = (data?: Partial<InvoiceModel>) => {
+    console.log('🔧 mergeWithDefaults called with data:', data);
     const safe = data ? { ...data } : {};
     const out: any = { ...defaultInvoice };
 
@@ -164,11 +171,38 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     if ((safe as any).sellerGst) out.billFrom.gst = (safe as any).sellerGst;
 
     // billTo (customer) deep merge
+    // ⚠️ Backend returns nested billTo object with: companyName, email, phone, address, city, state, country, gstNumber, panNumber
     out.billTo = {
       ...defaultInvoice.billTo,
       ...(safe as any).billTo,
     };
-    // accept flattened customer fields
+    
+    // Accept flattened client fields from backend (clientName, clientEmail, etc.)
+    if ((safe as any).clientName) out.billTo.name = (safe as any).clientName;
+    if ((safe as any).clientEmail) out.billTo.email = (safe as any).clientEmail;
+    if ((safe as any).clientPhone) out.billTo.phone = (safe as any).clientPhone;
+    if ((safe as any).clientAddress) out.billTo.address = (safe as any).clientAddress;
+    if ((safe as any).clientCity) out.billTo.city = (safe as any).clientCity; // ⚠️ New field
+    if ((safe as any).clientState) out.billTo.state = (safe as any).clientState; // ⚠️ New field
+    if ((safe as any).clientCountry) out.billTo.country = (safe as any).clientCountry; // ⚠️ New field
+    if ((safe as any).clientGst) out.billTo.gst = (safe as any).clientGst;
+    if ((safe as any).clientPan) out.billTo.pan = (safe as any).clientPan;
+    
+    // Also handle nested billTo from backend
+    if ((safe as any).billTo) {
+      if ((safe as any).billTo.companyName) out.billTo.companyName = (safe as any).billTo.companyName;
+      if ((safe as any).billTo.name) out.billTo.name = (safe as any).billTo.name;
+      if ((safe as any).billTo.email) out.billTo.email = (safe as any).billTo.email;
+      if ((safe as any).billTo.phone) out.billTo.phone = (safe as any).billTo.phone;
+      if ((safe as any).billTo.address) out.billTo.address = (safe as any).billTo.address;
+      if ((safe as any).billTo.city) out.billTo.city = (safe as any).billTo.city; // ⚠️ New field
+      if ((safe as any).billTo.state) out.billTo.state = (safe as any).billTo.state; // ⚠️ New field
+      if ((safe as any).billTo.country) out.billTo.country = (safe as any).billTo.country; // ⚠️ New field
+      if ((safe as any).billTo.gstNumber) out.billTo.gst = (safe as any).billTo.gstNumber;
+      if ((safe as any).billTo.panNumber) out.billTo.pan = (safe as any).billTo.panNumber;
+    }
+    
+    // Legacy support
     if ((safe as any).customerName) out.billTo.name = (safe as any).customerName;
     if ((safe as any).customerEmail) out.billTo.email = (safe as any).customerEmail;
     if ((safe as any).customerPhone) out.billTo.phone = (safe as any).customerPhone;
@@ -184,19 +218,26 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     };
 
     // items: if provided, normalize each item to required shape; otherwise fallback to default item
+    // ⚠️ Backend returns items array with: id, description, hsn, sac, quantity, unitPrice, gstRate, discount, taxableAmount, igst, cgst, sgst, total
     if (Array.isArray((safe as any).items) && (safe as any).items.length > 0) {
       out.items = (safe as any).items.map((it: any) => {
         return {
+          id: it?.id,
+          inventoryItemId: it?.inventoryItemId ?? null, // ⚠️ NEW: Preserve inventory link from backend
           description: it?.description ?? it?.product ?? "",
           hsn: it?.hsn ?? "",
+          sac: it?.sac ?? "",
           quantity: it?.quantity !== undefined ? Number(it.quantity) : 1,
           unitPrice: it?.unitPrice !== undefined ? Number(it.unitPrice) : Number(it?.price ?? 0),
-          gst: it?.gst !== undefined ? Number(it.gst) : Number(it?.tax ?? 0),
+          gst: it?.gstRate !== undefined ? Number(it.gstRate) : Number(it?.gst ?? it?.tax ?? 0), // ⚠️ Backend uses gstRate
           discount: it?.discount !== undefined ? Number(it.discount) : 0,
-          amount:
-            it?.amount !== undefined
+          taxableAmount: it?.taxableAmount !== undefined ? Number(it.taxableAmount) : 0, // ⚠️ New field
+          igst: it?.igst !== undefined ? Number(it.igst) : 0, // ⚠️ New field
+          cgst: it?.cgst !== undefined ? Number(it.cgst) : 0, // ⚠️ New field
+          sgst: it?.sgst !== undefined ? Number(it.sgst) : 0, // ⚠️ New field
+          amount: it?.total !== undefined ? Number(it.total) : (it?.amount !== undefined
               ? Number(it.amount)
-              : +(((it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0))).toFixed(2),
+              : +(((it?.quantity || 1) * (it?.unitPrice ?? it?.price ?? 0) - (it?.discount || 0))).toFixed(2)),
         };
       });
     } else {
@@ -254,6 +295,18 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     out.cgst = Number(out.cgst) || computedTotals.cgst;
     out.sgst = Number(out.sgst) || computedTotals.sgst;
     out.igst = Number(out.igst) || computedTotals.igst;
+
+    console.log('✅ mergeWithDefaults result - billTo fields:');
+    console.log('  - billTo.name:', out.billTo?.name);
+    console.log('  - billTo.companyName:', out.billTo?.companyName);
+    console.log('  - billTo.email:', out.billTo?.email);
+    console.log('  - billTo.phone:', out.billTo?.phone);
+    console.log('  - billTo.address:', out.billTo?.address);
+    console.log('  - billTo.city:', out.billTo?.city);
+    console.log('  - billTo.state:', out.billTo?.state);
+    console.log('  - billTo.country:', out.billTo?.country);
+    console.log('  - billTo.gst:', out.billTo?.gst);
+    console.log('  - billTo.pan:', out.billTo?.pan);
 
     return out as InvoiceModel;
   };
@@ -322,32 +375,41 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     delete cleaned.user;
     delete cleaned.__v; // if Mongo added it
 
-    // Ensure billFrom exists
+    // Ensure billFrom exists (seller/business details)
     cleaned.billFrom = {
       businessName: payload.billFrom?.businessName ?? "",
       address: payload.billFrom?.address ?? "",
+      city: payload.billFrom?.city ?? "",
       state:
         payload.billFrom?.state !== undefined && payload.billFrom?.state !== null
           ? String(payload.billFrom.state)
           : "NA",
+      country: payload.billFrom?.country ?? "India",
       email: payload.billFrom?.email ?? "",
       phone: payload.billFrom?.phone ?? "",
       gst: payload.billFrom?.gst ?? "",
     };
 
     // Ensure billTo exists and contains required keys (provide safe defaults)
+    // ⚠️ Backend requires: name (person), companyName (company), city, state, country, zipCode
     cleaned.billTo = {
       name: payload.billTo?.name ?? "",
+      companyName: payload.billTo?.companyName ?? "",
       email: payload.billTo?.email ?? "",
+      phone: payload.billTo?.phone ?? "",
       address: payload.billTo?.address ?? "",
+      city: payload.billTo?.city ?? "", // ⚠️ REQUIRED - send to backend
       state:
         payload.billTo?.state !== undefined && payload.billTo?.state !== null
           ? String(payload.billTo.state)
           : "NA",
-      gst: payload.billTo?.gst ?? "",
-      pan: payload.billTo?.pan ?? "",
-      phone: payload.billTo?.phone ?? "",
-      companyName: payload.billTo?.companyName ?? (payload.billTo?.name ?? ""),
+      zipCode: payload.billTo?.zipCode ?? payload.billTo?.zip ?? "", // ⚠️ Backend uses zipCode
+      country: payload.billTo?.country ?? "India", // ⚠️ REQUIRED - send to backend
+      gstNumber: payload.billTo?.gstNumber ?? payload.billTo?.gst ?? "",
+      panNumber: payload.billTo?.panNumber ?? payload.billTo?.pan ?? "",
+      // Legacy support for old field names
+      gst: payload.billTo?.gst ?? payload.billTo?.gstNumber ?? "",
+      pan: payload.billTo?.pan ?? payload.billTo?.panNumber ?? "",
     };
 
     // Ensure shipTo always exists with safe defaults (backend requires presence)
@@ -372,6 +434,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       const gst = Number(it.gst) || 0;
       const computedAmount = +(quantity * unitPrice - discount).toFixed(2);
       return {
+        inventoryItemId: it.inventoryItemId ?? null, // ⚠️ CRITICAL: Link to inventory for stock reduction
         description: it.description ?? "",
         hsn: it.hsn ?? "", // always string (not null)
         quantity,
@@ -694,7 +757,7 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       window.dispatchEvent(new CustomEvent("invoice:created", { detail: savedInvoice }));
 
       // Show success alert
-      alert("Invoice saved successfully in the database!");
+      alert("Invoice saved as draft successfully!");
 
       // Clear draft data on successful save
       clearSavedState();
@@ -703,6 +766,61 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       onCancel();
     } catch (err: any) {
       console.error("Save draft invoice error:", err);
+
+      // Show error alert
+      alert(`Failed to save draft: ${err.response?.data?.message || err.message || "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // New: Handle Save (status = "save")
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // ensure totals are current
+      const totals = computeTotals(invoice);
+
+      // merge totals into candidate for validation
+      const candidate: InvoiceModel = { ...invoice, ...totals };
+
+      // Build payload & sanitize
+      const payload = sanitizePayload({
+        ...candidate,
+        status: "save", // ⚠️ Status = "save" (backend needs to add this to enum)
+      } as any);
+
+      // Debug payload being sent
+      console.log("💾 Save Invoice Payload Debug:");
+      console.log("💾 Full payload:", JSON.stringify(payload, null, 2));
+
+      // choose PUT when editing (id exists), otherwise POST
+      const id = (invoice as any)._id || (invoice as any).id;
+      let res;
+      if (id) {
+        // Update existing invoice
+        res = await api.put(`/api/invoices/${id}`, payload);
+      } else {
+        // Create new invoice
+        res = await api.post(`/api/invoices`, payload);
+      }
+
+      // backend returns { message, invoice: {...} } or similar
+      const savedInvoice = (res?.data && (res.data.invoice ?? res.data)) || res.data;
+
+      // Notify the app that an invoice was created/updated
+      window.dispatchEvent(new CustomEvent("invoice:created", { detail: savedInvoice }));
+
+      // Show success alert
+      alert("Invoice saved successfully!");
+
+      // Clear draft data on successful save
+      clearSavedState();
+
+      // close form
+      onCancel();
+    } catch (err: any) {
+      console.error("Save invoice error:", err);
 
       // Show error alert
       alert(`Failed to save invoice: ${err.response?.data?.message || err.message || "Unknown error"}`);
@@ -814,6 +932,13 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
 
             {step === 4 && (
               <>
+                <button
+                  onClick={() => handleSave()}
+                  disabled={saving}
+                  className="w-full sm:w-auto px-6 py-2 bg-gradient-to-b from-green-500 to-green-700 text-white font-semibold rounded-md hover:opacity-90 transition duration-200"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
                 <button
                   onClick={() => handleSaveDraft()}
                   disabled={saving}

@@ -8,40 +8,51 @@ export interface Address {
   country?: string;
 }
 
+// Complete customer interface matching backend response (all 19 fields)
 export interface FullCustomer {
+  // Primary ID
   id: number;
   _id?: string;
+  
+  // Basic Info (4 fields)
   name: string;
   email: string;
   phone?: string;
   company?: string;
-  contactPerson?: string;
+  companyName?: string; // Alias for company
   
-  // Address fields
-  address?: string; // Legacy single address field
-  billingAddress?: Address | string;
-  shippingAddress?: Address | string;
+  // Address Fields (8 fields) - Backend uses zipCode, not zip
+  address?: string; // Single line address
   city?: string;
   state?: string;
-  zip?: string;
+  zipCode?: string; // ⚠️ Backend uses zipCode
+  zip?: string; // Legacy support
   country?: string;
+  billingAddress?: Address | string; // Full billing address
+  shippingAddress?: Address | string; // Full shipping address
   
-  // Tax & Legal
+  // Contact & Notes (2 fields)
+  contactPerson?: string;
+  notes?: string;
+  
+  // Tax & Legal (2 fields)
   gstNumber?: string;
   panNumber?: string;
-  customerType?: 'regular' | 'business' | 'wholesale' | 'retail';
   
-  // Payment & Currency
+  // Customer Settings (3 fields)
+  customerType?: 'B2B' | 'B2C' | 'regular' | 'business' | 'wholesale' | 'retail';
   currency?: string;
   paymentTerms?: 'DUE_ON_RECEIPT' | 'IMMEDIATE' | 'NET7' | 'NET15' | 'NET30' | 'NET45' | 'NET60' | 'NET90' | 'CUSTOM';
-  customPaymentDays?: number;
+  customPaymentDays?: number | null;
   
-  // Additional
-  notes?: string;
+  // User Reference
+  userId?: number;
+  
+  // Status & Balance (optional frontend fields)
   status?: 'active' | 'inactive';
   balance?: number;
   
-  // Metadata
+  // Metadata (2 fields)
   createdAt?: string;
   updatedAt?: string;
 }
@@ -65,4 +76,5 @@ export interface CustomerResponse {
     itemsPerPage: number;
   };
 }
+
 

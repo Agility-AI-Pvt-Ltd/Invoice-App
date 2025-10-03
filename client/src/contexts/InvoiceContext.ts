@@ -11,10 +11,16 @@ export type Party = {
   email?: string;
   phone?: string;
   address?: string;
+  city?: string;
   state?: string;
+  zip?: string;
+  zipCode?: string;
+  country?: string;
   gst?: string;
+  gstNumber?: string;
   gstin?: string;
   pan?: string;
+  panNumber?: string;
 };
 
 export type InvoiceItem = {
