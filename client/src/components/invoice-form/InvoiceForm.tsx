@@ -1,6 +1,6 @@
 // client/src/components/invoice-form/InvoiceForm.tsx
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "./Step1Form";
 import Step2Form from "./Step2Form";
@@ -265,12 +265,8 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
   const {
     formData: invoice,
     setFormData: setInvoice,
-    updateField,
-    updateNestedField,
-    isDirty,
     hasSavedState,
     clearSavedState,
-    resetForm
   } = useFormPersistence({
     formId,
     initialData: mergeWithDefaults(initialData),
