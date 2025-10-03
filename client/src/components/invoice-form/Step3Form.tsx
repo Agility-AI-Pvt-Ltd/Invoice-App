@@ -474,7 +474,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       current[field] = value;
     } else {
       // numeric fields: allow empty strings while typing, block single '-' etc.
-      let newValue = value;
+      let newValue: number | string = value;
       if (newValue === "-") {
         newValue = "";
       } else {
@@ -484,7 +484,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         }
         // if parsed NaN we preserve string (so user can type "0.")
       }
-      current[field] = newValue;
+      (current[field] as number | string) = newValue;
     }
 
     updatedItems[index] = current;
