@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import StepIndicator from "@/components/StepIndicator";
 import Step1Form from "@/components/customer-form/Step1Form";
 import Step2Form from "@/components/customer-form/Step2Form";
@@ -73,12 +73,8 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
   const {
     formData,
     setFormData,
-    updateField,
-    updateNestedField,
-    isDirty,
     hasSavedState,
-    clearSavedState,
-    resetForm
+    clearSavedState
   } = useFormPersistence({
     formId,
     initialData: defaultFormData,
