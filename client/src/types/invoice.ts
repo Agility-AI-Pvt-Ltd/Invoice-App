@@ -93,6 +93,9 @@ export interface InvoiceModel {
   billFrom?: Party;
   shipTo?: Party;
   
+  // NEW: Business/Seller information from backend (your company details)
+  businessFrom?: Party;
+  
   // Customer reference
   customerId?: number;
   customer?: FullCustomer;

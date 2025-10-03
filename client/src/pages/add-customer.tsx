@@ -74,7 +74,7 @@ export default function MultiStepForm({ onCancel, initialData }: Props) {
     formData,
     setFormData,
     hasSavedState,
-    clearSavedState
+    clearSavedState,
   } = useFormPersistence({
     formId,
     initialData: defaultFormData,

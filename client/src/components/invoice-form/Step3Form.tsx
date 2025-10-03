@@ -22,6 +22,7 @@ import type { InventoryItem } from "@/types/inventory";
 
 type Item = {
   id?: number | string;
+  inventoryItemId?: number | null; // ⚠️ NEW: Link to inventory for automatic stock reduction
   // use same field names as InvoiceModel validation expects:
   description: string;
   hsn: string;
@@ -374,7 +375,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
 
   // local fallback state (kept for compatibility if parent doesn't pass items)
   const [localItems, setLocalItems] = useState<Item[]>([
-    { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+    { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
   ]);
 
 
@@ -406,7 +407,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   useEffect(() => {
     if (!items || items.length === 0) {
       setItems([
-        { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+        { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
       ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -434,9 +435,13 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     const updated = [...items];
     const existing = { ...(updated[rowIndex] as Item) } as Item;
 
+    // Parse inventory ID (could be string or number)
+    const inventoryId = typeof inventory.id === 'string' ? parseInt(inventory.id) : inventory.id;
+
     // Map inventory fields to item fields
     updated[rowIndex] = {
       ...existing,
+      inventoryItemId: inventoryId, // ⚠️ CRITICAL: Link to inventory for automatic stock reduction
       description: inventory.productName,
       hsn: "", // HSN will need to be filled manually or from inventory
       unitPrice: inventory.unitPrice,
@@ -445,7 +450,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     } as Item;
 
     setItems(updated);
-    console.log(`✅ Row ${rowIndex} updated with inventory data`);
+    console.log(`✅ Row ${rowIndex} updated with inventory data (inventoryItemId: ${inventoryId}, stock: ${inventory.inStock})`);
   }, [items, setItems]);
 
   const handleRowSearchResults = useCallback((results: InventoryItem[], rowIndex: number) => {
@@ -530,7 +535,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   const addItem = () => {
     setItems([
       ...items,
-      { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+      { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
     ]);
   };
 
@@ -539,7 +544,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     const updated = items.filter((it) => it.id !== id);
     if (updated.length === 0) {
       setItems([
-        { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+        { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
       ]);
     } else {
       setItems(updated);

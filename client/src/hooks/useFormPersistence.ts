@@ -42,7 +42,17 @@ export function useFormPersistence<T extends Record<string, any>>(
   } = options;
 
   const [formData, setFormDataInternal] = useState<T>(() => {
-    // Try to restore from storage first
+    // ⚠️ If we have initialData with an ID, it means we're editing - use fresh data, NOT draft
+    const isEditing = initialData && (initialData.id || initialData._id);
+    
+    if (isEditing) {
+      console.log(`🔄 Edit mode detected - using fresh data, not draft for: ${formId}`);
+      // Clear any old draft for this form
+      clearFormState(formId);
+      return initialData;
+    }
+    
+    // For new forms, try to restore from storage
     const saved = loadFormState<T>(formId);
     if (saved) {
       console.log(`✅ Restored form state for: ${formId}`);
@@ -56,13 +66,14 @@ export function useFormPersistence<T extends Record<string, any>>(
   const [hasSavedState, setHasSavedState] = useState(() => hasFormState(formId));
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   const initialDataRef = useRef(initialData);
+  const hasInitialized = useRef(false);
 
   // Update initial data reference when it changes (edit mode)
+  // Only run once when component mounts to prevent infinite loops
   useEffect(() => {
-    if (initialData && JSON.stringify(initialData) !== JSON.stringify(initialDataRef.current)) {
+    if (!hasInitialized.current && initialData) {
+      hasInitialized.current = true;
       initialDataRef.current = initialData;
-      setFormDataInternal(initialData);
-      setIsDirty(false);
     }
   }, [initialData]);
 
@@ -181,4 +192,5 @@ export function useFormPersistence<T extends Record<string, any>>(
     resetForm,
   };
 }
+
 

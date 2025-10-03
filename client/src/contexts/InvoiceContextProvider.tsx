@@ -33,11 +33,17 @@ const getDefaultInvoice = (): InvoiceModel => ({
   },
   billTo: {
     name: '',
+    companyName: '',
     email: '',
-    address: '',
-    state: '',
-    gst: '',
     phone: '',
+    address: '',
+    city: '',
+    state: '',
+    country: 'India',
+    gst: '',
+    gstNumber: '',
+    pan: '',
+    panNumber: '',
   },
   shipTo: {},
   items: [
@@ -127,18 +133,21 @@ export const InvoiceContextProvider: React.FC<Props> = ({ children }) => {
         customer,
         billTo: {
           name: customer.name || '',
+          companyName: customer.company || customer.companyName || '',
           email: customer.email || '',
           phone: customer.phone || '',
-          companyName: customer.company || '',
           address: typeof customer.billingAddress === 'string' 
             ? customer.billingAddress 
             : customer.address || '',
-          city: customer.city || '',
-          state: customer.state || '',
-          zip: customer.zip || '',
-          country: customer.country || '',
+          city: customer.city || '', // ⚠️ Backend provides city
+          state: customer.state || '', // ⚠️ Backend provides state
+          zip: customer.zipCode || customer.zip || '', // ⚠️ Backend uses zipCode
+          zipCode: customer.zipCode || '', // ⚠️ Backend uses zipCode
+          country: customer.country || 'India',
           gst: customer.gstNumber || '',
+          gstNumber: customer.gstNumber || '', // ⚠️ Backend uses gstNumber
           pan: customer.panNumber || '',
+          panNumber: customer.panNumber || '', // ⚠️ Backend uses panNumber
         },
         shipTo: typeof customer.shippingAddress === 'object' 
           ? {

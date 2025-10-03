@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getUserProfile, updateUserProfile, changePassword, uploadBusinessLogo, uploadProfilePicture, fetchBusinessLogo, type UserProfile } from "@/services/api/settings";
 import { getApiBaseUrl } from "@/lib/api-config";
 import { useToast } from "@/hooks/use-toast";
+import { useProfile } from "@/contexts/ProfileContext";
 // Removed fetchBusinessLogo - moved to services/api/settings.ts to fix HMR issues
 
 export default function Settings() {
   const { toast } = useToast();
+  const { refreshProfile } = useProfile(); // Get refresh function from context
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,9 +28,11 @@ export default function Settings() {
     name: "",
     businessName: "",
     address: "",
+    city: "",
+    state: "",
+    country: "India",
     phone: "",
     website: "",
-    state: "",
     gst: "",
     pan: "",
     isGstRegistered: false,
@@ -39,9 +43,11 @@ export default function Settings() {
     name: "",
     businessName: "",
     address: "",
+    city: "",
+    state: "",
+    country: "India",
     phone: "",
     website: "",
-    state: "",
     gst: "",
     pan: "",
     isGstRegistered: false,
@@ -132,7 +138,18 @@ export default function Settings() {
         } catch (e) {
           console.warn("No logo found, using fallback");
         }
-        console.log(userData)
+        
+        console.log('🔍 RAW Profile Data from Backend:', userData);
+        console.log('📋 Profile Fields Check:');
+        console.log('  - businessName:', userData.data.businessName);
+        console.log('  - address:', userData.data.address);
+        console.log('  - city:', userData.data.city);
+        console.log('  - state:', userData.data.state);
+        console.log('  - country:', userData.data.country);
+        console.log('  - pan:', userData.data.pan);
+        console.log('  - gst:', userData.data.gst);
+        console.log('  - logoUrl:', logoUrl);
+        
         setUserProfile(userData);
 
         // Get profile picture URL from backend (separate from business logo)
@@ -147,19 +164,23 @@ export default function Settings() {
           name: userData.data.name || "",
           businessName: userData.data.businessName || "",
           address: userData.data.address || "",
+          city: userData.data.city || "",
+          state: userData.data.state || "",
+          country: userData.data.country || "India",
           phone: userData.data.phone || "",
           website: userData.data.website || "",
-          state: userData.data.state || "",
           gst: userData.data.gst || "",
           pan: userData.data.pan || "",
           isGstRegistered: userData.data.isGstRegistered || false,
           logoUrl: logoUrl // prefer blob if exists
         };
 
+        console.log('✅ Mapped Form Data:', profileData);
+        
         setFormData(profileData);
         setOriginalData(profileData); // 🔹 Store original data
       } catch (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('❌ Error fetching user profile:', error);
         toast({
           title: "Error",
           description: "Failed to fetch user profile",
@@ -204,20 +225,27 @@ export default function Settings() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      console.log('📤 Saving profile updates:', formData);
       await updateUserProfile(formData);
+      
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
       setMessage({ type: "success", text: "Profile updated successfully" });
 
+      // Refresh both local state AND global context
       const updatedProfile = await getUserProfile();
       setUserProfile(updatedProfile);
+      
+      // ⚠️ CRITICAL: Refresh ProfileContext so invoice form gets fresh data!
+      await refreshProfile();
+      console.log('✅ Profile context refreshed - invoice form will get new data');
 
       // 🔹 Update original data to match current form data after successful save
       setOriginalData({ ...formData });
     } catch (error: any) {
-      console.error('Error updating profile:', error);
+      console.error('❌ Error updating profile:', error);
       const errorMessage = error.response?.data?.message || error.response?.data?.detail || "Failed to update profile";
       toast({
         title: "Error",
@@ -641,6 +669,18 @@ export default function Settings() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="city" className="text-sm font-medium text-foreground">
+                    City
+                  </Label>
+                  <Input
+                    id="city"
+                    placeholder="City"
+                    className="bg-background border-input"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="state" className="text-sm font-medium text-foreground">
                     State
                   </Label>
@@ -692,6 +732,18 @@ export default function Settings() {
                       <SelectItem value="outside-india">OUTSIDE INDIA</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country" className="text-sm font-medium text-foreground">
+                    Country
+                  </Label>
+                  <Input
+                    id="country"
+                    placeholder="Country"
+                    className="bg-background border-input"
+                    value={formData.country}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
+                  />
                 </div>
               </div>
 
