@@ -3,6 +3,17 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { getApiBaseUrl } from "./api-config";
 
+// Check if JWT token is expired
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    return payload.exp < currentTime;
+  } catch {
+    return true; // If we can't parse the token, consider it expired
+  }
+};
+
 // Use shared API configuration
 const API_BASE = getApiBaseUrl();
 
@@ -24,15 +35,26 @@ api.interceptors.request.use((config) => {
   console.log("🔑 Auth Token Check:", { 
     hasToken: !!token, 
     tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
-    url: config.url 
+    tokenLength: token ? token.length : 0,
+    url: config.url,
+    allCookies: document.cookie
   });
   
   if (token) {
+    // Check if token is expired before making the request
+    if (isTokenExpired(token)) {
+      console.warn("🔑 Token is expired - clearing and redirecting to login");
+      Cookies.remove("authToken");
+      window.location.href = '/login';
+      return Promise.reject(new Error('Token expired'));
+    }
+    
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
-    console.log("✅ Authorization header added");
+    console.log("✅ Authorization header added:", `Bearer ${token.substring(0, 20)}...`);
   } else {
     console.warn("⚠️ No auth token found - request may fail");
+    console.warn("🔍 Available cookies:", document.cookie);
   }
   
   // Handle FormData requests - remove Content-Type to let axios set it with boundary
@@ -105,6 +127,15 @@ api.interceptors.response.use(
         tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
         errorMessage: error.response?.data?.error || error.response?.data?.message
       });
+      
+      // Check if token is expired
+      if (token && isTokenExpired(token)) {
+        console.warn("🔑 Token is expired - redirecting to login");
+        // Clear expired token
+        Cookies.remove("authToken");
+        // Redirect to login
+        window.location.href = '/login';
+      }
     }
     
     if (error.response?.status === 500) {

@@ -20,7 +20,7 @@ import { calculateTax } from '@/services/api/invoiceDraft';
 
 // Default empty invoice
 const getDefaultInvoice = (): InvoiceModel => ({
-  invoiceNumber: `INV-${Date.now()}`,
+  invoiceNumber: "", // Let Step1Form handle auto-generation
   date: new Date().toISOString().slice(0, 10),
   dueDate: '',
   billFrom: {

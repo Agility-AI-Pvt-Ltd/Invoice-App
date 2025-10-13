@@ -4,6 +4,7 @@ import InventorySummary from "@/components/InventorySummary"
 import InventoryTable from "@/components/InventoryTable"
 import AddProductForm from "@/components/product-form/productForm";
 import AddServiceForm from "@/components/service-form/service-form";
+import StockWarningBanner from "@/components/StockWarningBanner";
 import { NavbarButton } from "@/components/ui/resizable-navbar"
 import { useState } from "react";
 import type { InventoryItem } from "@/types/inventory";
@@ -19,6 +20,9 @@ const Inventory = () => {
     // New: store item when editing so we can pass as `initial` to AddProductForm
     const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
     const [editingServiceItem, setEditingServiceItem] = useState<InventoryItem | null>(null);
+    
+    // State for inventory items to display stock warnings
+    const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
 
 
 
@@ -53,6 +57,11 @@ const Inventory = () => {
     // Called when InventoryTable reports a successful delete
     const handleDeleteSuccess = () => {
         triggerRefresh();
+    };
+
+    // Called when InventoryTable provides inventory items for stock warnings
+    const handleInventoryItemsUpdate = (items: InventoryItem[]) => {
+        setInventoryItems(items);
     };
 
 
@@ -115,10 +124,14 @@ const Inventory = () => {
 
             <InventorySummary refreshSignal={refreshSignal} />
 
+            {/* Stock Warning Banner */}
+            <StockWarningBanner items={inventoryItems} />
+
             <InventoryTable
                 refreshSignal={refreshSignal}
                 onEdit={openEditForm}
                 onDeleteSuccess={handleDeleteSuccess}
+                onInventoryItemsUpdate={handleInventoryItemsUpdate}
             />
         </div>
     );

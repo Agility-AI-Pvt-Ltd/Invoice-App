@@ -51,6 +51,8 @@ type Props = {
     onDeleteSuccess?: () => void;
     // optional callback when edit button is clicked
     onEdit?: (item: InventoryItem) => void;
+    // optional callback to provide inventory items to parent
+    onInventoryItemsUpdate?: (items: InventoryItem[]) => void;
 };
 
 const StatusBadge = ({ status }: { status: InventoryItem["status"] }) => {
@@ -75,7 +77,7 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-export default function InventoryTable({ refreshSignal, onDeleteSuccess, onEdit }: Props) {
+export default function InventoryTable({ refreshSignal, onDeleteSuccess, onEdit, onInventoryItemsUpdate }: Props) {
     const [data, setData] = useState<PaginatedResponse<InventoryItem> | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -170,11 +172,17 @@ export default function InventoryTable({ refreshSignal, onDeleteSuccess, onEdit 
                             id: item.id || item._id || Math.random().toString(),
                             productName: item.name || item.productName || item.product_name || 'Unknown Product',
                             category: item.category || 'Uncategorized',
-                            unitPrice: item.unitPrice || item.unit_price || item.price || 0,
-                            inStock: item.inStock || item.in_stock || item.quantity || 0,
-                            discount: item.discount || 0,
-                            totalValue: (item.unitPrice || item.unit_price || 0) * (item.inStock || item.in_stock || 0),
-                            status: item.status || (item.inStock > 0 ? 'In Stock' : 'Out of Stock')
+                            unitPrice: Number(item.unitPrice || item.unit_price || item.price || 0),
+                            inStock: Number(item.quantity || item.inStock || item.in_stock || 0),
+                            discount: Number(item.defaultDiscount || item.discount || 0), // Use defaultDiscount from backend
+                            totalValue: Number(item.unitPrice || item.unit_price || 0) * Number(item.quantity || item.inStock || item.in_stock || 0),
+                            status: item.status || (Number(item.quantity || item.inStock || 0) > 0 ? 'In Stock' : 'Out of Stock'),
+                            // Add new fields for enhanced display
+                            defaultTaxRate: Number(item.defaultTaxRate || item.taxRate || 0),
+                            hsnCode: item.hsnCode || '',
+                            subCategory: item.subCategory || '',
+                            brandName: item.brandName || '',
+                            taxCategory: item.taxCategory || 'GOODS'
                         })),
                         pagination: {
                             page: currentPage,
@@ -246,6 +254,28 @@ export default function InventoryTable({ refreshSignal, onDeleteSuccess, onEdit 
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refreshSignal]);
+
+    // Listen for inventory stock update events
+    useEffect(() => {
+        const handleStockUpdate = (event: CustomEvent) => {
+            console.log('📦 Received inventory stock update event:', event.detail);
+            // Refresh the inventory table to show updated stock
+            fetchData();
+        };
+
+        window.addEventListener('inventory:stock-updated', handleStockUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener('inventory:stock-updated', handleStockUpdate as EventListener);
+        };
+    }, []);
+
+    // Notify parent component when inventory items are updated
+    useEffect(() => {
+        if (displayData && onInventoryItemsUpdate) {
+            onInventoryItemsUpdate(displayData);
+        }
+    }, [displayData, onInventoryItemsUpdate]);
 
     const handleSort = (column: string) => {
         setFilters((prev) => ({

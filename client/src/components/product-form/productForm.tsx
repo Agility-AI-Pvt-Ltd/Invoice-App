@@ -6,6 +6,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 import { BASE_URL, getApiBaseUrl } from "@/lib/api-config";
+import { getInventoryItemForInvoice } from "@/services/api/inventory";
 
 
 // added Select imports (uses your existing UI Select component)
@@ -63,6 +64,8 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   const [discount, setDiscount] = useState<string | number>(initial?.discount ?? "");
   const [taxRate, setTaxRate] = useState<string | number>(initial?.taxRate ?? "");
   const [quantity, setQuantity] = useState<string | number>(initial?.quantity ?? initial?.inStock ?? "");
+  const [hsnCode, setHsnCode] = useState<string>(initial?.hsnCode ?? "");
+  const [sacCode, setSacCode] = useState<string>(initial?.sacCode ?? "");
 
 
   // Removed unused state variables to clean up the code
@@ -84,18 +87,65 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
   useEffect(() => {
     // If initial changes after mount, populate fields
     if (initial) {
-      setProductName(initial.productName || initial.product_name || "");
-      setProductSKU(initial.productSKU || initial.sku || "");
-      setCategory(initial.category || "");
-      setSubCategory(initial.subCategory || "");
-      setBrandName(initial.brandName || "");
-      setDescription(initial.description || "");
-      setPurchasePrice(initial.purchasePrice ?? initial.purchase_price ?? "");
-      setSellingPrice(initial.sellingPrice ?? initial.selling_price ?? "");
-      setDiscount(initial.discount ?? 0);
-      setTaxRate(initial.taxRate ?? "");
-      setQuantity(initial.quantity ?? initial.inStock ?? "");
-      // Removed unused setters for unused state variables
+      // Check if this is an edit operation with an ID
+      const itemId = initial.id || initial._id;
+      
+      if (itemId) {
+        // Fetch enhanced data for auto-fill when editing
+        getInventoryItemForInvoice(itemId)
+          .then((response) => {
+            if (response.success && response.data) {
+              const enhancedData = response.data;
+              
+              // Auto-populate all fields with enhanced data
+              setProductName(enhancedData.name || "");
+              setProductSKU(enhancedData.sku || "");
+              setCategory(enhancedData.category || "");
+              setSubCategory(enhancedData.subCategory || "");
+              setBrandName(enhancedData.brandName || "");
+              setDescription(enhancedData.description || "");
+              setPurchasePrice(enhancedData.unitPrice || "");
+              setSellingPrice(enhancedData.unitPrice || "");
+              setDiscount(enhancedData.defaultDiscount || 0);
+              setTaxRate(enhancedData.defaultTaxRate || "");
+              setQuantity(enhancedData.quantity || "");
+              setHsnCode(enhancedData.hsnCode || "");
+              setSacCode(enhancedData.sacCode || "");
+            }
+          })
+          .catch(() => {
+            // Fallback to basic initial data if enhanced fetch fails
+            setProductName(initial.productName || initial.product_name || "");
+            setProductSKU(initial.productSKU || initial.sku || "");
+            setCategory(initial.category || "");
+            setSubCategory(initial.subCategory || "");
+            setBrandName(initial.brandName || "");
+            setDescription(initial.description || "");
+            setPurchasePrice(initial.purchasePrice ?? initial.purchase_price ?? "");
+            setSellingPrice(initial.sellingPrice ?? initial.selling_price ?? "");
+            setDiscount(initial.discount ?? 0);
+            setTaxRate(initial.taxRate ?? "");
+            setQuantity(initial.quantity ?? initial.inStock ?? "");
+            setHsnCode(initial.hsnCode ?? "");
+            setSacCode(initial.sacCode ?? "");
+            
+            // Form populated with basic data (enhanced fetch failed)
+          });
+      } else {
+        // New item - use basic initial data
+        setProductName(initial.productName || initial.product_name || "");
+        setProductSKU(initial.productSKU || initial.sku || "");
+        setCategory(initial.category || "");
+        setSubCategory(initial.subCategory || "");
+        setBrandName(initial.brandName || "");
+        setDescription(initial.description || "");
+        setPurchasePrice(initial.purchasePrice ?? initial.purchase_price ?? "");
+        setSellingPrice(initial.sellingPrice ?? initial.selling_price ?? "");
+        setDiscount(initial.discount ?? 0);
+        setTaxRate(initial.taxRate ?? "");
+        setQuantity(initial.quantity ?? initial.inStock ?? "");
+      }
+      
       setError(null);
     }
   }, [initial]);
@@ -155,7 +205,7 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         return;
       }
 
-      // Build payload with only the fields visible in the form
+      // Build payload with correct field names for backend
       const payload: any = {
         // Product Details Section
         name: productName || "Untitled Product",
@@ -164,24 +214,26 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         subCategory: subCategory || undefined,
         brandName: brandName || undefined,
         description: description || undefined,
-        taxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 0,
+        defaultTaxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 0, // Backend expects defaultTaxRate
 
         // Pricing Details Section
         purchasePrice: purchasePrice !== "" && purchasePrice !== null && purchasePrice !== undefined ? Number(purchasePrice) : 0,
         sellingPrice: sellingPrice !== "" && sellingPrice !== null && sellingPrice !== undefined ? Number(sellingPrice) : 0,
-        discount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0,
+        defaultDiscount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0, // Backend expects defaultDiscount
 
         // Stock Details Section
         quantity: resolveInStock() || 0,
 
         // Computed field for unitPrice (prefer selling price, fallback to purchase price)
         unitPrice: resolveUnitPrice() || 0,
+        
+        // Additional fields for backend
+        hsnCode: hsnCode || "", // Use actual HSN code from form
+        sacCode: sacCode || "", // Use actual SAC code from form
+        taxCategory: "GOODS", // Default to GOODS
       };
 
-      console.log("Saving product with payload:", payload);
-      console.log("🔍 Full payload JSON:", JSON.stringify(payload, null, 2));
-      console.log("🔍 Request URL:", `${API_URL}/inventory/items`);
-      console.log("🔍 Auth token:", token ? `${token.substring(0, 20)}...` : "No token");
+      // Saving product with payload
 
       // Optionally include a status field for draft (backend can ignore if not supported)
       if (asDraft) payload.status = "draft";
@@ -218,11 +270,6 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
         setError(res?.data?.message || "Unexpected server response");
       }
     } catch (err: any) {
-      console.error("Save product error:", err);
-      console.error("Error response data:", err?.response?.data);
-      console.error("Error response status:", err?.response?.status);
-      console.error("Error response headers:", err?.response?.headers);
-      console.error("Full error object:", err);
 
       const msg =
         err?.response?.data?.detail ||
@@ -277,6 +324,14 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
           <div className="grid gap-2">
             <Label htmlFor="tax-rate">Tax Rate (%)</Label>
             <Input id="tax-rate" type="number" value={taxRate as any} onChange={(e: any) => setTaxRate(e.target.value)} placeholder="Enter tax rate" />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="hsn-code">HSN Code</Label>
+            <Input id="hsn-code" value={hsnCode} onChange={(e: any) => setHsnCode(e.target.value)} placeholder="Enter HSN code" />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="sac-code">SAC Code</Label>
+            <Input id="sac-code" value={sacCode} onChange={(e: any) => setSacCode(e.target.value)} placeholder="Enter SAC code" />
           </div>
         </FormSection>
 

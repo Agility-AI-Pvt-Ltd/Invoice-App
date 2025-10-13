@@ -113,12 +113,18 @@ export const createInvoice = async (invoice: Partial<InvoiceModel>): Promise<{ m
 /**
  * Update invoice
  */
-export const updateInvoice = async (invoiceId: string, updates: Partial<InvoiceModel>): Promise<{ message: string; invoice: InvoiceModel }> => {
+export const updateInvoice = async (invoiceId: string, updates: Partial<InvoiceModel>): Promise<any> => {
   try {
     console.log(`📝 Updating invoice ${invoiceId}:`, updates);
     const response = await api.put(`${INVOICE_API.UPDATE}/${invoiceId}`, updates);
     console.log('✅ Invoice updated:', response.data);
-    return response.data;
+    
+    // Handle the corrected API response format
+    if (response.data.success) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Failed to update invoice');
   } catch (error) {
     console.error('❌ Error updating invoice:', error);
     throw error;
@@ -234,6 +240,83 @@ export const scanInvoice = async (file: File): Promise<{ success: boolean; messa
     return response.data;
   } catch (error) {
     console.error('Error scanning invoice:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get next invoice number preview
+ */
+export const getNextInvoiceNumber = async (): Promise<{
+  nextInvoiceNumber: string;
+  isCustom: boolean;
+  userSettings: {
+    prefix: string;
+    startNumber: number;
+  };
+  currentCount: number;
+}> => {
+  try {
+    console.log('🔢 Fetching next invoice number...');
+    console.log('🔢 API base URL:', api.defaults.baseURL);
+    console.log('🔢 Full URL will be:', `${api.defaults.baseURL}/api/invoices/next-number`);
+    
+    const response = await api.get('/api/invoices/next-number');
+    console.log('✅ Next invoice number response:', response.data);
+    console.log('✅ Response status:', response.status);
+    console.log('✅ Response success:', response.data.success);
+    console.log('✅ Response data:', response.data.data);
+    
+    // Handle the corrected API response format
+    if (response.data.success) {
+      console.log('✅ Returning data:', response.data.data);
+      return response.data.data;
+    }
+    
+    console.log('❌ API returned success: false');
+    throw new Error(response.data.message || 'Failed to get next invoice number');
+  } catch (error) {
+    console.error('❌ Error fetching next invoice number:', error);
+    console.error('❌ Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
+};
+
+/**
+ * Get customer payment terms
+ */
+export const getCustomerPaymentTerms = async (customerId: string): Promise<{ paymentTerms: string }> => {
+  try {
+    console.log(`🔍 Fetching payment terms for customer: ${customerId}`);
+    const response = await api.get(`/api/invoices/customer/${customerId}/payment-terms`);
+    console.log('✅ Customer payment terms:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching customer payment terms:', error);
+    throw error;
+  }
+};
+
+/**
+ * Calculate GST preview
+ */
+export const calculateGST = async (billingState: string, shippingState: string, totalTax: number): Promise<{ cgst: number; sgst: number; igst: number }> => {
+  try {
+    console.log('🧮 Calculating GST:', { billingState, shippingState, totalTax });
+    const response = await api.post('/api/invoices/calculate-gst', {
+      billingState,
+      shippingState,
+      totalTax
+    });
+    console.log('✅ GST calculation result:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error calculating GST:', error);
     throw error;
   }
 };

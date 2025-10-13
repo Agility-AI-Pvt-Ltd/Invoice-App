@@ -25,5 +25,6 @@ dist-ssr
 *.sw?
 
 .env
+env.local.example
 package-lock.json
 DRAFT_FUNCTIONALITY_TEST.md

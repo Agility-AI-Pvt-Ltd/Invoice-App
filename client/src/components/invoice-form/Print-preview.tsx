@@ -25,67 +25,127 @@ export default function PrintPreview({ invoice, onClose }: Props) {
 
   const safe = (v: any) => (v === null || v === undefined ? "" : String(v));
 
+
   // === per-row calculation (canonical) ===
   const calcRow = (it: any) => {
     const qty = Number(it.quantity || 0);
     const rate = Number(it.unitPrice ?? it.rate ?? 0);
     const gst = Number(it.gst ?? 0);
-    const disc = Number(it.discount ?? 0);
+    const disc = Number(it.discount ?? 0); // Discount is the percentage rate (%)
 
     const base = +(qty * rate); // raw base
-    const discountAmount = disc > 0 && disc <= 100 ? +(base * disc) / 100 : +disc; // percent or absolute
+    // FIX: Match Step3Form logic: assume disc is always a percentage
+    // NOTE: The original code had a bug where it checked for disc > 0 && disc <= 100 ? % : absolute, 
+    // but Step3Form uses % always. We enforce percentage logic here.
+    const discountAmount = +(base * disc) / 100; 
     const taxable = +(base - (discountAmount || 0));
     const gstAmount = +(taxable * gst) / 100;
     const net = +(taxable + gstAmount);
 
+    // Round to 2 decimal places for better precision
     return {
       qty,
       rate: +rate,
       gst: +gst,
-      discountAmount: +discountAmount,
-      taxable: +taxable,
-      gstAmount: +gstAmount,
-      net: +net,
+      discountAmount: +discountAmount.toFixed(2),
+      taxable: +taxable.toFixed(2),
+      gstAmount: +gstAmount.toFixed(2),
+      net: +net.toFixed(2),
     };
   };
 
   // === totals ===
   const computeTotals = (inv: any) => {
     const items = Array.isArray(inv.items) ? inv.items : [];
-    let taxableTotal = 0;
-    let totalGst = 0;
-    let subtotal = 0; // sum of nets (taxable + gst)
-    items.forEach((it: any) => {
-      const r = calcRow(it);
-      taxableTotal += r.taxable;
-      totalGst += r.gstAmount;
-      subtotal += r.net;
-    });
-
-    const cgst = +(totalGst / 2).toFixed(2);
-    const sgst = +(totalGst / 2).toFixed(2);
-
     const shipping = Number(inv.shipping || 0);
 
-    // Subtotal for roundoff calculation should include shipping (if any)
-    const rawTotalBeforeRound = +(subtotal + shipping);
+    // 1. Initialize aggregators
+    let taxableTotal = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
+    
+    // Define states for client-side fallback (if item tax fields are completely missing)
+    const billingState = inv?.billFrom?.state || "";
+    const shippingState = inv?.shipTo?.state || inv?.billTo?.state || "";
+    const hasValidStates = billingState && shippingState;
+    const isInterState = hasValidStates && billingState.trim().toLowerCase() !== shippingState.trim().toLowerCase();
 
-    // Round off to nearest rupee (businessy behavior).
+    // 2. Iterate items and aggregate totals, prioritizing item-level tax breakdown
+    items.forEach((it: any, idx: number) => {
+      // 🛑 FINAL DIAGNOSTIC LOG: Check the item's tax fields being used for aggregation
+      if (idx === 0) {
+        console.log(`🔎 PREVIEW ITEM 1 TAX FIELDS:`, {
+          cgst: it.cgst,
+          sgst: it.sgst,
+          igst: it.igst,
+          taxableAmount: it.taxableAmount
+        });
+      }
+      
+      const r = calcRow(it);
+      
+      // Calculate Taxable: PRIORITY 1: use backend item taxableAmount, FALLBACK: use calcRow result
+      const itemTaxable = it.taxableAmount !== undefined ? Number(it.taxableAmount || 0) : r.taxable;
+      taxableTotal += itemTaxable;
+
+      // Calculate Tax Breakdown: PRIORITY 1: Use item-level calculated fields (from Step 4 backend call)
+      const backendCgst = Number(it.cgst || 0);
+      const backendSgst = Number(it.sgst || 0);
+      const backendIgst = Number(it.igst || 0);
+      
+      // Check if item-level tax fields were explicitly set (even if zero for non-applicable taxes)
+      const hasBackendTaxFields = it.cgst !== undefined || it.sgst !== undefined || it.igst !== undefined;
+
+      if (hasBackendTaxFields || (backendCgst + backendSgst + backendIgst) > 0) {
+        // Use the explicit calculated values from item (backend sets one of them, the others to 0)
+        totalCgst += backendCgst;
+        totalSgst += backendSgst;
+        totalIgst += backendIgst;
+      } else {
+        // FALLBACK: If tax fields are not set at all, perform client-side calculation based on state
+        if (isInterState) {
+          totalIgst += r.gstAmount;
+        } else {
+          totalCgst += r.gstAmount / 2;
+          totalSgst += r.gstAmount / 2;
+        }
+      }
+    });
+
+    // 3. Final calculations based on aggregated item totals
+    // Rounding the final summed totals is crucial here to fix floating point errors
+    totalCgst = +totalCgst.toFixed(2);
+    totalSgst = +totalSgst.toFixed(2);
+    totalIgst = +totalIgst.toFixed(2);
+    taxableTotal = +taxableTotal.toFixed(2);
+    
+    const finalTotalGst = totalCgst + totalSgst + totalIgst;
+
+    // FIX: Sub Total is consistently defined as Taxable Amount + Total GST (Gross Subtotal)
+    const subtotalBeforeShipping = taxableTotal + finalTotalGst; 
+
+    const rawTotalBeforeRound = +(subtotalBeforeShipping + shipping);
     const roundedTotal = Math.round(rawTotalBeforeRound);
     const roundOff = +(roundedTotal - rawTotalBeforeRound).toFixed(2);
+    
+    // ✅ MODIFIED LINE: Remove inv.total prioritization. Always compute the final total from the calculated subtotal and roundOff.
+    const finalTotal = +(rawTotalBeforeRound + roundOff).toFixed(2);
 
-    const total = +(rawTotalBeforeRound + roundOff).toFixed(2);
-
-    return {
-      taxableTotal: +taxableTotal.toFixed(2),
-      totalGst: +totalGst.toFixed(2),
-      cgst,
-      sgst,
-      subtotal: +subtotal.toFixed(2),
+    const result = {
+      taxableTotal: taxableTotal, 
+      totalGst: +finalTotalGst.toFixed(2),
+      cgst: totalCgst,
+      sgst: totalSgst,
+      igst: totalIgst,
+      subtotal: +subtotalBeforeShipping.toFixed(2), 
       shipping: +shipping.toFixed(2),
       roundOff,
-      total,
+      total: +finalTotal.toFixed(2),
     };
+
+    console.log('📊 FINAL TOTALS RESULT - POST-FIX (Aggregated from items):', result);
+    return result;
   };
 
   const totals = computeTotals(invoice);
@@ -113,17 +173,60 @@ export default function PrintPreview({ invoice, onClose }: Props) {
     return words;
   };
 
+
   // === HSN summary builder ===
   const buildHsnSummary = (items: any[]) => {
-    const map: Record<string, { taxable: number; cgst: number; sgst: number }> = {};
+    const map: Record<string, { taxable: number; cgst: number; sgst: number; igst: number }> = {};
+    
+    // Get billing and shipping states for fallback
+    const billingState = invoice?.billFrom?.state || "";
+    const shippingState = invoice?.shipTo?.state || invoice?.billTo?.state || "";
+    const hasValidStates = billingState && shippingState;
+    const isInterState = hasValidStates && billingState.trim().toLowerCase() !== shippingState.trim().toLowerCase();
+
     items.forEach((it) => {
       const code = safe(it.hsn || it.hsn_sac || "-");
+      if (!map[code]) map[code] = { taxable: 0, cgst: 0, sgst: 0, igst: 0 };
+      
       const r = calcRow(it);
-      if (!map[code]) map[code] = { taxable: 0, cgst: 0, sgst: 0 };
-      map[code].taxable += r.taxable;
-      map[code].cgst += r.gstAmount / 2;
-      map[code].sgst += r.gstAmount / 2;
+      
+      // Calculate Taxable: PRIORITY 1: use backend field, FALLBACK: use calcRow result
+      const itemTaxable = it.taxableAmount !== undefined ? Number(it.taxableAmount || 0) : r.taxable;
+      map[code].taxable += itemTaxable;
+
+      // Calculate Tax Breakdown:
+      const backendCgst = Number(it.cgst || 0);
+      const backendSgst = Number(it.sgst || 0);
+      const backendIgst = Number(it.igst || 0);
+      
+      // PRIORITY 1: Check if backend item-level tax fields were explicitly set (Backend sets these to 0 for non-applicable tax, e.g., CGST=0 for IGST transaction)
+      const hasBackendTaxFields = it.cgst !== undefined || it.sgst !== undefined || it.igst !== undefined;
+      
+      if (hasBackendTaxFields) {
+        // Use the backend's explicit calculated values
+        map[code].cgst += backendCgst;
+        map[code].sgst += backendSgst;
+        map[code].igst += backendIgst;
+      } else {
+        // FALLBACK: If tax fields are not set at all, perform client-side calculation
+        if (isInterState) {
+          map[code].igst += r.gstAmount;
+        } else {
+          map[code].cgst += r.gstAmount / 2;
+          map[code].sgst += r.gstAmount / 2;
+        }
+      }
     });
+    
+    // Round all values to 2 decimal places
+    Object.keys(map).forEach(code => {
+      map[code].taxable = +map[code].taxable.toFixed(2);
+      map[code].cgst = +map[code].cgst.toFixed(2);
+      map[code].sgst = +map[code].sgst.toFixed(2);
+      map[code].igst = +map[code].igst.toFixed(2);
+    });
+    
+    console.log('📊 Final HSN Map - POST-FIX:', map);
     return map;
   };
 
@@ -134,27 +237,43 @@ export default function PrintPreview({ invoice, onClose }: Props) {
   const generatePrintableHTML = (inv: any) => {
     const t = computeTotals(inv);
     const itemsHtml = (Array.isArray(inv.items) ? inv.items : []).map((it: any, idx: number) => {
-      const r = calcRow(it);
+      // PRIORITY: Use backend calculated values if available, otherwise fallback to calcRow
+      const taxableAmount = it.taxableAmount !== undefined ? Number(it.taxableAmount) : calcRow(it).taxable;
+      const netAmount = it.total !== undefined ? Number(it.total) : calcRow(it).net;
+      const qty = Number(it.quantity || 0);
+      const rate = Number(it.unitPrice ?? it.rate ?? 0);
+      const gst = Number(it.gst ?? 0);
+      
+      console.log(`📄 Item ${idx + 1} (${it.description}):`, {
+        taxableAmount: it.taxableAmount,
+        total: it.total,
+        usingBackendTaxable: it.taxableAmount !== undefined,
+        usingBackendTotal: it.total !== undefined
+      });
+      
       return `<tr style="page-break-inside:avoid">
         <td style="padding:8px;border:1px solid #ddd;text-align:center">${idx + 1}</td>
         <td style="padding:8px;border:1px solid #ddd">${safe(it.description) || "-"}</td>
         <td style="padding:8px;border:1px solid #ddd;text-align:center">${safe(it.hsn || it.hsn_sac || "-")}</td>
-        <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.qty}</td>
-        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.rate.toFixed(2)}</td>
-        <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.gst}%</td>
-        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.taxable.toFixed(2)}</td>
-        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.net.toFixed(2)}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${qty}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${rate.toFixed(2)}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${gst}%</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${taxableAmount.toFixed(2)}</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${netAmount.toFixed(2)}</td>
       </tr>`;
     }).join("\n");
 
     const hsnHtml = Object.keys(hsnMap).map((h) => {
       const v = hsnMap[h];
+      const totalTax = v.igst > 0 ? v.igst : (v.cgst + v.sgst);
+      const totalAmount = v.taxable + totalTax; // Taxable + Tax = Total Amount
       return `<tr>
         <td style="padding:6px;border:1px solid #eee;text-align:left">${h}</td>
         <td style="padding:6px;border:1px solid #eee;text-align:right">₹${v.taxable.toFixed(2)}</td>
         <td style="padding:6px;border:1px solid #eee;text-align:right">₹${v.cgst.toFixed(2)}</td>
         <td style="padding:6px;border:1px solid #eee;text-align:right">₹${v.sgst.toFixed(2)}</td>
-        <td style="padding:6px;border:1px solid #eee;text-align:right">₹${(v.cgst + v.sgst).toFixed(2)}</td>
+        <td style="padding:6px;border:1px solid #eee;text-align:right">₹${v.igst.toFixed(2)}</td>
+        <td style="padding:6px;border:1px solid #eee;text-align:right">₹${totalAmount.toFixed(2)}</td>
       </tr>`;
     }).join("\n");
 
@@ -202,16 +321,18 @@ export default function PrintPreview({ invoice, onClose }: Props) {
           <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
             <div style="flex:1;border:1px solid #eef2f6;padding:10px">
               <div style="font-weight:700">Customer Name & Billing Address</div>
-              <div style="margin-top:6px">${safe(inv.billTo?.name || inv.customerName || "")}</div>
-              <div class="muted">${safe(inv.billTo?.address || "")}</div>
+              <div style="margin-top:6px">${safe(inv.billTo?.name || inv.customerName || inv.clientName || "")}</div>
+              <div class="muted">${safe(inv.billTo?.address || inv.billingAddress || "")}</div>
+              <div class="muted">${safe(inv.billTo?.city || "")} ${safe(inv.billTo?.state || "")} ${safe(inv.billTo?.zip || inv.billTo?.zipCode || "")}</div>
               <div class="muted">GSTIN: ${safe(inv.billTo?.gst || inv.billTo?.gstin || "")}</div>
               <div class="muted">Phone: ${safe(inv.billTo?.phone || "")}</div>
             </div>
 
             <div style="width:320px;border:1px solid #eef2f6;padding:10px">
               <div style="font-weight:700">Shipping Address</div>
-              <div style="margin-top:6px">${safe(inv.shipTo?.name || "")}</div>
-              <div class="muted">${safe(inv.shipTo?.address || inv.shippingAddress || inv.billTo?.address || "")}</div>
+              <div style="margin-top:6px">${safe(inv.shipTo?.name || inv.billTo?.name || inv.customerName || inv.clientName || "")}</div>
+              <div class="muted">${safe(inv.shipTo?.address || inv.shippingAddress || inv.billTo?.address || inv.billingAddress || "")}</div>
+              <div class="muted">${safe(inv.shipTo?.city || inv.billTo?.city || "")} ${safe(inv.shipTo?.state || inv.billTo?.state || "")} ${safe(inv.shipTo?.zip || inv.shipTo?.zipCode || inv.billTo?.zip || inv.billTo?.zipCode || "")}</div>
             </div>
           </div>
 
@@ -246,6 +367,7 @@ export default function PrintPreview({ invoice, onClose }: Props) {
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Taxable Amount</div><div class="right">₹${t.taxableTotal.toFixed(2)}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">CGST</div><div class="right">₹${t.cgst.toFixed(2)}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">SGST</div><div class="right">₹${t.sgst.toFixed(2)}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">IGST</div><div class="right">₹${t.igst.toFixed(2)}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Sub Total</div><div class="right">₹${t.subtotal.toFixed(2)}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Round Off</div><div class="right">₹${t.roundOff.toFixed(2)}</div></div>
                 <div style="border-top:1px dashed #e6e6e6;padding-top:8px;margin-top:8px;font-weight:800;display:flex;justify-content:space-between">
@@ -265,11 +387,12 @@ export default function PrintPreview({ invoice, onClose }: Props) {
                   <th style="text-align:right">Taxable Value</th>
                   <th style="text-align:right">CGST Amount</th>
                   <th style="text-align:right">SGST Amount</th>
-                  <th style="text-align:right">Total Tax</th>
+                  <th style="text-align:right">IGST Amount</th>
+                  <th style="text-align:right">Total Amount</th>
                 </tr>
               </thead>
               <tbody>
-                ${hsnHtml || `<tr><td colspan="5" style="padding:8px;text-align:center;color:#6b7280">No HSN summary available</td></tr>`}
+                ${hsnHtml || `<tr><td colspan="6" style="padding:8px;text-align:center;color:#6b7280">No HSN summary available</td></tr>`}
               </tbody>
             </table>
           </div>
@@ -420,7 +543,7 @@ export default function PrintPreview({ invoice, onClose }: Props) {
             <button onClick={handleDownload} className="px-4 py-2 bg-green-600 text-white rounded flex items-center gap-2">
               <Download size={16} /> Download
             </button>
-            <button onClick={onClose} className="p-2 rounded hover:bg-gray-100">
+            <button onClick={onClose} className="p-2 rounded hover:bg-gray-100" title="Close preview">
               <X size={18} />
             </button>
           </div>
@@ -449,16 +572,18 @@ export default function PrintPreview({ invoice, onClose }: Props) {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 border rounded bg-gray-50">
                 <div className="font-semibold">Customer Name & Billing Address</div>
-                <div className="text-sm">{invoice.billTo?.name || invoice.customerName}</div>
-                <div className="text-xs text-gray-500">{invoice.billTo?.address}</div>
+                <div className="text-sm">{invoice.billTo?.name || invoice.customerName || invoice.clientName}</div>
+                <div className="text-xs text-gray-500">{invoice.billTo?.address || invoice.billingAddress}</div>
+                <div className="text-xs text-gray-500">{invoice.billTo?.city} {invoice.billTo?.state} {invoice.billTo?.zip || invoice.billTo?.zipCode}</div>
                 <div className="text-xs text-gray-500">GSTIN: {invoice.billTo?.gst || invoice.billTo?.gstin || ""}</div>
                 <div className="text-xs text-gray-500">Phone: {invoice.billTo?.phone || ""}</div>
               </div>
 
               <div className="p-3 border rounded bg-gray-50">
                 <div className="font-semibold">Shipping Address</div>
-                <div className="text-sm">{invoice.shipTo?.name || ""}</div>
-                <div className="text-xs text-gray-500">{invoice.shipTo?.address || invoice.shippingAddress || invoice.billTo?.address}</div>
+                <div className="text-sm">{invoice.shipTo?.name || invoice.billTo?.name || invoice.customerName || invoice.clientName}</div>
+                <div className="text-xs text-gray-500">{invoice.shipTo?.address || invoice.shippingAddress || invoice.billTo?.address || invoice.billingAddress}</div>
+                <div className="text-xs text-gray-500">{invoice.shipTo?.city || invoice.billTo?.city} {invoice.shipTo?.state || invoice.billTo?.state} {invoice.shipTo?.zip || invoice.shipTo?.zipCode || invoice.billTo?.zip || invoice.billTo?.zipCode}</div>
               </div>
             </div>
 
@@ -534,6 +659,7 @@ export default function PrintPreview({ invoice, onClose }: Props) {
                 <div className="flex justify-between text-sm mb-1"><div>Taxable Amount</div><div>₹{totals.taxableTotal.toFixed(2)}</div></div>
                 <div className="flex justify-between text-sm mb-1"><div>CGST</div><div>₹{totals.cgst.toFixed(2)}</div></div>
                 <div className="flex justify-between text-sm mb-1"><div>SGST</div><div>₹{totals.sgst.toFixed(2)}</div></div>
+                <div className="flex justify-between text-sm mb-1"><div>IGST</div><div>₹{totals.igst.toFixed(2)}</div></div>
                 <div className="flex justify-between text-sm mb-1"><div>Sub Total</div><div>₹{totals.subtotal.toFixed(2)}</div></div>
                 <div className="flex justify-between text-sm mb-1"><div>Round Off</div><div>₹{totals.roundOff.toFixed(2)}</div></div>
                 <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg"><div>Total</div><div>₹{totals.total.toFixed(2)}</div></div>
@@ -552,20 +678,26 @@ export default function PrintPreview({ invoice, onClose }: Props) {
                       <th className="border px-2 py-2 text-right">Taxable Value</th>
                       <th className="border px-2 py-2 text-right">CGST Amount</th>
                       <th className="border px-2 py-2 text-right">SGST Amount</th>
-                      <th className="border px-2 py-2 text-right">Total Tax</th>
+                      <th className="border px-2 py-2 text-right">IGST Amount</th>
+                      <th className="border px-2 py-2 text-right">Total Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.keys(hsnMap).length ? Object.keys(hsnMap).map(k => (
-                      <tr key={k}>
-                        <td className="border px-2 py-2">{k}</td>
-                        <td className="border px-2 py-2 text-right">₹{hsnMap[k].taxable.toFixed(2)}</td>
-                        <td className="border px-2 py-2 text-right">₹{hsnMap[k].cgst.toFixed(2)}</td>
-                        <td className="border px-2 py-2 text-right">₹{hsnMap[k].sgst.toFixed(2)}</td>
-                        <td className="border px-2 py-2 text-right">₹{(hsnMap[k].cgst + hsnMap[k].sgst).toFixed(2)}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={5} className="border px-2 py-2 text-center text-gray-500">No HSN summary available</td></tr>
+                    {Object.keys(hsnMap).length ? Object.keys(hsnMap).map(k => {
+                      const totalTax = hsnMap[k].igst > 0 ? hsnMap[k].igst : (hsnMap[k].cgst + hsnMap[k].sgst);
+                      const totalAmount = hsnMap[k].taxable + totalTax; // Taxable + Tax = Total Amount
+                      return (
+                        <tr key={k}>
+                          <td className="border px-2 py-2">{k}</td>
+                          <td className="border px-2 py-2 text-right">₹{hsnMap[k].taxable.toFixed(2)}</td>
+                          <td className="border px-2 py-2 text-right">₹{hsnMap[k].cgst.toFixed(2)}</td>
+                          <td className="border px-2 py-2 text-right">₹{hsnMap[k].sgst.toFixed(2)}</td>
+                          <td className="border px-2 py-2 text-right">₹{hsnMap[k].igst.toFixed(2)}</td>
+                          <td className="border px-2 py-2 text-right">₹{totalAmount.toFixed(2)}</td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr><td colSpan={6} className="border px-2 py-2 text-center text-gray-500">No HSN summary available</td></tr>
                     )}
                   </tbody>
                 </table>

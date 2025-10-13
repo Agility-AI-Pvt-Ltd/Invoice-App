@@ -37,8 +37,23 @@ async function updateInventory(userId, items) {
 router.post('/', auth, async (req, res) => {
     try {
         console.log('Creating new invoice with data:', req.body);
+        
+        // Preserve custom invoice number if provided
+        let invoiceNumber = req.body.invoiceNumber;
+        
+        // Only auto-generate if no invoice number provided or it's a timestamp-based number
+        if (!invoiceNumber || /^INV-\d{13}$/.test(invoiceNumber)) {
+            const lastInvoice = await Invoice.findOne({ user: req.userId }).sort({ invoiceNumber: -1 });
+            const lastNumber = lastInvoice ? parseInt(lastInvoice.invoiceNumber.replace(/[^0-9]/g, '')) : 0;
+            invoiceNumber = `INV-${(lastNumber + 1).toString().padStart(6, '0')}`;
+            console.log('Auto-generated invoice number:', invoiceNumber);
+        } else {
+            console.log('Using custom invoice number:', invoiceNumber);
+        }
+        
         const invoice = new Invoice({
             ...req.body,
+            invoiceNumber: invoiceNumber, // Use preserved or generated number
             user: req.userId
         });
         await invoice.save();
