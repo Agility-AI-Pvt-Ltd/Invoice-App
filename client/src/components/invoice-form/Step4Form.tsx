@@ -103,7 +103,15 @@ export default function InvoiceSummaryForm() {
       // 🛑 DEBUG LOG: Items being sent to backend
       console.log('--- 📦 ITEMS SENT TO BACKEND ------------');
       console.log('  -> Items Count:', itemsForCalculation.length);
-      itemsForCalculation.forEach((item, index) => {
+      itemsForCalculation.forEach((item: {
+        id?: number;
+        inventoryItemId?: number;
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        gstRate: number;
+        discount: number;
+      }, index: number) => {
         console.log(`  -> Item ${index + 1}:`, {
           description: item.description,
           quantity: item.quantity,
@@ -126,7 +134,8 @@ export default function InvoiceSummaryForm() {
       console.log('  -> Success:', gstResult.success);
       if (gstResult.data && gstResult.data.totals) {
           console.log('  -> BACKEND REPORTED TAX TYPE:', gstResult.data.totals.taxType);
-          console.log('  -> BACKEND REPORTED INTERSTATE:', gstResult.data.totals.isInterstate);
+          // Optional field; backend may or may not include isInterstate
+          // console.log('  -> BACKEND REPORTED INTERSTATE:', gstResult.data.totals.isInterstate);
           console.log('  -> CGST:', gstResult.data.totals.cgst);
           console.log('  -> SGST:', gstResult.data.totals.sgst);
           console.log('  -> IGST:', gstResult.data.totals.igst);
@@ -159,7 +168,8 @@ export default function InvoiceSummaryForm() {
                 cgst: calculatedItem.cgst,
                 sgst: calculatedItem.sgst,
                 igst: calculatedItem.igst,
-                totalTax: calculatedItem.totalTax,
+                // totalTax is not used elsewhere; keep if present, else omit
+                totalTax: (calculatedItem as any).totalTax,
                 total: calculatedItem.total
               };
               
@@ -185,6 +195,9 @@ export default function InvoiceSummaryForm() {
       // Fallback to old GST calculation if new API fails
       try {
         const totalTax = (invoice.cgst || 0) + (invoice.sgst || 0) + (invoice.igst || 0);
+        const billingState = invoice.billFrom?.state || "";
+        const customerBillToState = invoice.billTo?.state || "";
+        const shippingState = invoice.shipTo?.state || customerBillToState;
         const gstResult = await calculateGST(billingState, shippingState, totalTax);
         
         setNumberField("cgst", gstResult.cgst);

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import { useNextInvoiceNumber } from "@/hooks/useNextInvoiceNumber";
-import Cookies from "js-cookie";
+// Cookies import removed as no longer used
 
 export default function Step1Form() {
   const ctx = useContext(InvoiceContext) as any | undefined;
@@ -65,54 +65,7 @@ export default function Step1Form() {
     await refetch();
   };
 
-  // Test function to debug API call
-  const testApiCall = async () => {
-    try {
-      console.log('🧪 Testing API call directly...');
-      console.log('🧪 All cookies:', document.cookie);
-      
-      // Test different ways to get the token
-      const tokenFromCookies = Cookies.get("authToken");
-      const tokenFromDocument = document.cookie.split('authToken=')[1]?.split(';')[0] || '';
-      
-      console.log('🧪 Token from Cookies.get():', tokenFromCookies ? `${tokenFromCookies.substring(0, 20)}...` : 'none');
-      console.log('🧪 Token from document.cookie:', tokenFromDocument ? `${tokenFromDocument.substring(0, 20)}...` : 'none');
-      
-      const token = tokenFromCookies || tokenFromDocument;
-      
-      if (!token) {
-        console.error('🧪 No token found! User might need to login again.');
-        return;
-      }
-      
-      // Test the exact URL that the backend team confirmed is working
-      const testUrl = 'http://localhost:4000/api/invoices/next-number';
-      console.log('🧪 Testing URL:', testUrl);
-      
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('🧪 Response status:', response.status);
-      console.log('🧪 Response headers:', response.headers);
-      
-      if (!response.ok) {
-        console.error('🧪 Response not OK:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('🧪 Error response body:', errorText);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('🧪 Direct API test result:', data);
-    } catch (error) {
-      console.error('🧪 Direct API test failed:', error);
-    }
-  };
+  // Removed unused testApiCall helper to satisfy TS noUnusedLocals
 
   return (
     <div className="w-full">

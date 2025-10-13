@@ -103,7 +103,10 @@ function RowInventorySearch({
       }
 
       // Normalize the results to match the expected format (only required fields)
-      const normalizedResults = results.map((item: Record<string, unknown>) => ({
+      const normalizedResults = results.map((item: Record<string, unknown>) => {
+        const rawTaxCategory = ((item.taxCategory as string) || '').toString().toUpperCase();
+        const taxCategory: 'GOODS' | 'SERVICES' = rawTaxCategory === 'SERVICES' ? 'SERVICES' : 'GOODS';
+        return {
         id: (item.id as string) || (item._id as string) || Math.random().toString(),
         productName: (item.name as string) || (item.productName as string) || (item.product_name as string) || 'Unknown Product',
         category: (item.category as string) || 'Uncategorized',
@@ -117,8 +120,8 @@ function RowInventorySearch({
         hsnCode: (item.hsnCode as string) || '',
         subCategory: (item.subCategory as string) || '',
         brandName: (item.brandName as string) || '',
-        taxCategory: (item.taxCategory as string) || 'GOODS'
-      }));
+        taxCategory
+      }});
 
       setSearchResults(normalizedResults);
       onSearchResults(normalizedResults, rowIndex);
@@ -146,7 +149,10 @@ function RowInventorySearch({
         }
 
         // Normalize fallback results (only required fields)
-        const normalizedFallbackResults = fallbackResults.map((item: Record<string, unknown>) => ({
+        const normalizedFallbackResults = fallbackResults.map((item: Record<string, unknown>) => {
+          const rawTaxCategory = ((item.taxCategory as string) || '').toString().toUpperCase();
+          const taxCategory: 'GOODS' | 'SERVICES' = rawTaxCategory === 'SERVICES' ? 'SERVICES' : 'GOODS';
+          return {
           id: (item.id as string) || (item._id as string) || Math.random().toString(),
           productName: (item.name as string) || (item.productName as string) || (item.product_name as string) || 'Unknown Product',
           category: (item.category as string) || 'Uncategorized',
@@ -160,8 +166,8 @@ function RowInventorySearch({
           hsnCode: (item.hsnCode as string) || '',
           subCategory: (item.subCategory as string) || '',
           brandName: (item.brandName as string) || '',
-          taxCategory: (item.taxCategory as string) || 'GOODS'
-        }));
+          taxCategory
+        }});
 
         setSearchResults(normalizedFallbackResults);
         onSearchResults(normalizedFallbackResults, rowIndex);
@@ -410,8 +416,8 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         description: enhancedData.name || inventory.productName,
         hsn: enhancedData.hsnCode || "", // Auto-fill HSN code
         unitPrice: Number(enhancedData.unitPrice || inventory.unitPrice || 0),
-        gst: Number(enhancedData.defaultTaxRate || enhancedData.taxRate || 0), // Auto-fill GST rate
-        discount: Number(enhancedData.defaultDiscount || enhancedData.discount || inventory.discount || 0), // Auto-fill discount
+        gst: Number(enhancedData.defaultTaxRate || 0), // Auto-fill GST rate
+        discount: Number(enhancedData.defaultDiscount || inventory.discount || 0), // Auto-fill discount
       } as Item;
 
       setItems(updated);
@@ -424,22 +430,22 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         hsn: inventory.hsnCode || "", // Use HSN from inventory if available
         unitPrice: Number(inventory.unitPrice || 0),
         gst: Number(inventory.defaultTaxRate || 0), // Use defaultTaxRate from inventory
-        discount: Number(inventory.defaultDiscount || inventory.discount || 0), // Use defaultDiscount from inventory
+        discount: Number(inventory.discount || 0), // Use discount from inventory
       } as Item;
 
       setItems(updated);
     }
   }, [items, setItems]);
 
-  const handleRowSearchResults = useCallback((results: InventoryItem[], rowIndex: number) => {
+  const handleRowSearchResults = useCallback((_results: InventoryItem[], _rowIndex: number) => {
     // Search results received
   }, []);
 
-  const handleRowSearchClear = useCallback((rowIndex: number) => {
+  const handleRowSearchClear = useCallback((_rowIndex: number) => {
     // Search cleared
   }, []);
 
-  const handleRowLoadingChange = useCallback((loading: boolean, rowIndex: number) => {
+  const handleRowLoadingChange = useCallback((_loading: boolean, _rowIndex: number) => {
     // Loading state changed
   }, []);
 

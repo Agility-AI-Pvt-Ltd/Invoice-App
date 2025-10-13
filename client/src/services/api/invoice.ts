@@ -275,13 +275,13 @@ export const getNextInvoiceNumber = async (): Promise<{
     
     console.log('❌ API returned success: false');
     throw new Error(response.data.message || 'Failed to get next invoice number');
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error fetching next invoice number:', error);
     console.error('❌ Error details:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
+      status: (error as any)?.response?.status,
+      statusText: (error as any)?.response?.statusText,
+      data: (error as any)?.response?.data,
+      message: (error as any)?.message
     });
     throw error;
   }
