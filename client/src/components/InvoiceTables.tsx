@@ -1105,16 +1105,28 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
               <tbody>
                 {currentInvoices && currentInvoices.map((invoice) => (
                   <tr key={(invoice as any)._id || (invoice as any).id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 w-1/6">{getInvoiceNumber(invoice)}</td>
-                    <td className="px-6 py-4 w-1/6">{getCustomerName(invoice)}</td>
-                    <td className="px-6 py-4 w-1/6">₹{(() => {
-                      const total = invoice.total ||
-                        (invoice as any).totalAmount ||
-                        (invoice as any).amount ||
-                        (invoice as any).grandTotal ||
-                        (invoice as any).grand_total || 0;
-                      return typeof total === 'number' ? total.toLocaleString() : String(total);
-                    })()}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 w-1/6 min-w-[100px]">
+                      <div className="truncate" title={getInvoiceNumber(invoice)}>
+                        {getInvoiceNumber(invoice)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 w-1/6 min-w-[120px]">
+                      <div className="truncate" title={getCustomerName(invoice)}>
+                        {getCustomerName(invoice)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 w-1/6 min-w-[120px]">
+                      <div className="text-sm font-medium text-gray-900">
+                        ₹{(() => {
+                          const total = invoice.total ||
+                            (invoice as any).totalAmount ||
+                            (invoice as any).amount ||
+                            (invoice as any).grandTotal ||
+                            (invoice as any).grand_total || 0;
+                          return typeof total === 'number' ? total.toLocaleString() : String(total);
+                        })()}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 w-1/6">{formatDueDate(
                       (invoice as any).dueDate ||
                       (invoice as any).due_date ||

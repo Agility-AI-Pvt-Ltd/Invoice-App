@@ -608,17 +608,27 @@ export default function CustomerDashboard() {
   };
 
   // Map customer API response to form data structure
-  // ⚠️ Backend returns: city, state, zipCode (not billingCity, billingState, billingZip)
+  // ⚠️ Backend Prisma schema fields:
+  // - address, city, state, zipCode, country (main address fields)
+  // - billingAddress, billingAddressLine2 (billing specific)
+  // - shippingAddress, shippingAddressLine1, shippingAddressLine2, shippingCity, shippingState, shippingZip, shippingCountry
   const mapCustomerToFormData = (customer: any) => {
     console.log("🔍 Mapping customer for edit:", customer);
     console.log("🏠 Backend address fields in customer data:");
     console.log("  - address:", customer.address);
-    console.log("  - city:", customer.city); // ⚠️ Backend uses city
-    console.log("  - state:", customer.state); // ⚠️ Backend uses state
-    console.log("  - zipCode:", customer.zipCode); // ⚠️ Backend uses zipCode
-    console.log("  - country:", customer.country);
     console.log("  - billingAddress:", customer.billingAddress);
+    console.log("  - billingAddressLine2:", customer.billingAddressLine2);
+    console.log("  - city:", customer.city);
+    console.log("  - state:", customer.state);
+    console.log("  - zipCode:", customer.zipCode);
+    console.log("  - country:", customer.country);
     console.log("  - shippingAddress:", customer.shippingAddress);
+    console.log("  - shippingAddressLine1:", customer.shippingAddressLine1);
+    console.log("  - shippingAddressLine2:", customer.shippingAddressLine2);
+    console.log("  - shippingCity:", customer.shippingCity);
+    console.log("  - shippingState:", customer.shippingState);
+    console.log("  - shippingZip:", customer.shippingZip);
+    console.log("  - shippingCountry:", customer.shippingCountry);
 
     const mappedData = {
       // Step 1 - Basic Information (4 fields from backend)
@@ -629,28 +639,28 @@ export default function CustomerDashboard() {
       companyName: customer.company || customer.companyName || "",
       website: customer.website || "",
 
-      // Step 2 - Address Details (8 fields from backend)
-      // ⚠️ Backend returns: address, city, state, zipCode, country, billingAddress, shippingAddress
+      // Step 2 - Billing Address Details
+      // Backend has: billingAddress (Line 1) and billingAddressLine2 (Line 2)
+      // Fallback: use 'address' if billingAddress is empty
       billingAddress: customer.billingAddress || customer.address || "",
-      billingAddressLine1: customer.address || customer.billingAddress || "",
-      billingAddressLine2: "",
-      billingCity: customer.city || "", // ⚠️ Backend uses city (not billingCity)
-      billingState: normalizeState(customer.state), // ⚠️ Convert MAHARASHTRA to maharashtra
-      billingZip: customer.zipCode || customer.zip || "", // ⚠️ Backend uses zipCode
+      billingAddressLine1: customer.billingAddress || customer.address || "",
+      billingAddressLine2: customer.billingAddressLine2 || "",
+      billingCity: customer.city || "",
+      billingState: normalizeState(customer.state),
+      billingZip: customer.zipCode || customer.zip || "",
       billingCountry: customer.country || "India",
       
-      // Shipping address (parse if string)
-      shippingAddress: typeof customer.shippingAddress === 'string' 
-        ? customer.shippingAddress 
-        : "",
-      shippingAddressLine1: typeof customer.shippingAddress === 'string' 
-        ? customer.shippingAddress 
-        : "",
-      shippingAddressLine2: "",
-      shippingCity: "",
-      shippingState: "",
-      shippingZip: "",
-      shippingCountry: "India",
+      // Step 2 - Shipping Address Details
+      // Backend has: shippingAddress, shippingAddressLine1, shippingAddressLine2, shippingCity, etc.
+      // Priority: use structured fields (shippingAddressLine1, shippingAddressLine2)
+      // Fallback: if structured fields are empty, try parsing shippingAddress
+      shippingAddress: customer.shippingAddress || "",
+      shippingAddressLine1: customer.shippingAddressLine1 || customer.shippingAddress || "",
+      shippingAddressLine2: customer.shippingAddressLine2 || "",
+      shippingCity: customer.shippingCity || "",
+      shippingState: normalizeState(customer.shippingState),
+      shippingZip: customer.shippingZip || "",
+      shippingCountry: customer.shippingCountry || "India",
 
       // Step 3 - Tax and Payment (5 fields from backend)
       pan: customer.panNumber || customer.pan || "",
@@ -671,13 +681,21 @@ export default function CustomerDashboard() {
       id: customer.id || customer._id,
     };
 
-    console.log("✅ Mapped form data for editing (ALL backend fields):");
-    console.log("  - billingAddress:", mappedData.billingAddress);
-    console.log("  - billingCity:", mappedData.billingCity);
-    console.log("  - billingState (converted):", customer.state, "→", mappedData.billingState);
-    console.log("  - billingZip:", mappedData.billingZip);
-    console.log("  - billingCountry:", mappedData.billingCountry);
-    console.log("  - Full mapped data:", mappedData);
+    console.log("✅ Mapped form data for editing:");
+    console.log("  BILLING:");
+    console.log("    - billingAddressLine1:", mappedData.billingAddressLine1);
+    console.log("    - billingAddressLine2:", mappedData.billingAddressLine2);
+    console.log("    - billingCity:", mappedData.billingCity);
+    console.log("    - billingState:", mappedData.billingState);
+    console.log("    - billingZip:", mappedData.billingZip);
+    console.log("    - billingCountry:", mappedData.billingCountry);
+    console.log("  SHIPPING:");
+    console.log("    - shippingAddressLine1:", mappedData.shippingAddressLine1);
+    console.log("    - shippingAddressLine2:", mappedData.shippingAddressLine2);
+    console.log("    - shippingCity:", mappedData.shippingCity);
+    console.log("    - shippingState:", mappedData.shippingState);
+    console.log("    - shippingZip:", mappedData.shippingZip);
+    console.log("    - shippingCountry:", mappedData.shippingCountry);
 
     return mappedData;
   };

@@ -8,6 +8,12 @@ export interface InventoryItem {
     discount: number
     totalValue: number
     status: "In Stock" | "Out of Stock" | "Low in Stock"
+    // Enhanced fields from backend
+    defaultTaxRate?: number
+    hsnCode?: string
+    subCategory?: string
+    brandName?: string
+    taxCategory?: 'GOODS' | 'SERVICES'
 }
 
 // Complete Inventory interface matching backend /api/inventory response (11 fields)

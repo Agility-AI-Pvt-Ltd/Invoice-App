@@ -50,31 +50,6 @@ export default function Step1Form({ data = {}, onChange }: StepProps) {
           />
         </div>
 
-        {/* Payment Terms */}
-        <div className="space-y-2 relative">
-          <Label htmlFor="paymentTerms" className="text-sm font-medium text-foreground">
-            Payment Terms
-          </Label>
-          <div className="relative">
-            <select
-              id="paymentTerms"
-              className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
-              value={data?.paymentTerms ?? ""}
-              onChange={(e) => onChange?.({ paymentTerms: e.target.value })}
-            >
-              <option value="" disabled className="text-slate-400">
-                Select
-              </option>
-              <option value="net15">Net 15</option>
-              <option value="net30">Net 30</option>
-              <option value="net60">Net 60</option>
-            </select>
-            <ChevronDown
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-              size={18}
-            />
-          </div>
-        </div>
 
         {/* Sales Date */}
         <div className="space-y-2">
@@ -117,6 +92,7 @@ export default function Step1Form({ data = {}, onChange }: StepProps) {
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
               value={data?.salesperson ?? ""}
               onChange={(e) => onChange?.({ salesperson: e.target.value })}
+              aria-label="Salesperson"
             >
               <option value="" disabled className="text-slate-400">
                 Select
@@ -157,6 +133,7 @@ export default function Step1Form({ data = {}, onChange }: StepProps) {
               className="h-11 px-3 pr-10 text-sm border border-input bg-background placeholder:text-slate-400 appearance-none w-full rounded-md"
               value={data?.status ?? ""}
               onChange={(e) => onChange?.({ status: e.target.value })}
+              aria-label="Invoice status"
             >
               <option value="" disabled className="text-slate-400">
                 Select

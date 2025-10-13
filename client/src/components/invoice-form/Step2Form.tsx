@@ -360,6 +360,8 @@ export default function Step2Form() {
 
     ctx.setInvoice((prev: any) => ({
       ...prev,
+      // Store customerId for auto-fetching payment terms
+      customerId: customer._id || customer.id || null,
       billTo: {
         ...(prev.billTo || {}),
         name: customer.name || customer.fullName || "",
@@ -379,7 +381,7 @@ export default function Step2Form() {
       },
     }));
 
-    console.log('✅ Invoice billTo updated with customer data');
+    console.log('✅ Invoice billTo updated with customer data and customerId stored');
 
     // Clear search and suggestions
     setCustomerSearchTerm(customer.name || customer.fullName || "");

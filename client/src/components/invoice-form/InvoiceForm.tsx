@@ -14,6 +14,7 @@ import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
 
 import PrintPreview from "./Print-preview"; // added import
+import { updateInventoryStock } from "@/services/api/inventory";
 
 type Props = {
   onCancel: () => void;
@@ -44,7 +45,7 @@ type ValidationError = { step: number; message: string; field?: string };
 
 export default function InvoiceForm({ onCancel, initialData }: Props) {
   const defaultInvoice: InvoiceModel = {
-    invoiceNumber: `INV-${Date.now()}`,
+    invoiceNumber: "", // Let Step1Form handle auto-generation
     date: new Date().toISOString().slice(0, 10),
     dueDate: "",
     billFrom: {
@@ -774,6 +775,39 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     }
   };
 
+  // Function to update inventory stock after invoice creation
+  const updateInventoryStockAfterInvoice = async (items: any[]) => {
+    try {
+      console.log('📦 Updating inventory stock for invoice items:', items);
+      
+      const stockUpdatePromises = items
+        .filter(item => item.inventoryItemId && item.quantity > 0)
+        .map(async (item) => {
+          try {
+            const result = await updateInventoryStock(item.inventoryItemId, item.quantity);
+            console.log(`✅ Stock updated for item ${item.inventoryItemId}:`, result);
+            return result;
+          } catch (error) {
+            console.error(`❌ Failed to update stock for item ${item.inventoryItemId}:`, error);
+            return null;
+          }
+        });
+
+      const results = await Promise.all(stockUpdatePromises);
+      const successfulUpdates = results.filter(result => result !== null);
+      
+      console.log(`📦 Stock update completed: ${successfulUpdates.length}/${items.length} items updated`);
+      
+      // Notify inventory components to refresh
+      window.dispatchEvent(new CustomEvent("inventory:stock-updated", { 
+        detail: { updatedItems: successfulUpdates } 
+      }));
+      
+    } catch (error) {
+      console.error('❌ Error updating inventory stock:', error);
+    }
+  };
+
   // New: Handle Save (status = "save")
   const handleSave = async () => {
     setSaving(true);
@@ -784,11 +818,53 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // merge totals into candidate for validation
       const candidate: InvoiceModel = { ...invoice, ...totals };
 
-      // Build payload & sanitize
+      // Build payload with new API structure
       const payload = sanitizePayload({
-        ...candidate,
-        status: "save", // ⚠️ Status = "save" (backend needs to add this to enum)
+        // Customer ID is required for auto-fetching payment terms
+        customerId: (invoice as any).customerId || null,
+        
+        // Client information (flattened structure)
+        clientName: candidate.billTo?.name || candidate.billTo?.companyName || "",
+        clientEmail: candidate.billTo?.email || "",
+        clientPhone: candidate.billTo?.phone || "",
+        clientAddress: candidate.billTo?.address || "",
+        clientCity: candidate.billTo?.city || "",
+        clientState: candidate.billTo?.state || "",
+        clientCountry: candidate.billTo?.country || "India",
+        clientGst: candidate.billTo?.gstNumber || candidate.billTo?.gst || "",
+        clientPan: candidate.billTo?.panNumber || candidate.billTo?.pan || "",
+        
+        // Invoice metadata - only send custom invoice number if different from auto-generated
+        // The backend will auto-generate if no customInvoiceNumber is provided
+        // Only send custom invoice number if user entered a truly custom one
+        // Backend will auto-generate sequential numbers if no customInvoiceNumber is provided
+        ...(candidate.invoiceNumber && !candidate.invoiceNumber.match(/^INV-\d+$/) && {
+          customInvoiceNumber: candidate.invoiceNumber
+        }),
+        
+        date: candidate.date,
+        dueDate: candidate.dueDate,
+        status: "save", // Backend will handle status enum
+        currency: candidate.currency || "INR",
+        
+        // Items and totals
+        items: candidate.items || [],
+        subtotal: candidate.subtotal || 0,
+        totalTax: (candidate.cgst || 0) + (candidate.sgst || 0) + (candidate.igst || 0),
+        cgst: candidate.cgst || 0,
+        sgst: candidate.sgst || 0,
+        igst: candidate.igst || 0,
+        total: candidate.total || 0,
+        
+        // Additional fields
+        notes: candidate.notes || "",
+        termsAndConditions: candidate.termsAndConditions || "",
+        
+        // Remove manual payment terms - they'll be auto-fetched from customer
+        // paymentTerms field is intentionally omitted
       } as any);
+
+      console.log('🔄 Invoice payload being sent to backend:', payload);
 
       // Debug payload being sent
       console.log("💾 Save Invoice Payload Debug:");
@@ -808,6 +884,11 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // backend returns { message, invoice: {...} } or similar
       const savedInvoice = (res?.data && (res.data.invoice ?? res.data)) || res.data;
 
+      // Update inventory stock after successful invoice creation
+      if (candidate.items && candidate.items.length > 0) {
+        await updateInventoryStockAfterInvoice(candidate.items);
+      }
+
       // Notify the app that an invoice was created/updated
       window.dispatchEvent(new CustomEvent("invoice:created", { detail: savedInvoice }));
 
@@ -816,6 +897,9 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
 
       // Clear draft data on successful save
       clearSavedState();
+
+      // Refresh next invoice number for the next invoice
+      window.dispatchEvent(new CustomEvent("refresh-next-invoice-number"));
 
       // close form
       onCancel();
@@ -831,11 +915,23 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
 
   // Handler to open print preview modal
   const handleOpenPrintPreview = () => {
-    // compute current totals (do not mutate main invoice state here)
-    const totals = computeTotals(invoice);
-    const candidate: InvoiceModel = { ...invoice, ...totals };
-    const sanitized = sanitizePayload(candidate);
-    setPreviewInvoice(sanitized);
+    // compute totals (optional, but keeps top-level fields current)
+    const totals = computeTotals(invoice); 
+    
+    // Create a candidate object with the latest state and computed totals
+    const candidate: InvoiceModel = { 
+        ...invoice, 
+        ...totals 
+    };
+    
+    // ❌ CRITICAL FIX: The sanitizePayload function is designed for final API SAVE, 
+    // NOT for FRONTEND PREVIEW. It strips out computed/item-level tax fields 
+    // which the PrintPreview component needs. REMOVE the sanitation step here.
+    
+    // const sanitized = sanitizePayload(candidate); // ❌ REMOVE THIS LINE ENTIRELY
+    
+    // ✅ Use the candidate directly which contains the correct calculated item fields.
+    setPreviewInvoice(candidate); 
   };
 
   const handleClosePreview = () => {

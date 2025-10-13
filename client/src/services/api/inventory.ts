@@ -183,3 +183,156 @@ export const getAllServices = async (): Promise<{ success: boolean; data: Servic
         throw error;
     }
 };
+
+/**
+ * Get inventory item for invoice editing (with all fields)
+ * Backend: GET /api/inventory/items/:item_id/for-invoice
+ * Returns: Complete item data with all fields for auto-fill
+ */
+export const getInventoryItemForInvoice = async (itemId: string | number): Promise<{
+  success: boolean;
+  data: {
+    id: number;
+    name: string;
+    description?: string;
+    sku?: string;
+    category?: string;
+    subCategory?: string;
+    brandName?: string;
+    unitPrice: number;
+    quantity: number;
+    hsnCode?: string;
+    sacCode?: string;
+    defaultTaxRate?: number;
+    defaultDiscount?: number;
+    taxCategory?: 'GOODS' | 'SERVICES';
+    isActive?: boolean;
+  };
+}> => {
+  try {
+    console.log(`🔍 Fetching inventory item ${itemId} for invoice editing`);
+    const response = await api.get(`/api/inventory/items/${itemId}/for-invoice`);
+    console.log('✅ Inventory item for invoice received:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching inventory item for invoice:', error);
+    throw error;
+  }
+};
+
+/**
+ * Calculate GST and discount for invoice items
+ * Backend: POST /api/inventory/calculate-gst-discount
+ * Returns: Calculated GST breakdown and totals
+ */
+export const calculateGstAndDiscount = async (data: {
+  items: Array<{
+    id?: number;
+    inventoryItemId?: number;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    gstRate?: number;
+    discount?: number;
+  }>;
+  billingState: string;
+  shippingState: string;
+}): Promise<{
+  success: boolean;
+  data: {
+    items: Array<{
+      id?: number;
+      inventoryItemId?: number;
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      gstRate: number;
+      discount: number;
+      taxableAmount: number;
+      cgst: number;
+      sgst: number;
+      igst: number;
+      total: number;
+    }>;
+    totals: {
+      subtotal: number;
+      cgst: number;
+      sgst: number;
+      igst: number;
+      totalTax: number;
+      taxType: 'CGST+SGST' | 'IGST';
+      total: number;
+    };
+  };
+}> => {
+  try {
+    console.log('🔍 Calculating GST and discount for items:', data);
+    const response = await api.post('/api/inventory/calculate-gst-discount', data);
+    console.log('✅ GST and discount calculation result:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error calculating GST and discount:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update inventory stock after invoice creation
+ * Backend: PUT /api/inventory/items/:item_id/stock
+ * Returns: Updated stock information
+ */
+export const updateInventoryStock = async (itemId: string | number, quantityUsed: number): Promise<{
+  success: boolean;
+  data: {
+    id: number;
+    name: string;
+    quantity: number;
+    updatedStock: number;
+  };
+}> => {
+  try {
+    console.log(`🔍 Updating stock for item ${itemId}, quantity used: ${quantityUsed}`);
+    const response = await api.put(`/api/inventory/items/${itemId}/stock`, {
+      quantityUsed
+    });
+    console.log('✅ Inventory stock updated:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error updating inventory stock:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get inventory item with enhanced data for auto-fill
+ * Backend: GET /api/inventory/items/:item_id/for-invoice
+ * Returns: Enhanced item data with all fields for auto-fill
+ */
+export const getInventoryItemForAutoFill = async (itemId: string | number): Promise<{
+  id: number;
+  name: string;
+  description?: string;
+  sku?: string;
+  category?: string;
+  subCategory?: string;
+  brandName?: string;
+  unitPrice: number;
+  quantity: number;
+  hsnCode?: string;
+  sacCode?: string;
+  defaultTaxRate?: number;
+  defaultDiscount?: number;
+  taxCategory?: 'GOODS' | 'SERVICES';
+  isActive?: boolean;
+}> => {
+  try {
+    console.log(`🔍 Fetching inventory item ${itemId} for auto-fill`);
+    const response = await api.get(`/api/inventory/items/${itemId}/for-invoice`);
+    const itemData = response.data.data || response.data;
+    console.log('✅ Inventory item for auto-fill received:', itemData);
+    return itemData;
+  } catch (error) {
+    console.error('❌ Error fetching inventory item for auto-fill:', error);
+    throw error;
+  }
+};
