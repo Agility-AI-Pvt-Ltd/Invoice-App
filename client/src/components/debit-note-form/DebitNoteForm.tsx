@@ -490,46 +490,16 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Determine if this is a create or update operation
-      const isUpdate = initialData && initialData._id;
-      
-      if (isUpdate) {
-        await updateDebitNote(initialData._id, formData as DebitNote);
-      } else {
-        await createDebitNote(formData as DebitNote);
-      }
-
-      toast({
-        title: "Success",
-        description: isUpdate ? "Debit note updated successfully!" : "Debit note created successfully!",
-      });
-
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error("Error saving debit note:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save debit note",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🔍 Save as Draft button clicked!");
     setLoading(true);
 
     try {
       // Basic validation for draft
       if (!formData.debitNoteNumber.trim()) {
+        console.log("❌ Validation failed: Debit note number required");
         toast({
           title: "Validation Error",
           description: "Debit note number is required",
@@ -574,11 +544,13 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
 
   const handleIssueNote = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🔍 Issue Note button clicked!");
     setLoading(true);
 
     try {
       // Enhanced validation for issuing the note
       if (!formData.debitNoteNumber.trim()) {
+        console.log("❌ Validation failed: Debit note number required");
         toast({
           title: "Validation Error",
           description: "Debit note number is required",
@@ -659,7 +631,7 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form className="space-y-8">
       {/* Debit Note Details */}
       <div className="bg-white rounded-lg p-6">
         <div className="flex items-center justify-between mb-8 bg-[#e8e5f5] w-full rounded-[8px] py-3 px-4">
@@ -1108,13 +1080,19 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
           Back
         </Button>
         <div className="flex gap-2">
-          <Button type="button" onClick={handleSaveDraft} disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
+          <Button type="button" onClick={(e) => {
+            console.log("🔍 Save as Draft button clicked - handler called!");
+            handleSaveDraft(e);
+          }} disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Save as Draft
           </Button>
           <Button type="button" onClick={handlePrint} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Print
           </Button>
-          <Button type="button" onClick={handleIssueNote} disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
+          <Button type="button" onClick={(e) => {
+            console.log("🔍 Issue Note button clicked - handler called!");
+            handleIssueNote(e);
+          }} disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
             Issue Note
           </Button>
         </div>
