@@ -556,46 +556,16 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Determine if this is a create or update operation
-      const isUpdate = initialData && initialData._id;
-      
-      if (isUpdate) {
-        await updateCreditNote(initialData._id, formData as CreditNote);
-      } else {
-        await createCreditNote(formData as CreditNote);
-      }
-
-      toast({
-        title: "Success",
-        description: isUpdate ? "Credit note updated successfully!" : "Credit note created successfully!",
-      });
-
-      handleSuccess();
-      handleClose();
-    } catch (error) {
-      console.error("Error saving credit note:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save credit note",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🔍 Save as Draft button clicked!");
     setLoading(true);
 
     try {
       // Basic validation for draft
       if (!formData.creditNoteNumber.trim()) {
+        console.log("❌ Validation failed: Credit note number required");
         toast({
           title: "Validation Error",
           description: "Credit note number is required",
@@ -640,11 +610,13 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
 
   const handleIssueNote = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🔍 Issue Note button clicked!");
     setLoading(true);
 
     try {
       // Enhanced validation for issuing the note
       if (!formData.creditNoteNumber.trim()) {
+        console.log("❌ Validation failed: Credit note number required");
         toast({
           title: "Validation Error",
           description: "Credit note number is required",
@@ -725,7 +697,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form className="space-y-8">
       {/* Draft indicator */}
       {hasSavedState && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -1189,13 +1161,19 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
           Back
         </Button>
         <div className="flex gap-2">
-          <Button type="button" onClick={handleSaveDraft} disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
+          <Button type="button" onClick={(e) => {
+            console.log("🔍 Save as Draft button clicked - handler called!");
+            handleSaveDraft(e);
+          }} disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Save as Draft
           </Button>
           <Button type="button" onClick={handlePrint} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Print
           </Button>
-          <Button type="button" onClick={handleIssueNote} disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
+          <Button type="button" onClick={(e) => {
+            console.log("🔍 Issue Note button clicked - handler called!");
+            handleIssueNote(e);
+          }} disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
             Issue Note
           </Button>
         </div>
