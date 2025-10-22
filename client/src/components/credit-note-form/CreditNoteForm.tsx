@@ -19,6 +19,7 @@ import { useProfile } from "@/contexts/ProfileContext";
 import { searchCustomers, searchInventory } from "@/services/api/lookup";
 import { getApiBaseUrl } from "@/lib/api-config";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { createCreditNote, updateCreditNote, type CreditNote } from "@/services/api/creditNote";
 
 const API_BASE = getApiBaseUrl();
 
@@ -560,43 +561,15 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     setLoading(true);
 
     try {
-      const token = Cookies.get("authToken");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-
-      const formDataToSend = new FormData();
-      
-      // Append all form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'items') {
-          formDataToSend.append(key, JSON.stringify(value));
-        } else if (key === 'uploadedDocument' && value instanceof File) {
-          formDataToSend.append(key, value);
-        } else if (key !== 'uploadedDocument') {
-          formDataToSend.append(key, String(value));
-        }
-      });
-
       // Determine if this is a create or update operation
       const isUpdate = initialData && initialData._id;
-      const method = isUpdate ? 'PUT' : 'POST';
-      const url = isUpdate ? `${API_BASE}/api/credit-notes/${initialData._id}` : `${API_BASE}/api/credit-notes`;
-
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formDataToSend,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      
+      if (isUpdate) {
+        await updateCreditNote(initialData._id, formData as CreditNote);
+      } else {
+        await createCreditNote(formData as CreditNote);
       }
 
-      await response.json();
       toast({
         title: "Success",
         description: isUpdate ? "Credit note updated successfully!" : "Credit note created successfully!",
@@ -609,6 +582,131 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save credit note",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveDraft = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Basic validation for draft
+      if (!formData.creditNoteNumber.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Credit note number is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // For draft, we can save locally using the form persistence
+      // or save to backend with a draft status
+      const draftData = {
+        ...formData,
+        status: 'draft'
+      };
+
+      // Determine if this is a create or update operation
+      const isUpdate = initialData && initialData._id;
+      
+      if (isUpdate) {
+        await updateCreditNote(initialData._id, draftData as CreditNote);
+      } else {
+        await createCreditNote(draftData as CreditNote);
+      }
+
+      toast({
+        title: "Success",
+        description: "Credit note saved as draft!",
+      });
+
+      // Don't close the form for drafts, just show success
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save draft",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleIssueNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Enhanced validation for issuing the note
+      if (!formData.creditNoteNumber.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Credit note number is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!formData.customerName.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Customer name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!formData.againstInvoiceNumber.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Against invoice number is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (formData.items.length === 0 || formData.items.every(item => !item.itemName.trim())) {
+        toast({
+          title: "Validation Error",
+          description: "At least one item is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // For issuing the note, save with final status
+      const finalData = {
+        ...formData,
+        status: 'issued'
+      };
+
+      // Determine if this is a create or update operation
+      const isUpdate = initialData && initialData._id;
+      
+      if (isUpdate) {
+        await updateCreditNote(initialData._id, finalData as CreditNote);
+      } else {
+        await createCreditNote(finalData as CreditNote);
+      }
+
+      toast({
+        title: "Success",
+        description: isUpdate ? "Credit note updated and issued!" : "Credit note created and issued!",
+      });
+
+      handleSuccess();
+      handleClose();
+    } catch (error) {
+      console.error("Error issuing credit note:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to issue credit note",
         variant: "destructive",
       });
     } finally {
@@ -1066,6 +1164,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={handleFileUpload}
                 className="hidden"
+                aria-label="Upload document"
               />
             </div>
             <div>
@@ -1090,13 +1189,13 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
           Back
         </Button>
         <div className="flex gap-2">
-          <Button type="submit" disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
+          <Button type="button" onClick={handleSaveDraft} disabled={loading} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Save as Draft
           </Button>
           <Button type="button" onClick={handlePrint} className="border-2 border-[#654BCD] text-[#654BCD] bg-white hover:bg-white cursor-pointer">
             Print
           </Button>
-          <Button type="submit" disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
+          <Button type="button" onClick={handleIssueNote} disabled={loading} className="text-white bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] cursor-pointer">
             Issue Note
           </Button>
         </div>
