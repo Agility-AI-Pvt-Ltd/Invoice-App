@@ -36,6 +36,8 @@ import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
 import api from "@/lib/api";
 import { searchCustomers } from "@/services/api/lookup";
+import { getCreditNotes, deleteCreditNote, type CreditNote } from "@/services/api/creditNote";
+import { getDebitNotes, deleteDebitNote, type DebitNote } from "@/services/api/debitNote";
 // Removed sales returns imports
 
 type Tab = "invoices" | "credit-notes" | "debit-notes";
@@ -468,51 +470,32 @@ export default function Receipts() {
   const fetchCreditNotes = useCallback(async () => {
     try {
       setLoading(true);
-      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
-      const params = new URLSearchParams({
-        page: String(currentPage),
-        perPage: String(pagination.perPage),
-        ...(searchTerm && { search: searchTerm }),
-        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
-      });
-      const res = await api.get(`/api/credit-notes?${params.toString()}`);
-      const data = res.data;
-      const arr = Array.isArray(data) ? data : data.data || data.notes || [];
-      const mapped = arr.map((n: any) => ({
-        id: n._id || n.id || n.creditNoteId || String(n._id || n.id || ""),
-        noteNo: n.creditNoteNumber || n.noteNo || n.number || "200",
-        invoiceNo: n.againstInvoiceNumber || n.invoiceNo || "IN112030",
-        customerName:
-          n.customerName || n.bussinessName || n.clientName || "Kevin Motors",
-        reason: n.reason || n.noteReason || "Returned Goods",
-        dateIssued: formatDate(
-          n.creditNoteDate || n.dateIssued || n.date || n.createdAt || "",
-        ),
-        amount: n.total ?? n.amount ?? 25000,
-        status: n.refund === true ? "Refunded" : n.status || "Open",
-      }));
-      // Update pagination state with server response
-      // Handle both pagination object and root-level pagination properties
-      const pg = data.pagination || {};
-      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
-      const serverTotalPages = pg.totalPages || data.totalPages || 1;
-      const serverTotalItems = pg.total || data.total || 0;
-      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
+      
+      const filters = {
+        searchTerm: searchTerm || undefined,
+        dateFrom: selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
+        dateTo: selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
+      };
 
-      console.log("Credit notes API response:", data);
-      console.log("Credit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
+      const response = await getCreditNotes(currentPage, pagination.perPage, filters);
+      
+      const mapped = response.data.map((n: CreditNote) => ({
+        id: n._id || String(n._id || ""),
+        noteNo: n.creditNoteNumber || "CN-001",
+        invoiceNo: n.againstInvoiceNumber || "INV-001",
+        customerName: n.customerName || "Customer",
+        reason: n.reason || "Returned Goods",
+        dateIssued: formatDate(n.creditNoteDate || n.createdAt || ""),
+        amount: n.total || 0,
+        status: n.refund === true ? "Refunded" : "Open",
+      }));
 
       setPagination({
-        currentPage: serverCurrentPage,
-        totalPages: serverTotalPages,
-        totalItems: serverTotalItems,
-        perPage: serverPerPage,
+        currentPage: response.page,
+        totalPages: response.totalPages,
+        totalItems: response.total,
+        perPage: pagination.perPage,
       });
-
-      // Update current page if server returned different page
-      if (serverCurrentPage !== currentPage) {
-        setCurrentPage(serverCurrentPage);
-      }
 
       setCreditNotes(mapped);
     } catch (e) {
@@ -616,52 +599,32 @@ export default function Receipts() {
   const fetchDebitNotes = useCallback(async () => {
     try {
       setLoading(true);
-      // const token = Cookies.get("authToken") || undefined; // Removed unused variable
-      const params = new URLSearchParams({
-        page: String(currentPage),
-        perPage: String(pagination.perPage),
-        ...(searchTerm && { search: searchTerm }),
-        ...(selectedDate && { date: selectedDate.toISOString().split('T')[0] })
-      });
-      const res = await api.get(`/api/debit-notes?${params.toString()}`);
-      const data = res.data;
-      const arr = Array.isArray(data) ? data : data.data || data.notes || [];
-      const mapped = arr.map((n: any) => ({
-        id: n._id || n.id || n.debitNoteId || String(n._id || n.id || ""),
-        noteNo: n.debitNoteNumber || n.noteNo || n.number || "200",
-        invoiceNo: n.againstInvoiceNumber || n.invoiceNo || "IN112030",
-        vendorName:
-          n.vendorName || n.vendor || n.supplierName || "Kevin Motors",
-        reason: n.reason || n.noteReason || "Damaged Goods",
-        dateIssued: formatDate(
-          n.debitNoteDate || n.dateIssued || n.date || n.createdAt || "",
-        ),
-        amount: n.total ?? n.amount ?? 25000,
-        status: n.status || "Open",
+      
+      const filters = {
+        searchTerm: searchTerm || undefined,
+        dateFrom: selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
+        dateTo: selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
+      };
+
+      const response = await getDebitNotes(currentPage, pagination.perPage, filters);
+      
+      const mapped = response.data.map((n: DebitNote) => ({
+        id: n._id || String(n._id || ""),
+        noteNo: n.debitNoteNumber || "DN-001",
+        invoiceNo: n.againstInvoiceNumber || "INV-001",
+        vendorName: n.vendorName || "Vendor",
+        reason: n.reason || "Damaged Goods",
+        dateIssued: formatDate(n.debitNoteDate || n.createdAt || ""),
+        amount: n.total || 0,
+        status: "Open",
       }));
 
-      // Update pagination state with server response
-      // Handle both pagination object and root-level pagination properties
-      const pg = data.pagination || {};
-      const serverCurrentPage = pg.currentPage || pg.page || data.page || currentPage;
-      const serverTotalPages = pg.totalPages || data.totalPages || 1;
-      const serverTotalItems = pg.total || data.total || 0;
-      const serverPerPage = pg.perPage || data.perPage || pagination.perPage;
-
-      console.log("Debit notes API response:", data);
-      console.log("Debit notes pagination:", { serverCurrentPage, serverTotalPages, serverTotalItems, serverPerPage });
-
       setPagination({
-        currentPage: serverCurrentPage,
-        totalPages: serverTotalPages,
-        totalItems: serverTotalItems,
-        perPage: serverPerPage,
+        currentPage: response.page,
+        totalPages: response.totalPages,
+        totalItems: response.total,
+        perPage: pagination.perPage,
       });
-
-      // Update current page if server returned different page
-      if (serverCurrentPage !== currentPage) {
-        setCurrentPage(serverCurrentPage);
-      }
 
       setDebitNotes(mapped);
     } catch (e) {
@@ -3120,21 +3083,13 @@ export default function Receipts() {
     if (!confirm(`Are you sure you want to delete this ${activeTab === "invoices" ? "invoice" : activeTab === "credit-notes" ? "credit note" : "debit note"}?`)) return;
 
     try {
-      const token = Cookies.get("authToken");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-
-      let endpoint = "";
       if (activeTab === "invoices") {
-        endpoint = `/api/invoices/${itemId}`;
+        await api.delete(`/api/invoices/${itemId}`);
       } else if (activeTab === "credit-notes") {
-        endpoint = `/api/credit-notes/${itemId}`;
+        await deleteCreditNote(String(itemId));
       } else if (activeTab === "debit-notes") {
-        endpoint = `/api/debit-notes/${itemId}`;
+        await deleteDebitNote(String(itemId));
       }
-
-      await api.delete(endpoint);
 
       toast({
         title: "Success",

@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { deleteCreditNote } from "@/services/api/creditNote";
+import { deleteDebitNote } from "@/services/api/debitNote";
 
 type Note = {
   id: string | number;
@@ -107,15 +109,18 @@ const CreditDebitTable = ({
     if (!confirm(`Are you sure you want to delete this ${activeTab === "credit-notes" ? "credit note" : "debit note"}?`)) return;
     
     try {
-      // TODO: Add API call here to delete the note
-      // Example: await deleteNoteAPI(noteId);
+      if (activeTab === "credit-notes") {
+        await deleteCreditNote(String(noteId));
+      } else {
+        await deleteDebitNote(String(noteId));
+      }
       
-      // For now, just call the onDelete callback if provided
+      // Call the onDelete callback to refresh the data
       onDelete?.(noteId);
       
-      // TODO: Remove this line when API is implemented and data is refreshed from parent
-      console.log(`Delete ${activeTab === "credit-notes" ? "credit note" : "debit note"} with ID:`, noteId);
+      console.log(`Successfully deleted ${activeTab === "credit-notes" ? "credit note" : "debit note"} with ID:`, noteId);
     } catch (err: any) {
+      console.error(`Error deleting ${activeTab === "credit-notes" ? "credit note" : "debit note"}:`, err);
       alert(err.message || `Failed to delete ${activeTab === "credit-notes" ? "credit note" : "debit note"}`);
     }
   };

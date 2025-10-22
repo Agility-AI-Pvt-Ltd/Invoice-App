@@ -54,18 +54,51 @@ const OtpForm: React.FC = () => {
             }
 
             // ✅ Send OTP & phone number to backend
-            await axios.post(routes.auth.verifyOtpAndRegister, {
+            const response = await axios.post(routes.auth.verifyOtpAndRegister, {
                 phonenumber,
                 otp: otpValue,
             });
 
-            toast.success("Registration successful!");
-            navigate("/login");
+            // ✅ Handle successful response properly
+            console.log("✅ OTP Verification Response:", response.data);
+            console.log("✅ Response status:", response.status);
+            
+            // Check for success indicators in the response
+            if (response.status === 200 || response.status === 201) {
+                // Success - check for specific success messages
+                if (response.data && response.data.message === "OTP verified and user registered") {
+                    console.log("✅ Registration successful with expected message");
+                    toast.success("Registration successful! You can now login.");
+                    navigate("/login");
+                } else if (response.data && response.data.success === true) {
+                    console.log("✅ Registration successful with success flag");
+                    toast.success("Registration successful! You can now login.");
+                    navigate("/login");
+                } else {
+                    // If response doesn't match expected format, still treat as success if status is 200
+                    console.log("✅ Registration successful (status 200)");
+                    toast.success("Registration successful! You can now login.");
+                    navigate("/login");
+                }
+            } else {
+                // Unexpected status code
+                console.warn("⚠️ Unexpected status code:", response.status);
+                toast.error("Unexpected response from server. Please try again.");
+            }
         } catch (error: unknown) {
+            console.error("❌ OTP Verification Error:", error);
             let message = "Invalid or expired OTP";
             if (axios.isAxiosError(error)) {
                 const data = error.response?.data as { message?: string } | undefined;
-                if (data?.message) message = data.message;
+                if (data?.message) {
+                    message = data.message;
+                }
+                console.error("❌ Error details:", {
+                    status: error.response?.status,
+                    statusText: error.response?.statusText,
+                    data: error.response?.data,
+                    message: error.message
+                });
             }
             toast.error(message);
         } finally {
@@ -73,9 +106,30 @@ const OtpForm: React.FC = () => {
         }
     };
 
-    const handleResend = () => {
-        // TODO: call resend OTP API if available
-        toast.info("Resending OTP...");
+    const handleResend = async () => {
+        try {
+            if (!phonenumber) {
+                toast.error("Missing phone number. Please start again.");
+                return navigate("/signup");
+            }
+
+            // Call resend OTP API
+            await axios.post(routes.auth.sendOtpRegister, {
+                phonenumber,
+            });
+
+            toast.success("OTP resent successfully!");
+        } catch (error: unknown) {
+            console.error("❌ Resend OTP error:", error);
+            let message = "Failed to resend OTP. Please try again.";
+            if (axios.isAxiosError(error)) {
+                const data = error.response?.data as { message?: string } | undefined;
+                if (data?.message) {
+                    message = data.message;
+                }
+            }
+            toast.error(message);
+        }
     };
 
     return (
@@ -126,6 +180,8 @@ const OtpForm: React.FC = () => {
                             onChange={(e) => handleChange(index, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(index, e)}
                             className="w-12 h-12 text-center text-lg font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                            aria-label={`OTP digit ${index + 1}`}
+                            placeholder="0"
                         />
                     ))}
                 </div>
