@@ -19,11 +19,9 @@ import { BASE_URL } from "@/lib/api-config";
 import axios from "axios";
 import Cookies from "js-cookie";
 import type { InventoryItem } from "@/types/inventory";
-import { getInventoryItemForAutoFill } from "@/services/api/inventory";
 
 type Item = {
   id?: number | string;
-  inventoryItemId?: number | null; // ⚠️ NEW: Link to inventory for automatic stock reduction
   // use same field names as InvoiceModel validation expects:
   description: string;
   hsn: string;
@@ -75,14 +73,33 @@ function RowInventorySearch({
       return;
     }
 
+    console.log(`🔍 Row ${rowIndex} - Searching inventory:`, query);
     setIsSearching(true);
     onLoadingChange(true, rowIndex);
     setHasSearched(true);
 
     try {
+      // First, let's check what products are available
+      console.log(`🔍 Row ${rowIndex} - Checking available products first...`);
+      try {
+        const allItemsResponse = await axios.get(`${BASE_URL}/api/inventory/items`, {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+        console.log(`📦 Row ${rowIndex} - All available products:`, allItemsResponse.data);
+        if (allItemsResponse.data && allItemsResponse.data.data) {
+          console.log(`📦 Row ${rowIndex} - Available product names:`, allItemsResponse.data.data.map((item: Record<string, unknown>) => item.name || item.productName || item.product_name));
+        }
+      } catch (err) {
+        console.log(`❌ Row ${rowIndex} - Could not fetch all products:`, err);
+      }
 
       const encodedName = encodeURIComponent(query.trim());
       const searchUrl = `${BASE_URL}/api/inventory/${encodedName}`;
+
+      console.log(`🔍 Row ${rowIndex} - Searching inventory by name:`, searchUrl);
+      console.log(`🔍 Row ${rowIndex} - Search query:`, query.trim());
 
       const response = await axios.get(searchUrl, {
         headers: {
@@ -90,54 +107,73 @@ function RowInventorySearch({
         },
       });
 
+      console.log(`📦 Row ${rowIndex} - Search API response:`, response.data);
+      console.log(`📦 Row ${rowIndex} - Response status:`, response.status);
+      console.log(`🔍 Row ${rowIndex} - Search term used:`, query.trim());
+      console.log(`🔍 Row ${rowIndex} - Encoded search term:`, encodedName);
+      console.log(`🔍 Row ${rowIndex} - Full search URL:`, searchUrl);
+
       // Handle different response formats
       let results: Record<string, unknown>[] = [];
 
       if (Array.isArray(response.data)) {
         results = response.data;
+        console.log(`📦 Row ${rowIndex} - Direct array response, items:`, results.length);
       } else if (response.data && Array.isArray(response.data.data)) {
         results = response.data.data;
+        console.log(`📦 Row ${rowIndex} - Nested data array, items:`, results.length);
       } else if (response.data && typeof response.data === 'object' && (response.data.name || response.data.productName)) {
         // Single item result
         results = [response.data];
+        console.log(`📦 Row ${rowIndex} - Single item result`);
+      } else {
+        console.log(`📦 Row ${rowIndex} - No recognizable data format, response:`, response.data);
       }
 
       // Normalize the results to match the expected format (only required fields)
-      const normalizedResults = results.map((item: Record<string, unknown>) => {
-        const rawTaxCategory = ((item.taxCategory as string) || '').toString().toUpperCase();
-        const taxCategory: 'GOODS' | 'SERVICES' = rawTaxCategory === 'SERVICES' ? 'SERVICES' : 'GOODS';
-        return {
+      const normalizedResults = results.map((item: Record<string, unknown>) => ({
         id: (item.id as string) || (item._id as string) || Math.random().toString(),
         productName: (item.name as string) || (item.productName as string) || (item.product_name as string) || 'Unknown Product',
         category: (item.category as string) || 'Uncategorized',
-        unitPrice: Number(item.unitPrice || item.unit_price || item.price || 0),
-        inStock: Number(item.quantity || item.inStock || item.in_stock || 0),
-        discount: Number(item.defaultDiscount || item.discount || 0), // Use defaultDiscount from backend
-        totalValue: Number(item.unitPrice || item.unit_price || 0) * Number(item.quantity || item.inStock || item.in_stock || 0),
-        status: ((item.status as string) || (Number(item.quantity || item.inStock || item.in_stock || 0) > 0 ? 'In Stock' : 'Out of Stock')) as "In Stock" | "Out of Stock" | "Low in Stock",
-        // Add new fields for enhanced display
-        defaultTaxRate: Number(item.defaultTaxRate || item.taxRate || 0),
-        hsnCode: (item.hsnCode as string) || '',
-        subCategory: (item.subCategory as string) || '',
-        brandName: (item.brandName as string) || '',
-        taxCategory
-      }});
+        unitPrice: (item.unitPrice as number) || (item.unit_price as number) || (item.price as number) || 0,
+        inStock: (item.inStock as number) || (item.in_stock as number) || (item.quantity as number) || 0,
+        discount: (item.discount as number) || 0,
+        totalValue: ((item.unitPrice as number) || (item.unit_price as number) || 0) * ((item.inStock as number) || (item.in_stock as number) || 0),
+        status: ((item.status as string) || (((item.inStock as number) || (item.in_stock as number) || 0) > 0 ? 'In Stock' : 'Out of Stock')) as "In Stock" | "Out of Stock" | "Low in Stock"
+      }));
+
+      console.log(`✅ Row ${rowIndex} - Normalized search results:`, normalizedResults);
+      console.log(`✅ Row ${rowIndex} - Number of results:`, normalizedResults.length);
+      console.log(`🔍 Row ${rowIndex} - Sample result structure:`, normalizedResults[0]);
 
       setSearchResults(normalizedResults);
       onSearchResults(normalizedResults, rowIndex);
       setShowSuggestions(true);
 
     } catch (error: unknown) {
+      console.error(`❌ Row ${rowIndex} - Search by name failed:`, error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: unknown; status?: number } };
+        console.error(`Error details for row ${rowIndex}:`, axiosError.response?.data);
+        console.error(`Error status for row ${rowIndex}:`, axiosError.response?.status);
+      }
+      if (error && typeof error === 'object' && 'message' in error) {
+        console.error(`Error message for row ${rowIndex}:`, (error as { message: string }).message);
+      }
 
       // Fallback: Try searching using the regular items endpoint with search parameter
       try {
+        console.log(`🔄 Row ${rowIndex} - Trying fallback search with items endpoint...`);
         const fallbackUrl = `${BASE_URL}/api/inventory/items?search=${encodeURIComponent(query.trim())}`;
+        console.log(`🔍 Row ${rowIndex} - Fallback search URL:`, fallbackUrl);
 
         const fallbackResponse = await axios.get(fallbackUrl, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
         });
+
+        console.log(`📦 Row ${rowIndex} - Fallback search response:`, fallbackResponse.data);
 
         // Handle fallback response
         let fallbackResults: Record<string, unknown>[] = [];
@@ -149,31 +185,24 @@ function RowInventorySearch({
         }
 
         // Normalize fallback results (only required fields)
-        const normalizedFallbackResults = fallbackResults.map((item: Record<string, unknown>) => {
-          const rawTaxCategory = ((item.taxCategory as string) || '').toString().toUpperCase();
-          const taxCategory: 'GOODS' | 'SERVICES' = rawTaxCategory === 'SERVICES' ? 'SERVICES' : 'GOODS';
-          return {
+        const normalizedFallbackResults = fallbackResults.map((item: Record<string, unknown>) => ({
           id: (item.id as string) || (item._id as string) || Math.random().toString(),
           productName: (item.name as string) || (item.productName as string) || (item.product_name as string) || 'Unknown Product',
           category: (item.category as string) || 'Uncategorized',
-          unitPrice: Number(item.unitPrice || item.unit_price || item.price || 0),
-          inStock: Number(item.quantity || item.inStock || item.in_stock || 0),
-          discount: Number(item.defaultDiscount || item.discount || 0), // Use defaultDiscount from backend
-          totalValue: Number(item.unitPrice || item.unit_price || 0) * Number(item.quantity || item.inStock || item.in_stock || 0),
-          status: ((item.status as string) || (Number(item.quantity || item.inStock || item.in_stock || 0) > 0 ? 'In Stock' : 'Out of Stock')) as "In Stock" | "Out of Stock" | "Low in Stock",
-          // Add new fields for enhanced display
-          defaultTaxRate: Number(item.defaultTaxRate || item.taxRate || 0),
-          hsnCode: (item.hsnCode as string) || '',
-          subCategory: (item.subCategory as string) || '',
-          brandName: (item.brandName as string) || '',
-          taxCategory
-        }});
+          unitPrice: (item.unitPrice as number) || (item.unit_price as number) || (item.price as number) || 0,
+          inStock: (item.inStock as number) || (item.in_stock as number) || (item.quantity as number) || 0,
+          discount: (item.discount as number) || 0,
+          totalValue: ((item.unitPrice as number) || (item.unit_price as number) || 0) * ((item.inStock as number) || (item.in_stock as number) || 0),
+          status: ((item.status as string) || (((item.inStock as number) || (item.in_stock as number) || 0) > 0 ? 'In Stock' : 'Out of Stock')) as "In Stock" | "Out of Stock" | "Low in Stock"
+        }));
 
+        console.log(`✅ Row ${rowIndex} - Fallback search results:`, normalizedFallbackResults);
         setSearchResults(normalizedFallbackResults);
         onSearchResults(normalizedFallbackResults, rowIndex);
         setShowSuggestions(true);
 
       } catch (fallbackError: unknown) {
+        console.error(`❌ Row ${rowIndex} - Fallback search also failed:`, fallbackError);
         // If both searches fail, show empty results
         setSearchResults([]);
         onSearchResults([], rowIndex);
@@ -214,6 +243,7 @@ function RowInventorySearch({
   };
 
   const handleInventorySelect = (inventory: InventoryItem) => {
+    console.log(`🎯 Row ${rowIndex} - Inventory selected:`, inventory);
     onInventorySelect(inventory, rowIndex);
     setShowSuggestions(false);
   };
@@ -344,7 +374,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
 
   // local fallback state (kept for compatibility if parent doesn't pass items)
   const [localItems, setLocalItems] = useState<Item[]>([
-    { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+    { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
   ]);
 
 
@@ -376,7 +406,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   useEffect(() => {
     if (!items || items.length === 0) {
       setItems([
-        { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+        { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
       ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -398,55 +428,36 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   };
 
   // Row inventory search callbacks
-  const handleRowInventorySelect = useCallback(async (inventory: InventoryItem, rowIndex: number) => {
+  const handleRowInventorySelect = useCallback((inventory: InventoryItem, rowIndex: number) => {
+    console.log(`🎯 Row ${rowIndex} - Inventory selected:`, inventory);
+
     const updated = [...items];
     const existing = { ...(updated[rowIndex] as Item) } as Item;
 
-    // Parse inventory ID (could be string or number)
-    const inventoryId = typeof inventory.id === 'string' ? parseInt(inventory.id) : inventory.id;
+    // Map inventory fields to item fields
+    updated[rowIndex] = {
+      ...existing,
+      description: inventory.productName,
+      hsn: "", // HSN will need to be filled manually or from inventory
+      unitPrice: inventory.unitPrice,
+      gst: 0, // GST will need to be filled manually or from inventory
+      discount: inventory.discount,
+    } as Item;
 
-    try {
-      // Fetch enhanced inventory data for auto-fill
-      const enhancedData = await getInventoryItemForAutoFill(inventoryId);
-      
-      // Map enhanced inventory fields to item fields with auto-fill
-      updated[rowIndex] = {
-        ...existing,
-        inventoryItemId: inventoryId, // ⚠️ CRITICAL: Link to inventory for automatic stock reduction
-        description: enhancedData.name || inventory.productName,
-        hsn: enhancedData.hsnCode || "", // Auto-fill HSN code
-        unitPrice: Number(enhancedData.unitPrice || inventory.unitPrice || 0),
-        gst: Number(enhancedData.defaultTaxRate || 0), // Auto-fill GST rate
-        discount: Number(enhancedData.defaultDiscount || inventory.discount || 0), // Auto-fill discount
-      } as Item;
-
-      setItems(updated);
-    } catch (error) {
-      // Fallback to basic inventory data if enhanced fetch fails
-      updated[rowIndex] = {
-        ...existing,
-        inventoryItemId: inventoryId,
-        description: inventory.productName,
-        hsn: inventory.hsnCode || "", // Use HSN from inventory if available
-        unitPrice: Number(inventory.unitPrice || 0),
-        gst: Number(inventory.defaultTaxRate || 0), // Use defaultTaxRate from inventory
-        discount: Number(inventory.discount || 0), // Use discount from inventory
-      } as Item;
-
-      setItems(updated);
-    }
+    setItems(updated);
+    console.log(`✅ Row ${rowIndex} updated with inventory data`);
   }, [items, setItems]);
 
-  const handleRowSearchResults = useCallback((_results: InventoryItem[], _rowIndex: number) => {
-    // Search results received
+  const handleRowSearchResults = useCallback((results: InventoryItem[], rowIndex: number) => {
+    console.log(`🔍 Row ${rowIndex} - Search results received:`, results);
   }, []);
 
-  const handleRowSearchClear = useCallback((_rowIndex: number) => {
-    // Search cleared
+  const handleRowSearchClear = useCallback((rowIndex: number) => {
+    console.log(`🧹 Row ${rowIndex} - Search cleared`);
   }, []);
 
-  const handleRowLoadingChange = useCallback((_loading: boolean, _rowIndex: number) => {
-    // Loading state changed
+  const handleRowLoadingChange = useCallback((loading: boolean, rowIndex: number) => {
+    console.log(`⏳ Row ${rowIndex} - Loading:`, loading);
   }, []);
 
 
@@ -458,7 +469,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
       current[field] = value;
     } else {
       // numeric fields: allow empty strings while typing, block single '-' etc.
-      let newValue: number | string = value;
+      let newValue = value;
       if (newValue === "-") {
         newValue = "";
       } else {
@@ -468,7 +479,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         }
         // if parsed NaN we preserve string (so user can type "0.")
       }
-      (current[field] as number | string) = newValue;
+      current[field] = newValue;
     }
 
     updatedItems[index] = current;
@@ -519,7 +530,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
   const addItem = () => {
     setItems([
       ...items,
-      { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+      { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
     ]);
   };
 
@@ -528,7 +539,7 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     const updated = items.filter((it) => it.id !== id);
     if (updated.length === 0) {
       setItems([
-        { id: Date.now(), inventoryItemId: null, description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
+        { id: Date.now(), description: "", hsn: "", quantity: 0, unitPrice: 0, gst: 0, discount: 0 },
       ]);
     } else {
       setItems(updated);
@@ -548,38 +559,10 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
     const discount = toNumber(item.discount);
 
     const base = qty * price;
-    // Apply discount first, then calculate GST on the discounted amount
+    // preserve previous file's behaviour for discount/gst calculation:
+    const gstAmt = (base * gst) / 100;
     const discountAmt = (base * discount) / 100;
-    const taxableAmount = base - discountAmt;
-    const gstAmt = (taxableAmount * gst) / 100;
-    const total = taxableAmount + gstAmt;
-    
-    // Comprehensive calculation logging
-    console.log('🧮 ITEM CALCULATION:', {
-      item: item.description || 'Unnamed Item',
-      inputs: {
-        quantity: qty,
-        unitPrice: price,
-        gstRate: gst,
-        discountRate: discount
-      },
-      calculations: {
-        baseAmount: base,
-        discountAmount: discountAmt,
-        taxableAmount: taxableAmount,
-        gstAmount: gstAmt,
-        finalTotal: total
-      },
-      breakdown: {
-        step1: `${qty} × ₹${price} = ₹${base}`,
-        step2: `Discount: ₹${base} × ${discount}% = ₹${discountAmt}`,
-        step3: `Taxable: ₹${base} - ₹${discountAmt} = ₹${taxableAmount}`,
-        step4: `GST: ₹${taxableAmount} × ${gst}% = ₹${gstAmt}`,
-        step5: `Total: ₹${taxableAmount} + ₹${gstAmt} = ₹${total.toFixed(2)}`
-      }
-    });
-    
-    return total.toFixed(2);
+    return (base + gstAmt - discountAmt).toFixed(2);
   };
 
   return (
@@ -739,6 +722,12 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
           className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
         >
           Add Item +
+        </NavbarButton>
+        <NavbarButton
+          variant="secondary"
+          className="w-full sm:w-auto bg-gradient-to-b from-[#B5A3FF] via-[#785FDA] to-[#9F91D8] text-white px-4 py-2 rounded-lg"
+        >
+          Add from Inventory +
         </NavbarButton>
       </div>
     </>

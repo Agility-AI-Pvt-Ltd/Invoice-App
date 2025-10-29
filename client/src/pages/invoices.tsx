@@ -16,6 +16,9 @@ type SalesStatsUI = {
   currentMonthChange: number;
   averageOrderValue: number;
   averageOrderChange: number;
+  trendTotal?: number[];
+  trendMonth?: number[];
+  trendAOV?: number[];
 };
 
 const Index = () => {
@@ -46,11 +49,14 @@ const Index = () => {
 
       setStats({
         totalSales: apiData?.totalSales ?? 0,
-        totalSalesChange: apiData?.totalSalesChange ?? 0,
+        totalSalesChange: Math.round((apiData?.totalSalesChange ?? 0) * 100) / 100,
         currentMonthSales: apiData?.currentMonthSales ?? 0,
-        currentMonthChange: apiData?.currentMonthChange ?? 0,
+        currentMonthChange: Math.round((apiData?.currentMonthChange ?? 0) * 100) / 100,
         averageOrderValue: apiData?.averageOrderValue ?? 0,
-        averageOrderChange: apiData?.averageOrderChange ?? 0,
+        averageOrderChange: Math.round((apiData?.averageOrderChange ?? 0) * 100) / 100,
+        trendTotal: apiData?.trendTotal ?? [],
+        trendMonth: apiData?.trendMonth ?? [],
+        trendAOV: apiData?.trendAOV ?? [],
       });
     } catch (e: any) {
       // keep silent on UI (no UI change requested) but log for debugging

@@ -14,7 +14,8 @@ import { InvoiceContext } from "@/contexts/InvoiceContext";
 import type { InvoiceModel } from "@/contexts/InvoiceContext";
 
 import PrintPreview from "./Print-preview"; // added import
-import { updateInventoryStock } from "@/services/api/inventory";
+import { checkInventoryAvailability, updateInventoryStockBulk } from "@/services/api/inventory";
+import { mapToBackendStatus } from "@/lib/status-mapping";
 
 type Props = {
   onCancel: () => void;
@@ -775,36 +776,28 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
     }
   };
 
-  // Function to update inventory stock after invoice creation
+  // Function to update inventory stock after invoice creation (bulk API)
   const updateInventoryStockAfterInvoice = async (items: any[]) => {
     try {
-      console.log('📦 Updating inventory stock for invoice items:', items);
-      
-      const stockUpdatePromises = items
-        .filter(item => item.inventoryItemId && item.quantity > 0)
-        .map(async (item) => {
-          try {
-            const result = await updateInventoryStock(item.inventoryItemId, item.quantity);
-            console.log(`✅ Stock updated for item ${item.inventoryItemId}:`, result);
-            return result;
-          } catch (error) {
-            console.error(`❌ Failed to update stock for item ${item.inventoryItemId}:`, error);
-            return null;
-          }
-        });
+      const payloadItems = (items || [])
+        .filter((it: any) => it.inventoryItemId && Number(it.quantity) > 0)
+        .map((it: any) => ({ inventoryItemId: Number(it.inventoryItemId), quantity: Number(it.quantity) }));
 
-      const results = await Promise.all(stockUpdatePromises);
-      const successfulUpdates = results.filter(result => result !== null);
-      
-      console.log(`📦 Stock update completed: ${successfulUpdates.length}/${items.length} items updated`);
-      
+      if (payloadItems.length === 0) return;
+
+      console.log('📦 Updating inventory stock (bulk) for items:', payloadItems);
+      const res = await updateInventoryStockBulk({ operation: "remove", items: payloadItems });
+
+      if (!res?.success) {
+        throw new Error(res?.message || 'Inventory stock update failed');
+      }
+
       // Notify inventory components to refresh
       window.dispatchEvent(new CustomEvent("inventory:stock-updated", { 
-        detail: { updatedItems: successfulUpdates } 
+        detail: { updatedItems: res.data?.updates || [] }
       }));
-      
     } catch (error) {
-      console.error('❌ Error updating inventory stock:', error);
+      console.error('❌ Error updating inventory stock (bulk):', error);
     }
   };
 
@@ -818,12 +811,9 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // merge totals into candidate for validation
       const candidate: InvoiceModel = { ...invoice, ...totals };
 
-      // Build payload with new API structure
+      // Build payload with new API structure according to backend API reference
       const payload = sanitizePayload({
-        // Customer ID is required for auto-fetching payment terms
-        customerId: (invoice as any).customerId || null,
-        
-        // Client information (flattened structure)
+        // Client information (flattened structure as per backend API)
         clientName: candidate.billTo?.name || candidate.billTo?.companyName || "",
         clientEmail: candidate.billTo?.email || "",
         clientPhone: candidate.billTo?.phone || "",
@@ -833,35 +823,43 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         clientCountry: candidate.billTo?.country || "India",
         clientGst: candidate.billTo?.gstNumber || candidate.billTo?.gst || "",
         clientPan: candidate.billTo?.panNumber || candidate.billTo?.pan || "",
+        clientZipCode: candidate.billTo?.zipCode || "",
         
-        // Invoice metadata - only send custom invoice number if different from auto-generated
-        // The backend will auto-generate if no customInvoiceNumber is provided
-        // Only send custom invoice number if user entered a truly custom one
-        // Backend will auto-generate sequential numbers if no customInvoiceNumber is provided
-        ...(candidate.invoiceNumber && !candidate.invoiceNumber.match(/^INV-\d+$/) && {
-          customInvoiceNumber: candidate.invoiceNumber
+        // Invoice metadata - send invoiceNumber if provided, backend will auto-generate if empty
+        // Backend will auto-generate if invoiceNumber is empty or not provided
+        ...(candidate.invoiceNumber && candidate.invoiceNumber.trim() && {
+          invoiceNumber: candidate.invoiceNumber.trim()
         }),
         
         date: candidate.date,
         dueDate: candidate.dueDate,
-        status: "save", // Backend will handle status enum
+        status: mapToBackendStatus(candidate.status || "SAVE"),
         currency: candidate.currency || "INR",
         
-        // Items and totals
-        items: candidate.items || [],
+        // Items and totals - ensure items have inventoryItemId for stock tracking
+        items: (candidate.items || []).map(item => ({
+          description: item.description || "",
+          hsn: item.hsn || "",
+          quantity: Number(item.quantity) || 0,
+          unitPrice: Number(item.unitPrice) || 0,
+          discount: Number(item.discount) || 0,
+          gstRate: Number(item.gst) || 0,
+          inventoryItemId: item.inventoryItemId || null, // Critical for stock tracking
+        })),
         subtotal: candidate.subtotal || 0,
+        discount: candidate.discount || 0,
+        shipping: candidate.shipping || 0,
+        roundOff: candidate.roundOff || 0,
         totalTax: (candidate.cgst || 0) + (candidate.sgst || 0) + (candidate.igst || 0),
-        cgst: candidate.cgst || 0,
-        sgst: candidate.sgst || 0,
-        igst: candidate.igst || 0,
-        total: candidate.total || 0,
+        amount: candidate.total || 0,
         
         // Additional fields
         notes: candidate.notes || "",
         termsAndConditions: candidate.termsAndConditions || "",
         
-        // Remove manual payment terms - they'll be auto-fetched from customer
-        // paymentTerms field is intentionally omitted
+        // Billing and shipping states for GST calculation
+        billingState: candidate.billFrom?.state || "",
+        shippingState: candidate.billTo?.state || "",
       } as any);
 
       console.log('🔄 Invoice payload being sent to backend:', payload);
@@ -869,6 +867,21 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       // Debug payload being sent
       console.log("💾 Save Invoice Payload Debug:");
       console.log("💾 Full payload:", JSON.stringify(payload, null, 2));
+
+      // Before save: check inventory availability
+      const availabilityCheckItems = (candidate.items || [])
+        .filter((it: any) => it.inventoryItemId && Number(it.quantity) > 0)
+        .map((it: any) => ({ inventoryItemId: Number(it.inventoryItemId), quantity: Number(it.quantity) }));
+
+      if (availabilityCheckItems.length > 0) {
+        const availability = await checkInventoryAvailability(availabilityCheckItems);
+        if (!availability?.success || !availability?.data?.available) {
+          const errors = (availability?.data?.errors || []).map((e: any) => `Item ${e.itemId}: ${e.message}`);
+          alert(`Insufficient stock for one or more items.\n${errors.join('\n')}`);
+          setSaving(false);
+          return;
+        }
+      }
 
       // choose PUT when editing (id exists), otherwise POST
       const id = (invoice as any)._id || (invoice as any).id;
@@ -881,19 +894,35 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
         res = await api.post(`/api/invoices`, payload);
       }
 
-      // backend returns { message, invoice: {...} } or similar
-      const savedInvoice = (res?.data && (res.data.invoice ?? res.data)) || res.data;
+      // Handle backend response according to API reference guide
+      if (res?.data?.success) {
+        const responseData = res.data.data;
+        const invoiceNumber = responseData?.invoiceNumber || responseData?.number;
+        
+        console.log('✅ Invoice created successfully:', {
+          id: responseData?.id,
+          invoiceNumber: invoiceNumber,
+          amount: responseData?.amount
+        });
 
-      // Update inventory stock after successful invoice creation
-      if (candidate.items && candidate.items.length > 0) {
-        await updateInventoryStockAfterInvoice(candidate.items);
+        // Update inventory stock after successful invoice creation
+        if (candidate.items && candidate.items.length > 0) {
+          await updateInventoryStockAfterInvoice(candidate.items);
+        }
+
+        // Notify the app that an invoice was created/updated
+        window.dispatchEvent(new CustomEvent("invoice:created", { 
+          detail: { 
+            ...responseData, 
+            invoiceNumber: invoiceNumber 
+          } 
+        }));
+
+        // Show success alert with invoice number
+        alert(`Invoice saved successfully! Invoice Number: ${invoiceNumber || 'Generated by backend'}`);
+      } else {
+        throw new Error(res?.data?.message || 'Failed to create invoice');
       }
-
-      // Notify the app that an invoice was created/updated
-      window.dispatchEvent(new CustomEvent("invoice:created", { detail: savedInvoice }));
-
-      // Show success alert
-      alert("Invoice saved successfully!");
 
       // Clear draft data on successful save
       clearSavedState();

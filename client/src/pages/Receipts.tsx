@@ -479,15 +479,15 @@ export default function Receipts() {
 
       const response = await getCreditNotes(currentPage, pagination.perPage, filters);
       
-      const mapped = response.data.map((n: CreditNote) => ({
-        id: n._id || String(n._id || ""),
-        noteNo: n.creditNoteNumber || "CN-001",
-        invoiceNo: n.againstInvoiceNumber || "INV-001",
-        customerName: n.customerName || "Customer",
-        reason: n.reason || "Returned Goods",
-        dateIssued: formatDate(n.creditNoteDate || n.createdAt || ""),
-        amount: n.total || 0,
-        status: n.refund === true ? "Refunded" : "Open",
+      const mapped = (response.data || []).map((n: any) => ({
+        id: n.id || n._id || String(n.id || n._id || ""),
+        noteNo: n.number || n.creditNoteNumber || "",
+        invoiceNo: n.againstInvoiceNumber || (n.invoice?.number) || "",
+        customerName: n.customerName || n.businessName || "",
+        reason: n.reason || "",
+        dateIssued: formatDate(n.date || n.creditNoteDate || n.createdAt || ""),
+        amount: n.amount ?? n.total ?? 0,
+        status: n.refund === true ? "Refunded" : (n.status || "Open"),
       }));
 
       setPagination({
@@ -558,14 +558,14 @@ export default function Receipts() {
 
       const arr = Array.isArray(data) ? data : data.data || data.notes || [];
       const mapped = arr.map((n: any) => ({
-        id: n._id || n.id || n.debitNoteId || String(n._id || n.id || ""),
-        noteNo: n.debitNoteNumber || n.noteNo || n.number || "200",
-        invoiceNo: n.againstInvoiceNumber || n.invoiceNo || "IN112030",
-        vendorName: n.vendorName || n.vendor || n.supplierName || "Kevin Motors",
-        reason: n.reason || n.noteReason || "Damaged Goods",
-        dateIssued: formatDate(n.debitNoteDate || n.dateIssued || n.date || n.createdAt || ""),
-        amount: n.total ?? n.amount ?? 25000,
-        status: n.status || "Open",
+        id: n.id || n._id || n.debitNoteId || String(n.id || n._id || ""),
+        noteNo: n.number || n.debitNoteNumber || n.noteNo || "",
+        invoiceNo: n.againstInvoiceNumber || (n.invoice?.number) || n.invoiceNo || "",
+        vendorName: n.customerName || n.vendorName || n.vendor || n.supplierName || "",
+        reason: n.reason || n.noteReason || "",
+        dateIssued: formatDate(n.date || n.debitNoteDate || n.dateIssued || n.createdAt || ""),
+        amount: n.amount ?? n.total ?? 0,
+        status: n.refund === true ? "Refunded" : (n.status || "Open"),
       }));
 
       // Update pagination state
