@@ -4,9 +4,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import type { ChangeEvent, FormEvent } from 'react';
 import FloatingInput from '@/components/ui/FloatingInput';
 import Checkbox from './ui/custom-checkbox';
-import SocialButton from './ui/SocialButtons';
 import { Button } from '@/components/ui/button';
-import { AiFillApple, AiFillFacebook } from 'react-icons/ai';
+import GoogleSignInButton from '@/components/ui/GoogleSignInButton';
 import axios from 'axios';
 import { routes } from '@/lib/routes/route';
 
@@ -247,11 +246,9 @@ const SignupForm: React.FC = () => {
                 Already have an account? <a href="/login" className="text-blue-600 underline">Login</a>
             </p>
 
-            {/* Social Logins */}
-            <div className="flex justify-center gap-4 mt-4">
-                <SocialButton icon={<AiFillFacebook size={18} className="text-[#1877F2]" />} label="Sign up with Facebook" />
-                <SocialButton icon={<GoogleLogo />} label="Sign up with Google" />
-                <SocialButton icon={<AiFillApple size={18} className="text-black" />} label="Sign up with Apple" />
+            {/* Social Login - Google only */}
+            <div className="mt-4">
+                <GoogleSignInButton className="w-full" />
             </div>
         </form>
     );
