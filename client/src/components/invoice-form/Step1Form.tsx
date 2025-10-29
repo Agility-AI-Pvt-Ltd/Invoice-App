@@ -7,6 +7,7 @@ import { ChevronDown, RefreshCw } from "lucide-react";
 import { InvoiceContext } from "@/contexts/InvoiceContext";
 import { useNextInvoiceNumber } from "@/hooks/useNextInvoiceNumber";
 // Cookies import removed as no longer used
+import { STATUS_LABELS } from "@/lib/status-mapping";
 
 export default function Step1Form() {
   const ctx = useContext(InvoiceContext) as any | undefined;
@@ -170,9 +171,11 @@ export default function Step1Form() {
               <option value="" disabled className="text-slate-400">
                 Select
               </option>
-              <option value="paid">Paid</option>
-              {/* <option value="unpaid">Unpaid</option> */}
-              <option value="pending">Pending</option>
+              {Object.entries(STATUS_LABELS).map(([status, label]) => (
+                <option key={status} value={status}>
+                  {label}
+                </option>
+              ))}
             </select>
             <ChevronDown
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"

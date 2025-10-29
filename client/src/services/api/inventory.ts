@@ -7,6 +7,8 @@ export const INVENTORY_API = {
     EXPORT: `/api/inventory/export`,
     IMPORT: `/api/inventory/import`,
     CATEGORIES: `/api/inventory/categories`,
+    UPDATE_STOCK: `/api/inventory/update-stock`,
+    CHECK_AVAILABILITY: `/api/inventory/check-availability`,
     // Backend routes for auto-fill
     GET_ALL: `/api/inventory`, // GET all inventory items
     GET_BY_ID: `/api/inventory`, // GET /api/inventory/:id
@@ -304,6 +306,62 @@ export const updateInventoryStock = async (itemId: string | number, quantityUsed
 };
 
 /**
+ * New: Bulk update inventory stock
+ * Backend: POST /api/inventory/update-stock
+ */
+export const updateInventoryStockBulk = async (params: {
+  operation: "remove" | "add";
+  items: Array<{ inventoryItemId: number; quantity: number }>;
+}): Promise<{
+  success: boolean;
+  message: string;
+  data: {
+    operation: "remove" | "add";
+    updates: Array<{
+      itemId: number;
+      name: string;
+      oldQuantity: number;
+      newQuantity: number;
+      change: number;
+      operation: "remove" | "add";
+    }>;
+    errors: Array<{
+      itemId: number;
+      message: string;
+    }>;
+  };
+}> => {
+  try {
+    const response = await api.post(INVENTORY_API.UPDATE_STOCK, params);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error updating inventory stock (bulk):', error);
+    throw error;
+  }
+};
+
+/**
+ * New: Check inventory availability before creating invoice
+ * Backend: POST /api/inventory/check-availability
+ */
+export const checkInventoryAvailability = async (items: Array<{ inventoryItemId: number; quantity: number }>): Promise<{
+  success: boolean;
+  message: string;
+  data: {
+    available: boolean;
+    errors: Array<{ itemId: number; message: string }>;
+  };
+}> => {
+  try {
+    const response = await api.post(INVENTORY_API.CHECK_AVAILABILITY, { items });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error checking inventory availability:', error);
+    throw error;
+  }
+};
+
+/**
  * Get inventory item with enhanced data for auto-fill
  * Backend: GET /api/inventory/items/:item_id/for-invoice
  * Returns: Enhanced item data with all fields for auto-fill
@@ -317,11 +375,20 @@ export const getInventoryItemForAutoFill = async (itemId: string | number): Prom
   subCategory?: string;
   brandName?: string;
   unitPrice: number;
+  purchasePrice?: number;
+  sellingPrice?: number;
   quantity: number;
+  availableQuantity?: number;
   hsnCode?: string;
   sacCode?: string;
   defaultTaxRate?: number;
+  taxRate?: number;
+  gstRate?: number;
+  tax?: number;
   defaultDiscount?: number;
+  discount?: number;
+  discountRate?: number;
+  discountPercent?: number;
   taxCategory?: 'GOODS' | 'SERVICES';
   isActive?: boolean;
 }> => {

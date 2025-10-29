@@ -256,17 +256,18 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
   // Populate form with initial data if provided
   useEffect(() => {
     if (initialData) {
-
+      console.log('📋 Populating credit note form with initial data:', initialData);
+      
       setFormData({
-        creditNoteNumber: initialData.creditNoteNumber || initialData.noteNo || initialData.creditNoteId || "",
-        creditNoteDate: initialData.creditNoteDate || initialData.dateIssued || initialData.date || new Date().toISOString().split('T')[0],
-        againstInvoiceNumber: initialData.againstInvoiceNumber || initialData.invoiceNo || initialData.againstInvoice || "",
+        creditNoteNumber: initialData.number || initialData.creditNoteNumber || initialData.noteNo || initialData.creditNoteId || "",
+        creditNoteDate: initialData.date || initialData.creditNoteDate || initialData.dateIssued || new Date().toISOString().split('T')[0],
+        againstInvoiceNumber: initialData.invoiceId || initialData.againstInvoiceNumber || initialData.invoiceNo || initialData.againstInvoice || "",
         againstInvoiceDate: initialData.againstInvoiceDate || initialData.invoiceDate || "",
         reason: initialData.reason || initialData.noteReason || "",
         customerName: initialData.customerName || initialData.businessName || initialData.clientName || "",
         businessName: initialData.businessName || initialData.companyName || "",
         address: initialData.address || initialData.customerAddress || "",
-        contactNumber: initialData.contactNumber || initialData.phone || initialData.mobile || "",
+        contactNumber: initialData.customerEmail || initialData.contactNumber || initialData.phone || initialData.mobile || "",
         isGstRegistered: initialData.isGstRegistered !== undefined ? initialData.isGstRegistered : true,
         gstNumber: initialData.gstNumber || initialData.gstin || "",
         items: initialData.items || initialData.itemDetails || [],
@@ -275,7 +276,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
         cgst: initialData.cgst || 0,
         sgst: initialData.sgst || 0,
         igst: initialData.igst || 0,
-        total: initialData.total || initialData.amount || 0,
+        total: initialData.amount || initialData.total || 0,
         applyToNextInvoice: initialData.applyToNextInvoice || false,
         refund: initialData.refund || false,
         remark: initialData.remark || initialData.notes || "",
@@ -614,17 +615,7 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
     setLoading(true);
 
     try {
-      // Enhanced validation for issuing the note
-      if (!formData.creditNoteNumber.trim()) {
-        console.log("❌ Validation failed: Credit note number required");
-        toast({
-          title: "Validation Error",
-          description: "Credit note number is required",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Enhanced validation for issuing the note according to backend API
       if (!formData.customerName.trim()) {
         toast({
           title: "Validation Error",
@@ -634,46 +625,125 @@ export default function CreditNoteForm({ onClose, onSuccess, initialData }: Cred
         return;
       }
 
-      if (!formData.againstInvoiceNumber.trim()) {
+      if (!formData.reason.trim()) {
         toast({
           title: "Validation Error",
-          description: "Against invoice number is required",
+          description: "Reason is required",
           variant: "destructive",
         });
         return;
       }
 
-      if (formData.items.length === 0 || formData.items.every(item => !item.itemName.trim())) {
+      if (formData.total <= 0) {
         toast({
           title: "Validation Error",
-          description: "At least one item is required",
+          description: "Amount must be greater than 0",
           variant: "destructive",
         });
         return;
       }
 
-      // For issuing the note, save with final status
-      const finalData = {
-        ...formData,
-        status: 'issued'
+      // Build payload according to backend API reference guide (send all supported fields)
+      const payload: any = {
+        // Strings
+        number: formData.creditNoteNumber?.trim() || undefined,
+        customerName: formData.customerName?.trim(),
+        customerEmail: formData.contactNumber?.trim() || undefined,
+        businessName: formData.businessName?.trim() || undefined,
+        address: formData.address?.trim() || undefined,
+        contactNumber: formData.contactNumber?.trim() || undefined,
+        gstNumber: formData.gstNumber?.trim() || undefined,
+        documentUrl: undefined, // reserved if we later upload to storage and get URL
+        termsAndConditions: formData.termsAndConditions || undefined,
+        againstInvoiceNumber: formData.againstInvoiceNumber?.trim() || undefined,
+        remark: formData.remark || undefined,
+
+        // Numbers/Decimals
+        amount: Number(formData.total ?? 0),
+        subtotal: Number(formData.subtotal ?? 0),
+        cgst: Number(formData.cgst ?? 0),
+        sgst: Number(formData.sgst ?? 0),
+        igst: Number(formData.igst ?? 0),
+
+        // Booleans
+        isGstRegistered: Boolean(formData.isGstRegistered),
+        applyToNextInvoice: Boolean(formData.applyToNextInvoice),
+        refund: Boolean(formData.refund),
+
+        // Dates (ISO strings)
+        date: formData.creditNoteDate || undefined,
+        againstInvoiceDate: formData.againstInvoiceDate || undefined,
+
+        // JSON items (array or string are both accepted by backend)
+        items: formData.items ?? [],
+
+        // Required business field
+        reason: formData.reason?.trim(),
       };
+
+      // Only add invoiceId if it exists and is a valid integer
+      if (formData.againstInvoiceNumber && formData.againstInvoiceNumber.trim()) {
+        // Find the actual invoice ID from the invoice number
+        const selectedInvoice = invoices.find(inv => 
+          inv.invoiceNumber === formData.againstInvoiceNumber || 
+          inv.invoice_number === formData.againstInvoiceNumber ||
+          inv.number === formData.againstInvoiceNumber
+        );
+        
+        if (selectedInvoice) {
+          const rawId = selectedInvoice.id ?? selectedInvoice.invoiceId ?? selectedInvoice._id;
+          const invoiceId = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+          
+          if (!isNaN(invoiceId) && invoiceId > 0) {
+            payload.invoiceId = invoiceId;
+          } else {
+            console.warn('⚠️ Invalid invoice ID format:', rawId);
+            // Don't send invoiceId if it's invalid
+          }
+        } else {
+          console.warn('⚠️ Invoice not found for number:', formData.againstInvoiceNumber);
+          // Don't send invoiceId if invoice not found
+        }
+      }
+
+      console.log('🔄 Credit note payload being sent to backend:', payload);
+      console.log('📋 Available invoices for reference:', invoices.map(inv => ({ 
+        id: inv._id, 
+        number: inv.invoiceNumber || inv.invoice_number || inv.number,
+        title: inv.title || inv.clientName || 'No title'
+      })));
 
       // Determine if this is a create or update operation
       const isUpdate = initialData && initialData._id;
       
+      let response;
       if (isUpdate) {
-        await updateCreditNote(initialData._id, finalData as CreditNote);
+        response = await updateCreditNote(initialData._id, payload as any);
       } else {
-        await createCreditNote(finalData as CreditNote);
+        response = await createCreditNote(payload as any);
       }
 
-      toast({
-        title: "Success",
-        description: isUpdate ? "Credit note updated and issued!" : "Credit note created and issued!",
-      });
+      // Handle backend response according to API reference guide
+      if (response?.success) {
+        const responseData = response.data;
+        const noteNumber = responseData?.number || responseData?.creditNoteNumber;
+        
+        console.log('✅ Credit note created successfully:', {
+          id: responseData?.id,
+          number: noteNumber,
+          amount: responseData?.amount
+        });
 
-      handleSuccess();
-      handleClose();
+        toast({
+          title: "Success",
+          description: `Credit note ${isUpdate ? 'updated' : 'created'} successfully! Note Number: ${noteNumber || 'Generated by backend'}`,
+        });
+
+        handleSuccess();
+        handleClose();
+      } else {
+        throw new Error(response?.message || 'Failed to create credit note');
+      }
     } catch (error) {
       console.error("Error issuing credit note:", error);
       toast({

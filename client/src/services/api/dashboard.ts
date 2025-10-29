@@ -147,8 +147,15 @@ export interface CashFlowResponse {
 }
 
 export const getCashFlow = async (): Promise<CashFlowResponse> => {
-    const res = await api.get(DASHBOARD_API.CASH_FLOW);
-    return res.data.data; // Extract data from {success: true, data: {...}}
+    // Prefer invoices metrics per backend contract
+    const res = await api.get('/api/invoices/metrics');
+    const m = res?.data?.data ?? res?.data ?? {};
+    return {
+        cashPosition: Number(m.cashAmount ?? 0),
+        incoming: Number(m.incoming ?? 0),
+        outgoing: Number(m.outgoing ?? 0),
+        asOfDate: m.asOfDate || new Date().toISOString(),
+    };
 };
 
 

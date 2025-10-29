@@ -14,7 +14,6 @@ export const SalesStatsCard = ({
   title, 
   value, 
   changePercentage,
-  // currency = true,
 }: SalesStatsCardProps) => {
   const isPositive = changePercentage >= 0;
 
@@ -46,8 +45,8 @@ export const SalesStatsCard = ({
               </div>
             </div>
 
-            {/* 🔁 Mini line chart based on trend */}
-            <div className="w-20 h-12">
+            {/* Keep original smooth curved icon-based graph */}
+            <div className="w-20 h-12 flex items-center justify-center shrink-0">
               {isPositive ? <GreenUp /> : <RedDown />}
             </div>
           </div>

@@ -103,27 +103,13 @@ export const getDebitNoteById = async (id: string): Promise<DebitNote> => {
 /**
  * Create a new debit note
  */
-export const createDebitNote = async (debitNoteData: DebitNote): Promise<DebitNote> => {
+export const createDebitNote = async (debitNoteData: any): Promise<any> => {
   try {
     console.log('🔍 Creating debit note:', debitNoteData);
     
-    // Convert to FormData for file upload support
-    const formData = new FormData();
-    
-    // Append all form fields
-    Object.entries(debitNoteData).forEach(([key, value]) => {
-      if (key === 'items') {
-        formData.append(key, JSON.stringify(value));
-      } else if (key === 'uploadedDocument' && value instanceof File) {
-        formData.append(key, value);
-      } else if (key !== 'uploadedDocument') {
-        formData.append(key, String(value));
-      }
-    });
-
-    const response = await api.post(DEBIT_NOTE_API.CREATE, formData, {
+    const response = await api.post(DEBIT_NOTE_API.CREATE, debitNoteData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
     });
     
@@ -203,3 +189,9 @@ export const getDebitNoteStats = async (): Promise<{
     throw error;
   }
 };
+
+
+
+
+
+

@@ -103,27 +103,13 @@ export const getCreditNoteById = async (id: string): Promise<CreditNote> => {
 /**
  * Create a new credit note
  */
-export const createCreditNote = async (creditNoteData: CreditNote): Promise<CreditNote> => {
+export const createCreditNote = async (creditNoteData: any): Promise<any> => {
   try {
     console.log('🔍 Creating credit note:', creditNoteData);
     
-    // Convert to FormData for file upload support
-    const formData = new FormData();
-    
-    // Append all form fields
-    Object.entries(creditNoteData).forEach(([key, value]) => {
-      if (key === 'items') {
-        formData.append(key, JSON.stringify(value));
-      } else if (key === 'uploadedDocument' && value instanceof File) {
-        formData.append(key, value);
-      } else if (key !== 'uploadedDocument') {
-        formData.append(key, String(value));
-      }
-    });
-
-    const response = await api.post(CREDIT_NOTE_API.CREATE, formData, {
+    const response = await api.post(CREDIT_NOTE_API.CREATE, creditNoteData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
     });
     
@@ -203,3 +189,9 @@ export const getCreditNoteStats = async (): Promise<{
     throw error;
   }
 };
+
+
+
+
+
+

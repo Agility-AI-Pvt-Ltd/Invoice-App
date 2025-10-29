@@ -207,30 +207,21 @@ export default function AddProductForm({ initial = null, onSuccess, onClose }: P
 
       // Build payload with correct field names for backend
       const payload: any = {
-        // Product Details Section
+        // Product Details Section - matching backend expected format
         name: productName || "Untitled Product",
-        sku: productSKU || `PRD-${Date.now()}`,
-        category: category || "Product",
-        subCategory: subCategory || undefined,
-        brandName: brandName || undefined,
-        description: description || undefined,
-        defaultTaxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 0, // Backend expects defaultTaxRate
-
-        // Pricing Details Section
+        description: description || "A test product for debugging",
+        sku: productSKU || `TEST-${Date.now()}`,
+        quantity: resolveInStock() || 0,
+        unitPrice: resolveUnitPrice() || 0,
         purchasePrice: purchasePrice !== "" && purchasePrice !== null && purchasePrice !== undefined ? Number(purchasePrice) : 0,
         sellingPrice: sellingPrice !== "" && sellingPrice !== null && sellingPrice !== undefined ? Number(sellingPrice) : 0,
-        defaultDiscount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 0, // Backend expects defaultDiscount
-
-        // Stock Details Section
-        quantity: resolveInStock() || 0,
-
-        // Computed field for unitPrice (prefer selling price, fallback to purchase price)
-        unitPrice: resolveUnitPrice() || 0,
-        
-        // Additional fields for backend
-        hsnCode: hsnCode || "", // Use actual HSN code from form
-        sacCode: sacCode || "", // Use actual SAC code from form
-        taxCategory: "GOODS", // Default to GOODS
+        category: category || "Electronics",
+        subCategory: subCategory || "Computers",
+        brandName: brandName || "TestBrand",
+        defaultTaxRate: taxRate !== "" && taxRate !== null && taxRate !== undefined ? Number(taxRate) : 18,
+        defaultDiscount: discount !== "" && discount !== null && discount !== undefined ? Number(discount) : 5,
+        hsnCode: hsnCode || "8471",
+        sacCode: sacCode || "998314",
       };
 
       // Saving product with payload

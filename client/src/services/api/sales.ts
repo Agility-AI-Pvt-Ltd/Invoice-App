@@ -43,6 +43,9 @@ export interface SalesStats {
   currentMonthChange?: number;
   averageOrderValue?: number;
   averageOrderChange?: number;
+  trendTotal?: number[];
+  trendMonth?: number[];
+  trendAOV?: number[];
 }
 
 /**
@@ -57,19 +60,118 @@ export const getSalesData = async (): Promise<SalesRecord[]> => {
  * Fetch sales stats
  */
 export const getSalesStats = async (
-  from?: string,
-  to?: string
+  _from?: string,
+  _to?: string
 ): Promise<SalesStats> => {
-  const params: Record<string, string> = {};
-  if (from) params.from = from;
-  if (to) params.to = to;
+  try {
+    // Metrics (all-time): totalReceivables, incoming, outgoing, cashAmount
+    const metricsRes = await api.get('/api/invoices/metrics');
+    const m = metricsRes?.data?.data ?? metricsRes?.data ?? {};
 
-  const response = await api.get(SALES_API.STATS, {
-    params,
-  });
+    // Current month invoices
+    const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+    const year = now.getFullYear();
+    const monthRes = await api.get('/api/invoices', { params: { month, year, limit: 1000 } });
+    const monthArr = Array.isArray(monthRes.data) ? monthRes.data : (monthRes.data?.data ?? []);
+    const monthAmounts = monthArr.map((i: any) => Number(i.amount || 0));
+    const currentMonthSales = monthAmounts.reduce((s: number, v: number) => s + v, 0);
+    const aovMonth = monthArr.length > 0 ? currentMonthSales / monthArr.length : 0;
 
-  // Cast to SalesStats — response.data should conform, but we keep optional fields
-  return response.data as SalesStats;
+    // All invoices for AOV all-time
+    const allRes = await api.get('/api/invoices', { params: { limit: 1000 } });
+    const allArr = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.data ?? []);
+    const allAmounts = allArr.map((i: any) => Number(i.amount || 0));
+    const totalAmountComputed = allAmounts.reduce((s: number, v: number) => s + v, 0);
+    const aovAllTime = allArr.length > 0 ? totalAmountComputed / allArr.length : 0;
+
+    // Last month invoices for growth calculations
+    const lastMonthDate = new Date(year, month - 2, 1); // previous month index
+    const lastMonth = lastMonthDate.getMonth() + 1;
+    const lastYear = lastMonthDate.getFullYear();
+    const lastRes = await api.get('/api/invoices', { params: { month: lastMonth, year: lastYear, limit: 1000 } });
+    const lastArr = Array.isArray(lastRes.data) ? lastRes.data : (lastRes.data?.data ?? []);
+    const lastAmounts = lastArr.map((i: any) => Number(i.amount || 0));
+    const lastMonthSales = lastAmounts.reduce((s: number, v: number) => s + v, 0);
+    const lastAOV = lastArr.length > 0 ? lastMonthSales / lastArr.length : 0;
+
+    // Percentage changes (vs last month)
+    const pct = (curr: number, prev: number) => prev ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0);
+    const totalSalesChange = pct(currentMonthSales, lastMonthSales);
+    const currentMonthChange = pct(currentMonthSales, lastMonthSales);
+    const averageOrderChange = pct(aovMonth, lastAOV);
+
+    // Trend series for mini-graphs (last 30 days daily sums)
+    const days = 30;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (days - 1));
+    const byDay = new Map<string, number>();
+    const addToDay = (arr: any[]) => {
+      for (const inv of arr) {
+        const d = new Date(inv.date || inv.createdAt || inv.invoiceDate || inv.issuedOn || Date.now());
+        if (d < cutoff) continue;
+        const key = d.toISOString().slice(0, 10);
+        byDay.set(key, (byDay.get(key) || 0) + Number(inv.amount || 0));
+      }
+    };
+    addToDay(allArr);
+    const trendTotal: number[] = Array.from({ length: days }, (_, i) => {
+      const d = new Date(cutoff);
+      d.setDate(cutoff.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      return byDay.get(key) || 0;
+    });
+
+    const byDayMonth = new Map<string, { sum: number; count: number }>();
+    for (const inv of monthArr) {
+      const d = new Date(inv.date || inv.createdAt || inv.invoiceDate || inv.issuedOn || Date.now());
+      const key = d.toISOString().slice(0, 10);
+      const curr = byDayMonth.get(key) || { sum: 0, count: 0 };
+      curr.sum += Number(inv.amount || 0);
+      curr.count += 1;
+      byDayMonth.set(key, curr);
+    }
+    const trendMonth: number[] = Array.from({ length: days }, (_, i) => {
+      const d = new Date(cutoff);
+      d.setDate(cutoff.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      return byDay.get(key) || 0;
+    });
+    const trendAOV: number[] = Array.from({ length: days }, (_, i) => {
+      const d = new Date(cutoff);
+      d.setDate(cutoff.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      const entry = byDayMonth.get(key);
+      return entry && entry.count > 0 ? entry.sum / entry.count : 0;
+    });
+
+    const stats: SalesStats = {
+      totalSales: Number(m.totalReceivables ?? totalAmountComputed ?? 0),
+      currentMonthSales,
+      averageOrderValue: aovAllTime,
+      totalSalesChange,
+      currentMonthChange,
+      averageOrderChange,
+      trendTotal,
+      trendMonth,
+      trendAOV,
+    };
+
+    return stats;
+  } catch (err) {
+    // Fallback to zeros on failure
+    return {
+      totalSales: 0,
+      currentMonthSales: 0,
+      averageOrderValue: 0,
+      totalSalesChange: 0,
+      currentMonthChange: 0,
+      averageOrderChange: 0,
+      trendTotal: [],
+      trendMonth: [],
+      trendAOV: [],
+    };
+  }
 };
 
 /**

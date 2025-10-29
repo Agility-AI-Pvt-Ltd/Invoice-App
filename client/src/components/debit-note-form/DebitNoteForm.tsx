@@ -217,17 +217,18 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
   // Populate form with initial data if provided
   useEffect(() => {
     if (initialData) {
-
+      console.log('📋 Populating debit note form with initial data:', initialData);
+      
       setFormData({
-        debitNoteNumber: initialData.debitNoteNumber || initialData.noteNo || initialData.debitNoteId || "",
-        debitNoteDate: initialData.debitNoteDate || initialData.dateIssued || initialData.date || new Date().toISOString().split('T')[0],
-        againstInvoiceNumber: initialData.againstInvoiceNumber || initialData.invoiceNo || initialData.againstInvoice || "",
+        debitNoteNumber: initialData.number || initialData.debitNoteNumber || initialData.noteNo || initialData.debitNoteId || "",
+        debitNoteDate: initialData.date || initialData.debitNoteDate || initialData.dateIssued || new Date().toISOString().split('T')[0],
+        againstInvoiceNumber: initialData.invoiceId || initialData.againstInvoiceNumber || initialData.invoiceNo || initialData.againstInvoice || "",
         againstInvoiceDate: initialData.againstInvoiceDate || initialData.invoiceDate || "",
         reason: initialData.reason || initialData.noteReason || "",
-        vendorName: initialData.vendorName || initialData.supplierName || initialData.businessName || "",
+        vendorName: initialData.customerName || initialData.vendorName || initialData.supplierName || initialData.businessName || "",
         businessName: initialData.businessName || initialData.companyName || "",
         address: initialData.address || initialData.vendorAddress || "",
-        contactNumber: initialData.contactNumber || initialData.phone || initialData.mobile || "",
+        contactNumber: initialData.customerEmail || initialData.contactNumber || initialData.phone || initialData.mobile || "",
         isGstRegistered: initialData.isGstRegistered !== undefined ? initialData.isGstRegistered : true,
         gstNumber: initialData.gstNumber || initialData.gstin || "",
         items: initialData.items || initialData.itemDetails || [],
@@ -236,7 +237,7 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
         cgst: initialData.cgst || 0,
         sgst: initialData.sgst || 0,
         igst: initialData.igst || 0,
-        total: initialData.total || initialData.amount || 0,
+        total: initialData.amount || initialData.total || 0,
         applyToNextInvoice: initialData.applyToNextInvoice || false,
         refund: initialData.refund || false,
         remark: initialData.remark || initialData.notes || "",
@@ -548,17 +549,7 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
     setLoading(true);
 
     try {
-      // Enhanced validation for issuing the note
-      if (!formData.debitNoteNumber.trim()) {
-        console.log("❌ Validation failed: Debit note number required");
-        toast({
-          title: "Validation Error",
-          description: "Debit note number is required",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Enhanced validation for issuing the note according to backend API
       if (!formData.vendorName.trim()) {
         toast({
           title: "Validation Error",
@@ -568,46 +559,125 @@ export default function DebitNoteForm({ onClose, onSuccess, initialData }: Debit
         return;
       }
 
-      if (!formData.againstInvoiceNumber.trim()) {
+      if (!formData.reason.trim()) {
         toast({
           title: "Validation Error",
-          description: "Against invoice number is required",
+          description: "Reason is required",
           variant: "destructive",
         });
         return;
       }
 
-      if (formData.items.length === 0 || formData.items.every(item => !item.itemName.trim())) {
+      if (formData.total <= 0) {
         toast({
           title: "Validation Error",
-          description: "At least one item is required",
+          description: "Amount must be greater than 0",
           variant: "destructive",
         });
         return;
       }
 
-      // For issuing the note, save with final status
-      const finalData = {
-        ...formData,
-        status: 'issued'
+      // Build payload according to backend API reference guide (send all supported fields)
+      const payload: any = {
+        // Strings
+        number: formData.debitNoteNumber?.trim() || undefined,
+        customerName: formData.vendorName?.trim(), // Backend expects customerName field
+        customerEmail: formData.contactNumber?.trim() || undefined,
+        businessName: formData.businessName?.trim() || undefined,
+        address: formData.address?.trim() || undefined,
+        contactNumber: formData.contactNumber?.trim() || undefined,
+        gstNumber: formData.gstNumber?.trim() || undefined,
+        documentUrl: undefined,
+        termsAndConditions: formData.termsAndConditions || undefined,
+        againstInvoiceNumber: formData.againstInvoiceNumber?.trim() || undefined,
+        remark: formData.remark || undefined,
+
+        // Numbers/Decimals
+        amount: Number(formData.total ?? 0),
+        subtotal: Number(formData.subtotal ?? 0),
+        cgst: Number(formData.cgst ?? 0),
+        sgst: Number(formData.sgst ?? 0),
+        igst: Number(formData.igst ?? 0),
+
+        // Booleans
+        isGstRegistered: Boolean(formData.isGstRegistered),
+        applyToNextInvoice: Boolean(formData.applyToNextInvoice),
+        refund: Boolean(formData.refund),
+
+        // Dates (ISO strings)
+        date: formData.debitNoteDate || undefined,
+        againstInvoiceDate: formData.againstInvoiceDate || undefined,
+
+        // JSON items
+        items: formData.items ?? [],
+
+        // Required
+        reason: formData.reason?.trim(),
       };
+
+      // Only add invoiceId if it exists and is a valid integer
+      if (formData.againstInvoiceNumber && formData.againstInvoiceNumber.trim()) {
+        // Find the actual invoice ID from the invoice number
+        const selectedInvoice = purchaseInvoices.find(inv => 
+          inv.invoiceNumber === formData.againstInvoiceNumber || 
+          inv.invoice_number === formData.againstInvoiceNumber ||
+          inv.number === formData.againstInvoiceNumber
+        );
+        
+        if (selectedInvoice) {
+          const rawId = selectedInvoice.id ?? selectedInvoice.invoiceId ?? selectedInvoice._id;
+          const invoiceId = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+          
+          if (!isNaN(invoiceId) && invoiceId > 0) {
+            payload.invoiceId = invoiceId;
+          } else {
+            console.warn('⚠️ Invalid invoice ID format:', rawId);
+            // Don't send invoiceId if it's invalid
+          }
+        } else {
+          console.warn('⚠️ Invoice not found for number:', formData.againstInvoiceNumber);
+          // Don't send invoiceId if invoice not found
+        }
+      }
+
+      console.log('🔄 Debit note payload being sent to backend:', payload);
+      console.log('📋 Available invoices for reference:', purchaseInvoices.map(inv => ({ 
+        id: inv._id, 
+        number: inv.invoiceNumber || inv.invoice_number || inv.number,
+        title: inv.title || inv.clientName || 'No title'
+      })));
 
       // Determine if this is a create or update operation
       const isUpdate = initialData && initialData._id;
       
+      let response;
       if (isUpdate) {
-        await updateDebitNote(initialData._id, finalData as DebitNote);
+        response = await updateDebitNote(initialData._id, payload as any);
       } else {
-        await createDebitNote(finalData as DebitNote);
+        response = await createDebitNote(payload as any);
       }
 
-      toast({
-        title: "Success",
-        description: isUpdate ? "Debit note updated and issued!" : "Debit note created and issued!",
-      });
+      // Handle backend response according to API reference guide
+      if (response?.success) {
+        const responseData = response.data;
+        const noteNumber = responseData?.number || responseData?.debitNoteNumber;
+        
+        console.log('✅ Debit note created successfully:', {
+          id: responseData?.id,
+          number: noteNumber,
+          amount: responseData?.amount
+        });
 
-      onSuccess();
-      onClose();
+        toast({
+          title: "Success",
+          description: `Debit note ${isUpdate ? 'updated' : 'created'} successfully! Note Number: ${noteNumber || 'Generated by backend'}`,
+        });
+
+        onSuccess();
+        onClose();
+      } else {
+        throw new Error(response?.message || 'Failed to create debit note');
+      }
     } catch (error) {
       console.error("Error issuing debit note:", error);
       toast({
