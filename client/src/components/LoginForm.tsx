@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import FloatingInput from './ui/FloatingInput';
 import Checkbox from '@/components/ui/custom-checkbox';
-import SocialButton from '@/components/ui/SocialButtons';
 import GoogleSignInButton from '@/components/ui/GoogleSignInButton';
-import { AiFillApple, AiFillFacebook } from "react-icons/ai";
 import { login } from '@/services/api/auth';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
@@ -150,18 +148,6 @@ export default function LoginForm({ setForgotPassword }: LoginFormProps) {
           onError={handleGoogleError}
           className="w-full"
         />
-
-        {/* Other Social Buttons */}
-        <div className="flex space-x-3">
-          <SocialButton
-            icon={<AiFillFacebook size={18} className="text-[#1877F2]" />}
-            label="Facebook"
-          />
-          <SocialButton
-            icon={<AiFillApple size={18} className="text-black" />}
-            label="Apple"
-          />
-        </div>
       </div>
     </div>
   );
