@@ -36,7 +36,7 @@ import CreditNoteForm from "@/components/credit-note-form/CreditNoteForm";
 import DebitNoteForm from "@/components/debit-note-form/DebitNoteForm";
 import api from "@/lib/api";
 import { searchCustomers } from "@/services/api/lookup";
-import { getCreditNotes, deleteCreditNote, type CreditNote } from "@/services/api/creditNote";
+import { getCreditNotes, deleteCreditNote } from "@/services/api/creditNote";
 import { getDebitNotes, deleteDebitNote, type DebitNote } from "@/services/api/debitNote";
 // Removed sales returns imports
 

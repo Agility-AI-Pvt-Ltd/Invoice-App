@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { X, Download, Printer } from "lucide-react";
-import type { InvoiceModel } from "@/contexts/InvoiceContext";
+import type { InvoiceModel } from "@/types/invoice";
 
 type Props = {
   invoice: Partial<InvoiceModel> & Record<string, any>;

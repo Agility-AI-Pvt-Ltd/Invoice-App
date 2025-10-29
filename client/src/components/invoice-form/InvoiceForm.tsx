@@ -11,7 +11,7 @@ import api from "@/lib/api";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 import { InvoiceContext } from "@/contexts/InvoiceContext";
-import type { InvoiceModel } from "@/contexts/InvoiceContext";
+import type { InvoiceModel } from "@/types/invoice";
 
 import PrintPreview from "./Print-preview"; // added import
 import { checkInventoryAvailability, updateInventoryStockBulk } from "@/services/api/inventory";

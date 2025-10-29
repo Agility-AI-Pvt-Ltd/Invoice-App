@@ -8,6 +8,7 @@ export type TaxCategory = 'GOODS' | 'SERVICES';
 
 export interface InvoiceItem {
   id?: number;
+  inventoryItemId?: number; // For stock tracking
   description: string;
   hsn?: string; // HSN for goods
   sac?: string; // SAC for services
