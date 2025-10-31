@@ -3915,3 +3915,4 @@ export default function Receipts() {
     </div>
   );
 }
+  
