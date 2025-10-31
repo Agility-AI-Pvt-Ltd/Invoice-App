@@ -116,7 +116,12 @@ export const createInvoice = async (invoice: Partial<InvoiceModel>): Promise<{ m
 export const updateInvoice = async (invoiceId: string, updates: Partial<InvoiceModel>): Promise<any> => {
   try {
     console.log(`📝 Updating invoice ${invoiceId}:`, updates);
-    const response = await api.put(`${INVOICE_API.UPDATE}/${invoiceId}`, updates);
+    // Avoid sending fields that backend rejects on update (e.g., notes)
+    const sanitized: any = { ...updates };
+    if (Object.prototype.hasOwnProperty.call(sanitized, 'notes')) {
+      delete sanitized.notes;
+    }
+    const response = await api.put(`${INVOICE_API.UPDATE}/${invoiceId}`, sanitized);
     console.log('✅ Invoice updated:', response.data);
     
     // Handle the corrected API response format

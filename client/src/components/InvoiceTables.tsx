@@ -29,6 +29,7 @@ import { format } from "date-fns";
 import { getInvoices, type Invoice } from "@/services/api/invoice";
 import api from "@/lib/api";
 import { useLocation, useNavigate } from "react-router-dom"; // <-- ADDED
+import { useProfile } from "@/contexts/ProfileContext";
 
 interface InvoiceTableProps {
   selectedDate: Date;
@@ -74,6 +75,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
 
   const location = useLocation(); // <-- ADDED
   const navigate = useNavigate(); // <-- ADDED
+  const { profile } = useProfile();
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -558,20 +560,23 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
 
   const computeTotals = (inv: any) => {
     // If backend provides pre-calculated values, use them
-    if (inv.subtotal && inv.cgst && inv.sgst && inv.amount) {
+    if ((inv.subtotal !== undefined) && (inv.amount !== undefined)) {
       console.log("🔢 Using backend pre-calculated values:", {
         subtotal: inv.subtotal,
         cgst: inv.cgst,
         sgst: inv.sgst,
+        igst: inv.igst,
         amount: inv.amount,
         roundOff: inv.roundOff
       });
 
       return {
-        taxableTotal: Number(inv.subtotal) - Number(inv.cgst) - Number(inv.sgst),
-        totalGst: Number(inv.cgst) + Number(inv.sgst),
-        cgst: Number(inv.cgst),
-        sgst: Number(inv.sgst),
+        taxableTotal: Number(inv.subtotal) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)),
+        totalGst: Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0),
+        cgst: Number(inv.cgst || 0),
+        sgst: Number(inv.sgst || 0),
+        igst: Number(inv.igst || 0),
+        discount: Number(inv.discount || 0),
         subtotal: Number(inv.subtotal),
         shipping: Number(inv.shipping || 0),
         roundOff: Number(inv.roundOff || 0),
@@ -583,17 +588,23 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
     const items = Array.isArray(inv.invoice_items || inv.items) ? (inv.invoice_items || inv.items) : [];
     let taxableTotal = 0;
     let totalGst = 0;
+    let totalIgst = 0;
+    let totalDiscount = 0;
     let subtotal = 0; // sum of nets (taxable + gst)
 
     items.forEach((it: any) => {
       const r = calcRow(it);
       taxableTotal += r.taxable;
       totalGst += r.gstAmount;
+      totalIgst += Number(it.igst || 0);
+      totalDiscount += Number(r.discountAmount || 0);
       subtotal += r.net;
     });
 
-    const cgst = +(totalGst / 2).toFixed(2);
-    const sgst = +(totalGst / 2).toFixed(2);
+    // If item IGST was present, derive CGST/SGST from remaining GST; else split equally
+    const remainingGst = Math.max(0, totalGst - totalIgst);
+    const cgst = +((remainingGst / 2)).toFixed(2);
+    const sgst = +((remainingGst / 2)).toFixed(2);
 
     const shipping = Number(inv.shipping || 0);
 
@@ -611,6 +622,8 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
       totalGst: +totalGst.toFixed(2),
       cgst,
       sgst,
+      igst: +totalIgst.toFixed(2),
+      discount: +totalDiscount.toFixed(2),
       subtotal: +subtotal.toFixed(2),
       shipping: +shipping.toFixed(2),
       roundOff,
@@ -633,6 +646,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
         <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.qty}</td>
         <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.rate}</td>
         <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.gst}%</td>
+        <td style="padding:8px;border:1px solid #ddd;text-align:right">${(() => { const d = Number(it.discount ?? r.discountAmount ?? 0); return isFinite(d) ? (d <= 100 ? d + '%' : '₹' + d) : safe(String(it.discount ?? '')); })()}</td>
         <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.taxable}</td>
         <td style="padding:8px;border:1px solid #ddd;text-align:right">₹${r.net}</td>
       </tr>`;
@@ -665,6 +679,12 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
 
     const partyName = invoiceData.clientName || invoiceData.partyName || invoiceData.customerName || invoiceData.billTo?.name;
 
+    const sellerName = (profile as any)?.businessName || (profile as any)?.company || (profile as any)?.name || invoiceData.billFrom?.businessName || invoiceData.billFrom?.name || "Seller Name";
+    const sellerPhone = (profile as any)?.phone || invoiceData.billFrom?.phone || "";
+    const sellerEmail = (profile as any)?.email || invoiceData.billFrom?.email || "";
+    const sellerGstin = (profile as any)?.gst || (profile as any)?.gstNumber || invoiceData.billFrom?.gst || invoiceData.billFrom?.gstin || invoiceData.gstin || "";
+    const sellerAddress = (profile as any)?.address || invoiceData.billFrom?.address || "";
+
     const html = `<!doctype html>
       <html>
       <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${docTitle} ${safe(docNumber)}</title><style>${style}</style></head>
@@ -672,10 +692,10 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
         <div class="sheet">
           <div class="header">
             <div style="flex:1">
-              <div class="seller">${safe(invoiceData.billFrom?.businessName || invoiceData.billFrom?.name || "Seller Name")}</div>
-              <div class="muted">${safe(invoiceData.billFrom?.address || "")}</div>
-              <div class="muted">Phone: ${safe(invoiceData.billFrom?.phone || "")} • Email: ${safe(invoiceData.billFrom?.email || "")}</div>
-              <div class="muted">GSTIN: ${safe(invoiceData.billFrom?.gst || invoiceData.billFrom?.gstin || invoiceData.gstin || "")}</div>
+              <div class="seller">${safe(sellerName)}</div>
+              <div class="muted">${safe(sellerAddress)}</div>
+              <div class="muted">Phone: ${safe(sellerPhone)} • Email: ${safe(sellerEmail)}</div>
+              <div class="muted">GSTIN: ${safe(sellerGstin)}</div>
             </div>
             <div style="width:340px;text-align:right">
               <div style="font-size:18px;font-weight:800">${docTitle}</div>
@@ -712,6 +732,7 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                   <th style="width:60px;text-align:right">Qty</th>
                   <th style="width:100px;text-align:right">Item Rate</th>
                   <th style="width:70px;text-align:right">Tax %</th>
+                  <th style="width:90px;text-align:right">Discount</th>
                   <th style="width:110px;text-align:right">Taxable Value</th>
                   <th style="width:120px;text-align:right">Net Amount</th>
                 </tr>
@@ -734,6 +755,8 @@ export function InvoiceTable({ selectedDate, refreshFlag = 0, setEditingInvoice 
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Taxable Amount</div><div class="right">₹${t.taxableTotal}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">CGST</div><div class="right">₹${t.cgst}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">SGST</div><div class="right">₹${t.sgst}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">IGST</div><div class="right">₹${t.igst || 0}</div></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Discount</div><div class="right">₹${t.discount || 0}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Sub Total</div><div class="right">₹${t.subtotal}</div></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="muted">Round Off</div><div class="right">₹${t.roundOff}</div></div>
                 <div style="border-top:1px dashed #e6e6e6;padding-top:8px;margin-top:8px;font-weight:800;display:flex;justify-content:space-between">
