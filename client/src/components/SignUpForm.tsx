@@ -18,7 +18,6 @@ interface SignUpFormData {
     confirmPassword: string;
     businessName: string;
     address: string;
-    website: string;
     pan: string;
     gstStatus: string;
     gstNumber: string;
@@ -35,7 +34,6 @@ const SignupForm: React.FC = () => {
         confirmPassword: '',
         businessName: '',
         address: '',
-        website: '',
         pan: '',
         gstStatus: '',
         gstNumber: '',
@@ -95,7 +93,7 @@ const SignupForm: React.FC = () => {
             }
         }
         if (!form.confirmPassword) newErrors.confirmPassword = "Confirm your password";
-        if (!form.website) newErrors.website = "Website is required";
+        
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
@@ -107,7 +105,6 @@ const SignupForm: React.FC = () => {
                 email: form.businessEmail, // ✅ send in payload
                 phonenumber: form.phonenumber,
                 password: form.password,
-                website: form.website,
             };
 
             await axios.post(routes.auth.sendOtpRegister, payload);
@@ -208,16 +205,7 @@ const SignupForm: React.FC = () => {
             />
             {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
 
-            {/* Website */}
-            <FloatingInput
-                id="website"
-                label="Website"
-                type="text"
-                value={form.website}
-                onChange={handleChange}
-                // isImportant
-            />
-            {/* {errors.website && <p className="text-red-500 text-xs mt-1">{errors.website}</p>} */}
+            
 
             {/* Checkbox */}
             <div className="flex items-start gap-2">
