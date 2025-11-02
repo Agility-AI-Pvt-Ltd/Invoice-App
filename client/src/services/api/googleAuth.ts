@@ -7,9 +7,13 @@ export interface GoogleAuthResponse {
     data: {
         token: string;
         user: {
-            id: string;
+            id: number | string;
             email: string;
-            name: string;
+            phoneNumber: string | null;
+            hasPassword: boolean;
+            isPhoneVerified: boolean;
+            authProviders: string[];
+            name?: string;
             picture?: string;
         };
     };
