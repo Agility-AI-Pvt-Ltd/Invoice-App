@@ -481,6 +481,15 @@ export function AddItem({ items: externalItems, setItems: externalSetItems }: Pr
         // if parsed NaN we preserve string (so user can type "0.")
       }
       current[field] = newValue;
+
+      // CRITICAL FIX: Clear stale backend tax calculations when financial data changes.
+      // If we don't, shared computeInvoiceTotals will blindly use the old backend values.
+      delete (current as any).cgst;
+      delete (current as any).sgst;
+      delete (current as any).igst;
+      delete (current as any).taxableAmount;
+      delete (current as any).totalTax;
+      delete (current as any).total;
     }
 
     updatedItems[index] = current;

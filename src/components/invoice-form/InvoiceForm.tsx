@@ -799,55 +799,64 @@ export default function InvoiceForm({ onCancel, initialData }: Props) {
       const candidate: InvoiceModel = { ...invoice, ...totals };
 
       // Build payload with new API structure according to backend API reference
+      // CRITICAL FIX: We MUST recompute invoice-level totals based on the items BEFORE saving. 
+      // If the user modified items in Step 3 but did not manually click "Calculate GST" in Step 4,
+      // the `candidate` context will have stale `total`, `subtotal`, `igst`, etc.
+      const freshTotals = computeTotals(candidate);
+      const candidateWithFreshTotals = {
+        ...candidate,
+        ...freshTotals
+      };
+
       const payload = sanitizePayload({
         // Client information (flattened structure as per backend API)
-        clientName: candidate.billTo?.name || candidate.billTo?.companyName || "",
-        clientEmail: candidate.billTo?.email || "",
-        clientPhone: candidate.billTo?.phone || "",
-        clientAddress: candidate.billTo?.address || "",
-        clientCity: candidate.billTo?.city || "",
-        clientState: candidate.billTo?.state || "",
-        clientCountry: candidate.billTo?.country || "India",
-        clientGst: candidate.billTo?.gstNumber || candidate.billTo?.gst || "",
-        clientPan: candidate.billTo?.panNumber || candidate.billTo?.pan || "",
-        clientZipCode: candidate.billTo?.zipCode || "",
+        clientName: candidateWithFreshTotals.billTo?.name || candidateWithFreshTotals.billTo?.companyName || "",
+        clientEmail: candidateWithFreshTotals.billTo?.email || "",
+        clientPhone: candidateWithFreshTotals.billTo?.phone || "",
+        clientAddress: candidateWithFreshTotals.billTo?.address || "",
+        clientCity: candidateWithFreshTotals.billTo?.city || "",
+        clientState: candidateWithFreshTotals.billTo?.state || "",
+        clientCountry: candidateWithFreshTotals.billTo?.country || "India",
+        clientGst: candidateWithFreshTotals.billTo?.gstNumber || candidateWithFreshTotals.billTo?.gst || "",
+        clientPan: candidateWithFreshTotals.billTo?.panNumber || candidateWithFreshTotals.billTo?.pan || "",
+        clientZipCode: candidateWithFreshTotals.billTo?.zipCode || "",
         
-        // Invoice metadata - send invoiceNumber if provided, backend will auto-generate if empty
-        // Backend will auto-generate if invoiceNumber is empty or not provided
-        ...(candidate.invoiceNumber && candidate.invoiceNumber.trim() && {
-          invoiceNumber: candidate.invoiceNumber.trim()
+        // Invoice metadata
+        ...(candidateWithFreshTotals.invoiceNumber && candidateWithFreshTotals.invoiceNumber.trim() && {
+          invoiceNumber: candidateWithFreshTotals.invoiceNumber.trim()
         }),
         
-        date: candidate.date,
-        dueDate: candidate.dueDate,
-        status: mapToBackendStatus(candidate.status || "SAVE"),
-        currency: candidate.currency || "INR",
+        date: candidateWithFreshTotals.date,
+        dueDate: candidateWithFreshTotals.dueDate,
+        status: mapToBackendStatus(candidateWithFreshTotals.status || "SAVE"),
+        currency: candidateWithFreshTotals.currency || "INR",
         
-        // Items and totals - ensure items have inventoryItemId for stock tracking
-        items: (candidate.items || []).map(item => ({
+        // Items and totals
+        items: (candidateWithFreshTotals.items || []).map((item: any) => ({
           description: item.description || "",
           hsn: item.hsn || "",
           quantity: Number(item.quantity) || 0,
           unitPrice: Number(item.unitPrice) || 0,
           discount: Number(item.discount) || 0,
           gstRate: Number(item.gst) || 0,
-          inventoryItemId: item.inventoryItemId || null, // Critical for stock tracking
+          inventoryItemId: item.inventoryItemId || null,
         })),
-        subtotal: candidate.subtotal || 0,
-        discount: candidate.discount || 0,
-        shipping: candidate.shipping || 0,
-        roundOff: candidate.roundOff || 0,
-        totalTax: (candidate.cgst || 0) + (candidate.sgst || 0) + (candidate.igst || 0),
-        amount: candidate.total || 0,
+        subtotal: candidateWithFreshTotals.subtotal || 0,
+        discount: candidateWithFreshTotals.discount || 0,
+        shipping: candidateWithFreshTotals.shipping || 0,
+        roundOff: candidateWithFreshTotals.roundOff || 0,
+        totalTax: (candidateWithFreshTotals.cgst || 0) + (candidateWithFreshTotals.sgst || 0) + (candidateWithFreshTotals.igst || 0),
+        amount: candidateWithFreshTotals.total || 0,
         
         // Additional fields
-        notes: candidate.notes || "",
-        termsAndConditions: candidate.termsAndConditions || "",
+        notes: candidateWithFreshTotals.notes || "",
+        termsAndConditions: candidateWithFreshTotals.termsAndConditions || "",
         
-        // Billing and shipping states for GST calculation
-        billingState: candidate.billFrom?.state || "",
-        shippingState: candidate.billTo?.state || "",
+        // Billing and shipping states
+        billingState: candidateWithFreshTotals.billFrom?.state || "",
+        shippingState: candidateWithFreshTotals.billTo?.state || "",
       } as any);
+
 
       console.log('🔄 Invoice payload being sent to backend:', payload);
 
