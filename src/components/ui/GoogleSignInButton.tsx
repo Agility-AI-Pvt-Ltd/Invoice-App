@@ -39,52 +39,32 @@ export default function GoogleSignInButton({
 
     const handleCredentialResponse = useCallback(async (response: any) => {
         try {
-            console.log('🔑 Google credential response received');
-
-            // Authenticate with backend
             const authResponse = await authenticateWithGoogle(response.credential);
 
             if (authResponse.success) {
                 const { user, token } = authResponse.data;
 
-                // Store JWT token
-                const isProduction = import.meta.env.VITE_NODE_ENV === 'production' || window.location.protocol === 'https:';
-
+                const isProduction = window.location.protocol === 'https:';
                 Cookies.set('authToken', token, {
-                    expires: 1, // 1 day
+                    expires: 1,
                     secure: isProduction,
                     sameSite: 'Strict',
                 });
+                // Do NOT store token in localStorage — cookie-only for security
 
-                // Also store in localStorage for consistency (as mentioned in requirements)
-                localStorage.setItem('authToken', token);
-
-                console.log('✅ Google authentication successful');
-                console.log('👤 User data:', user);
-                console.log('🔐 Has password:', user.hasPassword);
-
-                // Check if user needs to set up password
                 if (!user.hasPassword) {
-                    console.log('🔓 User needs to set up password, opening modal...');
                     setUserData(user);
                     setAuthToken(token);
                     setShowPasswordModal(true);
                 } else {
-                    // Call success callback if provided
-                    if (onSuccess) {
-                        onSuccess(user);
-                    }
-
-                    // Navigate to dashboard
+                    if (onSuccess) onSuccess(user);
                     navigate("/app/dashboard");
                 }
             } else {
                 throw new Error(authResponse.message || 'Authentication failed');
             }
         } catch (error: any) {
-            console.error('❌ Google authentication error:', error);
             const errorMessage = error.message || 'Google authentication failed';
-
             if (onError) {
                 onError(errorMessage);
             } else {

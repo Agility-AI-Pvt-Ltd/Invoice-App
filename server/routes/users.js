@@ -1,20 +1,22 @@
-const express = require('express');
+import express from 'express';
+import User from '../models/User.js';
+import auth from '../middleware/auth.js';
+
 const router = express.Router();
-const User = require('../models/User');
-const authModule = require('../middleware/auth');
-const auth = authModule && authModule.default ? authModule.default : authModule;
 
 // Get user profile
 router.get('/profile', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select('-password');
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+        if (user.password) delete user.password;
         res.json(user);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching user profile' });
     }
 });
 
-module.exports = router; 
+export default router;

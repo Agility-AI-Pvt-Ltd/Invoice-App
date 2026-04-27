@@ -1,11 +1,10 @@
 import { FirestoreModel } from "../lib/firestore-utils.js";
 
-class InvoiceModel extends FirestoreModel {
+class PurchaseOrderModel extends FirestoreModel {
     constructor() {
-        super("invoices");
+        super("purchase_orders");
     }
 
-    // Helper for specialized sorting
     async findByUser(userId, sort = { date: -1 }) {
         const field = Object.keys(sort)[0];
         const direction = sort[field] === -1 ? 'desc' : 'asc';
@@ -13,5 +12,5 @@ class InvoiceModel extends FirestoreModel {
     }
 }
 
-const Invoice = new InvoiceModel();
-export default Invoice;
+const PurchaseOrder = new PurchaseOrderModel();
+export default PurchaseOrder;

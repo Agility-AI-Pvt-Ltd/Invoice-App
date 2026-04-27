@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 const auth = async (req, res, next) => {
     try {
@@ -10,17 +10,26 @@ const auth = async (req, res, next) => {
             return res.status(401).json({ message: 'No authentication token provided' });
         }
 
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            console.error('JWT_SECRET environment variable is not set');
+            return res.status(500).json({ message: 'Server configuration error' });
+        }
+
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.Jwt_sec || 'your-secret-key');
+            const decoded = jwt.verify(token, jwtSecret);
             const userId = decoded.userId || decoded.id || decoded._id;
             if (!userId) {
                 return res.status(401).json({ message: 'Invalid authentication token payload' });
             }
 
-            const user = await User.findById(userId).select('-password');
+            const user = await User.findById(userId);
             if (!user) {
                 return res.status(401).json({ message: 'User not found' });
             }
+
+            // Remove password from user object
+            if (user.password) delete user.password;
 
             req.token = token;
             req.user = user;
@@ -35,4 +44,4 @@ const auth = async (req, res, next) => {
     }
 };
 
-module.exports = auth;
+export default auth;
