@@ -109,29 +109,23 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
                 const data = await getProfile();
                 setProfile(data);
                 setIsAuthenticated(true);
-            } catch (profileError) {
-                // If profile fetch fails, create a minimal mock profile to prevent null reference errors
-                console.warn("Profile fetch failed, using mock profile:", profileError);
-                setProfile({
-                    _id: 'mock-user',
-                    name: 'User',
-                    email: 'user@example.com',
-                    company: 'Company',
-                    address: '',
-                    phone: '',
-                    panNumber: '',
-                    isGstRegistered: false,
-                    businessLogo: '',
-                    profilePicture: '',
-                    // Add other common profile fields as needed
-                });
-                setIsAuthenticated(true);
+            } catch (profileError: any) {
+                // Auth failure — token is invalid or expired, log out cleanly
+                const status = profileError?.response?.status;
+                if (status === 401 || status === 403) {
+                    Cookies.remove('authToken');
+                    localStorage.removeItem('authToken');
+                    setIsAuthenticated(false);
+                    setProfile(null);
+                } else {
+                    // Non-auth error (e.g. network) — keep session but surface the error
+                    setError('Failed to load profile. Please refresh.');
+                    setIsAuthenticated(true);
+                }
             }
         } catch (err: any) {
-            console.warn("Profile fetch failed, but keeping user authenticated:", err.message || "Error fetching profile");
-            setError(err.message || "Error fetching profile");
-            // Keep user authenticated even if profile fails - might be a backend service issue
-            setIsAuthenticated(true);
+            setError(err.message || 'Error fetching profile');
+            setIsAuthenticated(false);
             setProfile(null);
         } finally {
             setLoading(false);
@@ -144,6 +138,7 @@ const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = useCallback(() => {
         Cookies.remove('authToken');
+        localStorage.removeItem('authToken');
         setProfile(null);
         setIsAuthenticated(false);
         setError(null);

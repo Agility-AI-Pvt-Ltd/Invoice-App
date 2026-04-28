@@ -1,43 +1,32 @@
-const express = require('express');
+import express from 'express';
+import ExpenseInvoice from '../models/ExpenseInvoice.js';
+import auth from '../middleware/auth.js';
+
 const router = express.Router();
-const ExpenseInvoice = require('../models/ExpenseInvoice');
-const authModule = require('../middleware/auth');
-const auth = authModule && authModule.default ? authModule.default : authModule;
 
 // Get all expense invoices
 router.get('/', auth, async (req, res) => {
     try {
-        const invoices = await ExpenseInvoice.find({ userId: req.user._id })
-            .sort({ createdAt: -1 });
+        const userId = req.user.id || req.user._id;
+        const invoices = await ExpenseInvoice.findWithSort({ user: userId }, 'createdAt', 'desc');
         res.json(invoices);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching invoices' });
     }
 });
 
-// Get last expense invoice
-router.get('/last', auth, async (req, res) => {
-    try {
-        const lastInvoice = await ExpenseInvoice.findOne({ userId: req.user._id })
-            .sort({ invoiceNumber: -1 });
-        res.json(lastInvoice);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching last invoice' });
-    }
-});
-
 // Get single expense invoice
 router.get('/:id', auth, async (req, res) => {
     try {
+        const userId = req.user.id || req.user._id;
         const invoice = await ExpenseInvoice.findOne({
-            _id: req.params.id,
-            userId: req.user._id
+            id: req.params.id,
+            user: userId
         });
 
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });
         }
-
         res.json(invoice);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching invoice' });
@@ -47,12 +36,11 @@ router.get('/:id', auth, async (req, res) => {
 // Create expense invoice
 router.post('/', auth, async (req, res) => {
     try {
-        const invoice = new ExpenseInvoice({
+        const userId = req.user.id || req.user._id;
+        const invoice = await ExpenseInvoice.create({
             ...req.body,
-            userId: req.user._id
+            user: userId
         });
-
-        await invoice.save();
         res.status(201).json(invoice);
     } catch (error) {
         res.status(500).json({ message: 'Error creating invoice' });
@@ -62,16 +50,15 @@ router.post('/', auth, async (req, res) => {
 // Update expense invoice
 router.put('/:id', auth, async (req, res) => {
     try {
-        const invoice = await ExpenseInvoice.findOneAndUpdate(
-            { _id: req.params.id, userId: req.user._id },
-            req.body,
-            { new: true }
-        );
+        const userId = req.user.id || req.user._id;
+        const invoice = await ExpenseInvoice.findByIdAndUpdate(req.params.id, {
+            ...req.body,
+            user: userId
+        });
 
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });
         }
-
         res.json(invoice);
     } catch (error) {
         res.status(500).json({ message: 'Error updating invoice' });
@@ -81,55 +68,19 @@ router.put('/:id', auth, async (req, res) => {
 // Delete expense invoice
 router.delete('/:id', auth, async (req, res) => {
     try {
+        const userId = req.user.id || req.user._id;
         const invoice = await ExpenseInvoice.findOneAndDelete({
-            _id: req.params.id,
-            userId: req.user._id
+            id: req.params.id,
+            user: userId
         });
 
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });
         }
-
         res.json({ message: 'Invoice deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting invoice' });
     }
 });
 
-// Duplicate expense invoice
-router.post('/:id/duplicate', auth, async (req, res) => {
-    try {
-        const originalInvoice = await ExpenseInvoice.findOne({
-            _id: req.params.id,
-            userId: req.user._id
-        });
-
-        if (!originalInvoice) {
-            return res.status(404).json({ message: 'Invoice not found' });
-        }
-
-        // Generate new invoice number
-        const lastInvoice = await ExpenseInvoice.findOne({ userId: req.user._id })
-            .sort({ invoiceNumber: -1 });
-        const lastNumber = lastInvoice ? parseInt(lastInvoice.invoiceNumber.replace(/[^0-9]/g, '')) : 0;
-        const newInvoiceNumber = `EXP-${(lastNumber + 1).toString().padStart(6, '0')}`;
-
-        // Create new invoice with duplicated data
-        const newInvoice = new ExpenseInvoice({
-            ...originalInvoice.toObject(),
-            _id: undefined,
-            invoiceNumber: newInvoiceNumber,
-            date: new Date(),
-            status: 'draft',
-            createdAt: new Date(),
-            updatedAt: new Date()
-        });
-
-        await newInvoice.save();
-        res.status(201).json(newInvoice);
-    } catch (error) {
-        res.status(500).json({ message: 'Error duplicating invoice' });
-    }
-});
-
-module.exports = router; 
+export default router;

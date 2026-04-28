@@ -1,72 +1,32 @@
-import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { FirestoreModel } from "../lib/firestore-utils.js";
 
-const userSchema = new mongoose.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true
-    },
-    password: {
-        type: String,
-        required: true
-    },
-    name: {
-        type: String,
-        required: true
-    },
-    company: {
-        type: String,
-        // required: true
-    },
-    address: {
-        type: String,
-        // required: true
-    },
-    gstNumber: {
-        type: String,
-        sparse: true
-    },
-    panNumber: {
-        type: String,
-        sparse: true
-    },
-    phonenumber: {
-        type: String,
-        required: true
-    },
-    website: String,
-    isGstRegistered: {
-        type: Boolean,
-        default: false
-    },
-    businessLogo: String,
-    createdAt: {
-        type: Date,
-        default: Date.now
+class UserModel extends FirestoreModel {
+    constructor() {
+        super("users");
     }
-});
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
-
-    try {
+    async create(userData) {
         const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error);
+        const hashedPassword = await bcrypt.hash(userData.password, salt);
+        
+        return super.create({
+            ...userData,
+            password: hashedPassword,
+            isGstRegistered: userData.isGstRegistered || false,
+            createdAt: new Date()
+        });
     }
-});
 
-// Method to compare password for login
-userSchema.methods.comparePassword = async function (candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
-};
+    async comparePassword(candidatePassword, hashedPassword) {
+        return bcrypt.compare(candidatePassword, hashedPassword);
+    }
 
-const User = mongoose.model("User", userSchema);
+    // Custom findByEmail helper
+    async findByEmail(email) {
+        return this.findOne({ email: email.toLowerCase() });
+    }
+}
 
-export default mongoose.model("User", userSchema); 
+const User = new UserModel();
+export default User;

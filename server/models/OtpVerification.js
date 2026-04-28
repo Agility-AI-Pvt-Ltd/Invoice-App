@@ -1,9 +1,10 @@
-import mongoose from "mongoose";
+import { FirestoreModel } from "../lib/firestore-utils.js";
 
-const otpSchema = new mongoose.Schema({
-  phonenumber: { type: String, unique: true, required: true },
-  otp: { type: String, required: true },
-  otpExpiration: { type: Date, required: true },
-});
+class OtpVerificationModel extends FirestoreModel {
+    constructor() {
+        super("otp_verifications");
+    }
+}
 
-export default mongoose.model("OtpVerification", otpSchema);
+const OtpVerification = new OtpVerificationModel();
+export default OtpVerification;

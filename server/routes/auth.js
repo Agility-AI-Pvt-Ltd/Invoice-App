@@ -1,6 +1,7 @@
 import express from "express";
-const router = express.Router();
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import User from '../models/User.js';
 import auth from "../middleware/auth.js";
 import {
@@ -9,25 +10,37 @@ import {
     verifyOtpAndRegister,
     verifyOtpAndLogin,
     getMe,
-    test,
-
+    test
 } from "../controllers/userController.js";
 
+const router = express.Router();
 
-router.post("/send-otp-register", sendOtpForRegistration);
-router.post("/send-otp-login", sendOtpForLogin);
-router.post("/verify-otp-register", verifyOtpAndRegister);
-router.post("/verify-otp-login", verifyOtpAndLogin);
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: { error: 'Too many login attempts, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { error: 'Too many OTP requests, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+router.post("/send-otp-register", otpLimiter, sendOtpForRegistration);
+router.post("/send-otp-login", otpLimiter, sendOtpForLogin);
+router.post("/verify-otp-register", otpLimiter, verifyOtpAndRegister);
+router.post("/verify-otp-login", otpLimiter, verifyOtpAndLogin);
 router.get("/me", auth, getMe);
 router.get("/test", test);
 
-
-
-
 // Login user
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     try {
-        console.log('Login attempt:', req.body);
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -36,41 +49,30 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check if user exists
         const user = await User.findOne({ email });
         if (!user) {
-            console.log('User not found:', email);
-            return res.status(400).json({
-                error: 'Invalid credentials'
-            });
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Verify password
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await User.comparePassword(password, user.password);
         if (!isMatch) {
-            console.log('Invalid password for user:', email);
-            return res.status(400).json({
-                error: 'Invalid credentials'
-            });
-        }// Create JWT token
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'your-secret-key', {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            console.error('JWT_SECRET environment variable is not set');
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+
+        const token = jwt.sign({ userId: user.id }, jwtSecret, {
             expiresIn: '24h'
         });
 
         // Send user info (excluding password)
-        const userResponse = {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            company: user.company,
-            address: user.address,
-            phone: user.phone,
-            website: user.website,
-            panNumber: user.panNumber,
-            isGstRegistered: user.isGstRegistered,
-            gstNumber: user.gstNumber,
-            businessLogo: user.businessLogo
-        };
+        const { password: _, ...userResponse } = user;
+        // Keep _id for frontend compatibility if needed
+        userResponse._id = user.id;
 
         res.json({
             token,
@@ -82,23 +84,11 @@ router.post('/login', async (req, res) => {
     }
 });
 
-
 // Get user profile
-router.get('/profile', async (req, res) => {
+router.get('/profile', auth, async (req, res) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        const user = await User.findById(decoded.userId).select('-password');
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json(user);
+        // auth middleware already sets req.user
+        res.json(req.user);
     } catch (err) {
         console.error('Profile error:', err);
         res.status(401).json({ error: 'Please authenticate' });
@@ -106,57 +96,42 @@ router.get('/profile', async (req, res) => {
 });
 
 // Update user profile
-router.post('/profile/update', async (req, res) => {
+router.post('/profile/update', auth, async (req, res) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        const user = await User.findById(decoded.userId);
+        const userId = req.user.id;
+        const user = await User.findById(userId);
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
         // Verify current password
-        const isMatch = await user.comparePassword(req.body.currentPassword);
+        const isMatch = await User.comparePassword(req.body.currentPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ error: 'Current password is incorrect' });
         }
 
         // Update allowed fields
+        const updateData = {};
         const updateFields = ['name', 'company', 'address', 'phone', 'website', 'panNumber',
             'isGstRegistered', 'gstNumber', 'businessLogo'];
 
         updateFields.forEach(field => {
             if (req.body[field] !== undefined) {
-                user[field] = req.body[field];
+                updateData[field] = req.body[field];
             }
         });
 
         // Update password if provided
         if (req.body.newPassword) {
-            user.password = req.body.newPassword;
+            const salt = await bcrypt.genSalt(10);
+            updateData.password = await bcrypt.hash(req.body.newPassword, salt);
         }
 
-        await user.save();
-
-        // Send updated user info (excluding password)
-        const userResponse = {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            company: user.company,
-            address: user.address,
-            phone: user.phone,
-            website: user.website,
-            panNumber: user.panNumber,
-            isGstRegistered: user.isGstRegistered,
-            gstNumber: user.gstNumber,
-            businessLogo: user.businessLogo
-        };
+        const updatedUser = await User.findByIdAndUpdate(userId, updateData);
+        
+        const { password: _, ...userResponse } = updatedUser;
+        userResponse._id = updatedUser.id;
 
         res.json({
             message: 'Profile updated successfully',
